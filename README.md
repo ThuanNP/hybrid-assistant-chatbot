@@ -45,3 +45,16 @@ source backend/.venv/Scripts/activate
 # source backend/.venv/bin/activate
 pip install -r backend/requirements.txt
 ```
+
+## 5. Kiểm tra trước khi chạy
+
+Trước khi khởi động hệ thống, thực hiện kiểm tra chẩn đoán bộ chạy mô hình cục bộ
+và các nhà cung cấp đám mây:
+
+```bash
+# Kiểm tra bộ chạy mô hình cục bộ (Ollama / LM Studio)
+python scripts/kiem_tra_bo_chay.py
+
+# Kiểm tra kết nối tới các nhà cung cấp đám mây qua LiteLLM
+python scripts/kiem_tra_nha_cung_cap.py
+```
