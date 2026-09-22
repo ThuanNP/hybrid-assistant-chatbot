@@ -30,8 +30,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # đây là cách container trên Docker Engine cho Linux gọi được Ollama chạy trên máy chủ; Docker Desktop cho Windows/macOS đã có sẵn tên này nên dòng này vô hại, giữ để chạy được cả trên máy chủ Linux.
     extra_hosts:
+      # đây là cách container trên Docker Engine cho Linux gọi được Ollama chạy trên máy chủ; Docker Desktop cho Windows/macOS đã có sẵn tên này nên dòng này vô hại, giữ để chạy được cả trên máy chủ Linux.
       - "host.docker.internal:host-gateway"
 
   frontend:
