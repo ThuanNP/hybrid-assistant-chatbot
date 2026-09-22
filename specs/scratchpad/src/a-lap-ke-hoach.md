@@ -128,6 +128,8 @@ viện, không phải một container riêng. Các lớp còn lại được l�
   L0   Docker Compose (một máy chủ có GPU) → Kubernetes + GPU Operator       Giai đoạn 1 → 10
 ```
 
+![Kiến trúc Hybrid Assistant Chatbot](../images/architecture.drawio.svg)
+
 Ánh xạ bảy lớp sang giai đoạn:
 
 | Lớp | Thành phần | Giai đoạn |
