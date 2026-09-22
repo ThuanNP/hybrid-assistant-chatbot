@@ -26,30 +26,65 @@ Sao chép tệp biến môi trường mẫu và khởi chạy toàn bộ dịch 
 cp .env.example .env && docker compose up -d --build
 ```
 
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env; docker compose up -d --build
+```
+
+Điền giá trị thật cho `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DATABASE_URL`
+và `APP_SECRET` trong `.env` trước khi khởi chạy.
+
 Sau khi khởi chạy thành công:
 
 - **Backend API**: <http://localhost:8000/docs>
 - **Frontend Web**: <http://localhost:8080>
 
-## 4. Chuẩn bị máy phát triển
+## 4. Chuẩn bị môi trường phát triển
 
-Để phát triển mã nguồn backend và chạy kiểm thử trực tiếp trên máy chủ cục bộ:
+Để phát triển mã nguồn backend và chạy kiểm thử trực tiếp trên máy, tạo môi trường ảo
+`backend/.venv` rồi cài thư viện. `PYTHONUTF8=1` giúp Python in tiếng Việt không lỗi mã hoá.
+
+Git Bash trên Windows (terminal mặc định cho mọi lệnh tự đánh giá):
+
+```bash
+export PYTHONUTF8=1                 # thêm dòng này vào ~/.bashrc để giữ lâu dài
+python -m venv backend/.venv
+source backend/.venv/Scripts/activate
+pip install -r backend/requirements.txt
+```
+
+PowerShell trên Windows:
+
+```powershell
+$env:PYTHONUTF8 = "1"               # chỉ có hiệu lực trong phiên hiện tại
+[Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "User")   # giữ lâu dài
+python -m venv backend\.venv
+backend\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
+```
+
+Nếu PowerShell chặn `Activate.ps1` vì chính sách thực thi, cho phép kịch bản cục bộ
+cho riêng tài khoản hiện tại rồi kích hoạt lại:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+Linux hoặc macOS:
 
 ```bash
 export PYTHONUTF8=1
-python -m venv backend/.venv
-# Kích hoạt môi trường ảo:
-# Trên Windows (Git Bash):
-source backend/.venv/Scripts/activate
-# Trên Linux/macOS:
-# source backend/.venv/bin/activate
+python3 -m venv backend/.venv
+source backend/.venv/bin/activate
 pip install -r backend/requirements.txt
 ```
 
 ## 5. Kiểm tra trước khi chạy
 
 Trước khi khởi động hệ thống, thực hiện kiểm tra chẩn đoán bộ chạy mô hình cục bộ
-và các nhà cung cấp đám mây:
+và các nhà cung cấp đám mây (lệnh giống nhau trên Git Bash và PowerShell,
+sau khi đã kích hoạt môi trường ảo):
 
 ```bash
 # Kiểm tra bộ chạy mô hình cục bộ (Ollama / LM Studio)

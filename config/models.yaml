@@ -67,6 +67,9 @@ local_chung:
   keep_alive: 30m
   nhiet_do: 0.3
   nguong_hang_doi_ha_cap: 3
+  # Tắt chế độ suy nghĩ của model local (qwen3.5): bật thì độ trễ tăng mạnh và phần suy luận
+  # có thể dùng hết gioi_han_token_ra trước khi model kịp trả lời. Chỉ Ollama nhận tham số này.
+  suy_luan: false
 
 chuoi_dam_may:                    # thứ tự này là thứ tự thử
   - tang: 1

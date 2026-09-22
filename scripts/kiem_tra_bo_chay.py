@@ -195,47 +195,77 @@ def kiem_tra_lmstudio(
     return True, True, []
 
 
-def thu_nghiem_chat_completions(
+def _yeu_cau_chat_thu(
+    loai_bo_chay: str,
     dia_chi_url: str,
     model_chinh: str,
-    model_chinh_thieu: bool,
-) -> None:
-    """Gọi thử POST /chat/completions với model bậc chính để đo thời gian TTFT."""
-    print(f"\n--- Thử nghiệm Chat Completions (Bậc chính: {model_chinh}) ---")
-    if model_chinh_thieu:
-        print(f"Bỏ qua thử nghiệm chat: Mô hình bậc chính '{model_chinh}' chưa được tải.")
-        return
+    num_ctx: int,
+    keep_alive: str,
+) -> tuple[str, dict[str, object]]:
+    """Tạo endpoint và thân yêu cầu chat thử theo từng loại bộ chạy.
 
-    endpoint = f"{dia_chi_url.rstrip('/')}/chat/completions"
-    du_lieu_gui = {
+    Ollama dùng /api/chat vì giao diện /v1 tương thích OpenAI bỏ qua keep_alive và
+    options.num_ctx: gọi qua /v1 sẽ nạp model với ngữ cảnh mặc định, có thể tràn VRAM.
+    """
+    tin_nhan = [{"role": "user", "content": "Xin chào"}]
+    if loai_bo_chay == "ollama":
+        goc_url = dia_chi_url.rstrip("/").removesuffix("/v1").rstrip("/")
+        return f"{goc_url}/api/chat", {
+            "model": model_chinh,
+            "messages": tin_nhan,
+            "stream": True,
+            "keep_alive": keep_alive,
+            "options": {"num_ctx": num_ctx, "num_predict": 8},
+        }
+    return f"{dia_chi_url.rstrip('/')}/chat/completions", {
         "model": model_chinh,
-        "messages": [{"role": "user", "content": "Xin chào"}],
+        "messages": tin_nhan,
         "max_tokens": 8,
         "stream": True,
     }
 
+
+def _co_token_trong_dong(loai_bo_chay: str, dong: str) -> bool:
+    """Nhận diện dòng phát đầu tiên có nội dung (NDJSON của Ollama hoặc SSE của LM Studio)."""
+    if loai_bo_chay == "ollama":
+        return dong.strip().startswith("{")
+    return dong.startswith("data: ") and not dong.endswith("[DONE]")
+
+
+def thu_nghiem_chat(
+    loai_bo_chay: str,
+    dia_chi_url: str,
+    model_chinh: str,
+    num_ctx: int,
+    keep_alive: str,
+) -> None:
+    """Gọi thử model bậc chính (đúng num_ctx, keep_alive) để đo thời gian tới token đầu tiên."""
+    print(f"\n--- Thử nghiệm chat (Bậc chính: {model_chinh}, num_ctx {num_ctx}) ---")
+    endpoint, du_lieu_gui = _yeu_cau_chat_thu(
+        loai_bo_chay, dia_chi_url, model_chinh, num_ctx, keep_alive
+    )
     bat_dau = time.perf_counter()
     thoi_gian_token_dau: float | None = None
-
     try:
         with httpx.Client(timeout=60.0) as client:
             with client.stream("POST", endpoint, json=du_lieu_gui) as phan_hoi:
                 if phan_hoi.status_code != 200:
-                    print(f"Yêu cầu chat completions trả về mã lỗi HTTP {phan_hoi.status_code}.")
+                    print(f"Yêu cầu chat thử trả về mã lỗi HTTP {phan_hoi.status_code}.")
                     return
                 for dong in phan_hoi.iter_lines():
-                    if dong.startswith("data: ") and not dong.endswith("[DONE]"):
+                    if _co_token_trong_dong(loai_bo_chay, dong):
                         thoi_gian_token_dau = time.perf_counter() - bat_dau
                         break
+    except httpx.HTTPError as loi:
+        print(f"Lỗi khi gọi chat thử: {loi}")
+        return
 
-        if thoi_gian_token_dau is not None:
-            print(f"Thời gian tới token đầu tiên (TTFT): {thoi_gian_token_dau:.2f} giây.")
-            if thoi_gian_token_dau > 5.0:
-                print("Giải thích: đây là thời gian nạp model vào VRAM, lần sau sẽ nhanh.")
-        else:
-            print("Không nhận được token phản hồi nào.")
-    except Exception as loi:
-        print(f"Lỗi khi gọi chat completions: {loi}")
+    if thoi_gian_token_dau is None:
+        print("Không nhận được token phản hồi nào.")
+        return
+    print(f"Thời gian tới token đầu tiên (TTFT): {thoi_gian_token_dau:.2f} giây.")
+    if thoi_gian_token_dau > 5.0:
+        print("Giải thích: đây là thời gian nạp model vào VRAM, lần sau sẽ nhanh.")
 
 
 def chay_kiem_tra() -> int:
@@ -271,9 +301,16 @@ def chay_kiem_tra() -> int:
         print(f"Loại bộ chạy không được hỗ trợ: '{loai_bo_chay}'")
         return 1
 
-    if bo_chay_song:
-        model_chinh_thieu = model_chinh in cac_model_thieu
-        thu_nghiem_chat_completions(dia_chi_bo_chay, model_chinh, model_chinh_thieu)
+    if bo_chay_song and model_chinh in cac_model_thieu:
+        print(f"\nBỏ qua thử nghiệm chat: mô hình bậc chính '{model_chinh}' chưa được tải.")
+    elif bo_chay_song:
+        thu_nghiem_chat(
+            loai_bo_chay,
+            dia_chi_bo_chay,
+            model_chinh,
+            cau_hinh.bac_local[0].num_ctx,
+            cau_hinh.local_chung.keep_alive,
+        )
 
     # Mã thoát 1 nếu thiếu model hoặc bộ chạy không phản hồi
     if not bo_chay_song or not du_model:

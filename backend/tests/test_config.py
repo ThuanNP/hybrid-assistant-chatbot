@@ -6,8 +6,6 @@ import pytest
 import yaml
 
 from app.config import (
-    CAC_CHE_DO_DINH_TUYEN_HOP_LE,
-    CAC_HO_SO_GPU_HOP_LE,
     CauHinhHeThong,
     _dieu_chinh_dia_chi_ngoai_container,
     _kiem_tra_chuoi_dam_may,
@@ -228,3 +226,53 @@ def test_nap_cau_hinh_he_thong_gpu8_thanh_cong(monkeypatch: pytest.MonkeyPatch) 
     assert cau_hinh_thuc_te.bac_local[0].bac == "chinh"
     assert cau_hinh_thuc_te.bac_local[1].bac == "nho"
     assert len(cau_hinh_thuc_te.chuoi_dam_may) == 4
+
+
+def test_tu_choi_loai_bo_chay_la(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Từ chối khởi động nếu LOAI_BO_CHAY không phải ollama hoặc lmstudio."""
+    monkeypatch.setenv("LOAI_BO_CHAY", "lm_studio")
+    with pytest.raises(ValueError) as thong_tin_loi:
+        nap_cau_hinh()
+
+    thong_diep = str(thong_tin_loi.value)
+    assert "LOAI_BO_CHAY không hợp lệ" in thong_diep
+    assert "lm_studio" in thong_diep
+
+
+def test_the_model_sai_neu_ro_ho_so_va_bac() -> None:
+    """Thông báo lỗi thẻ model nêu đúng hồ sơ, bậc và thẻ sai để sửa nhanh."""
+    du_lieu_ho_so: dict[str, Any] = {
+        "gpu12": {
+            "chinh": {"model": "model_dung:9b-q4_K_M", "num_ctx": 8192},
+            "nho": {"model": "model_sai:4b", "num_ctx": 4096},
+            "num_parallel": 1,
+            "so_model_nap_cung_luc": 2,
+        }
+    }
+    with pytest.raises(ValueError) as thong_tin_loi:
+        _kiem_tra_tinh_hop_le_ho_so_gpu(du_lieu_ho_so, "gpu12")
+
+    thong_diep = str(thong_tin_loi.value)
+    assert "gpu12" in thong_diep
+    assert "nho" in thong_diep
+    assert "model_sai:4b" in thong_diep
+
+
+def test_doc_dung_tep_env_duoc_truyen_va_khong_co_bi_mat_mac_dinh(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """nap_cau_hinh đọc đúng tệp .env được truyền vào; thiếu bí mật thì để None."""
+    for ten_bien in ("HO_SO_GPU", "LOAI_BO_CHAY", "DIA_CHI_BO_CHAY", "DATABASE_URL", "APP_SECRET"):
+        monkeypatch.delenv(ten_bien, raising=False)
+    tep_env = tmp_path / ".env"
+    tep_env.write_text(
+        "HO_SO_GPU=gpu12\nLOAI_BO_CHAY=ollama\nDIA_CHI_BO_CHAY=http://localhost:11434/v1\n",
+        encoding="utf-8",
+    )
+
+    cau_hinh_kq = nap_cau_hinh(duong_dan_env=tep_env)
+
+    assert cau_hinh_kq.ho_so_gpu_dang_chon == "gpu12"
+    assert cau_hinh_kq.database_url is None
+    assert cau_hinh_kq.app_secret is None

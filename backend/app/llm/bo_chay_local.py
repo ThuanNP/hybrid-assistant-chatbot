@@ -1,18 +1,24 @@
 """Kết nối và điều phối bộ chạy mô hình cục bộ (Ollama, LM Studio)."""
 
-from abc import ABC, abstractmethod
 import json
 import logging
 import time
-from typing import Any, AsyncIterator
+from abc import ABC, abstractmethod
+from typing import Any, AsyncIterator, Literal, overload
 
 import httpx
 from pydantic import BaseModel
 
-from app.config import CauHinhHeThong, cau_hinh
+from app.config import CauHinhBacLocal, CauHinhHeThong, cau_hinh
 from app.core.loi import LoiDauVao, LoiHetBacLocal
 
 logger = logging.getLogger(__name__)
+
+# Chỉ ba loại lỗi này kích hoạt hạ cấp: quá hạn và lỗi kết nối (TransportError bao cả
+# TimeoutException), lỗi 5xx (HTTPStatusError). Lỗi khác là lỗi mã nguồn, phải nổi lên.
+LOI_KICH_HOAT_HA_CAP = (httpx.TransportError, httpx.HTTPStatusError)
+
+HEADER_BO_CHAY = {"Authorization": "Bearer local", "Content-Type": "application/json"}
 
 
 class KetQuaGoiLocal(BaseModel):
@@ -45,122 +51,53 @@ class KetQuaDongLocal(BaseModel):
     token_ra: int = 0
 
 
-class LuongKetQuaDong:
-    """Bộ bọc luồng phát dòng bất đồng bộ hỗ trợ cả 'await' lẫn 'async for'."""
+class MauTho(BaseModel):
+    """Dữ liệu đọc được từ một phản hồi hoặc một dòng phát, chung cho mọi bộ chạy."""
 
-    def __init__(self, bo_sinh: AsyncIterator[KetQuaDongLocal]) -> None:
-        self._bo_sinh = bo_sinh
-
-    def __aiter__(self) -> AsyncIterator[KetQuaDongLocal]:
-        return self._bo_sinh
-
-    def __await__(self) -> Any:
-        async def _tra_ve_chinh_minh() -> "LuongKetQuaDong":
-            return self
-
-        return _tra_ve_chinh_minh().__await__()
-
-
-def _chuan_hoa_url_chat(dia_chi: str) -> str:
-    """Chuẩn hóa đường dẫn endpoint chat completions tương thích chuẩn OpenAI."""
-    duong_dan = dia_chi.rstrip("/")
-    if duong_dan.endswith("/chat/completions"):
-        return duong_dan
-    if duong_dan.endswith("/v1"):
-        return f"{duong_dan}/chat/completions"
-    return f"{duong_dan}/v1/chat/completions"
+    noi_dung: str = ""
+    token_vao: int | None = None
+    token_ra: int | None = None
+    thoi_gian_nap_ms: float | None = None
+    thoi_gian_sinh_giay: float | None = None
+    ket_thuc: bool = False
 
 
 def _chuan_hoa_url_goc(dia_chi: str) -> str:
-    """Lấy địa chỉ gốc của dịch vụ để gọi các API quản lý như /api/ps, /api/show."""
+    """Lấy địa chỉ gốc của dịch vụ (bỏ hậu tố /v1) để gọi các API riêng như /api/chat."""
     duong_dan = dia_chi.rstrip("/")
-    if duong_dan.endswith("/v1"):
-        return duong_dan[:-3]
-    return duong_dan
+    return duong_dan[:-3] if duong_dan.endswith("/v1") else duong_dan
 
 
-async def _boc_dong_sse(
-    phan_hoi: httpx.Response,
-    *,
-    model: str,
-    bac: str,
-    ma_yeu_cau: str,
-    t0: float,
-) -> AsyncIterator[KetQuaDongLocal]:
-    """Bóc từng dòng dữ liệu SSE tương thích OpenAI, dừng khi gặp [DONE]."""
-    t_dau_tien: float | None = None
-    so_token_ra = 0
-    token_vao = 0
+def _tinh_toc_do(so_token: int, thoi_gian_giay: float) -> float:
+    """Tính tok/s, tránh chia cho 0 khi thời gian sinh quá ngắn."""
+    return round(so_token / max(thoi_gian_giay, 0.001), 2) if so_token > 0 else 0.0
 
-    async for dong_tho in phan_hoi.aiter_lines():
-        dong = dong_tho.strip()
-        # Bỏ qua dòng rỗng và dòng chú thích SSE (bắt đầu bằng dấu hai chấm)
-        if not dong or dong.startswith(":"):
-            continue
-        if not dong.startswith("data:"):
-            continue
 
-        du_lieu = dong[5:].strip()
-        if du_lieu == "[DONE]":
-            break
+def _doc_json(dong: str) -> dict[str, Any] | None:
+    """Đọc một chuỗi JSON; trả None nếu không phải đối tượng JSON hợp lệ."""
+    try:
+        du_lieu = json.loads(dong)
+    except json.JSONDecodeError:
+        return None
+    return du_lieu if isinstance(du_lieu, dict) else None
 
-        try:
-            vat_the_json = json.loads(du_lieu)
-        except json.JSONDecodeError:
-            continue
 
-        usage = vat_the_json.get("usage")
-        if usage:
-            token_vao = usage.get("prompt_tokens", token_vao)
-            token_ra_usage = usage.get("completion_tokens")
-            if token_ra_usage is not None:
-                so_token_ra = token_ra_usage
-
-        lua_chon = vat_the_json.get("choices", [])
-        if not lua_chon:
-            continue
-
-        delta = lua_chon[0].get("delta", {})
-        noi_dung_chunk = delta.get("content", "")
-        if noi_dung_chunk:
-            if t_dau_tien is None:
-                t_dau_tien = time.perf_counter()
-            so_token_ra += 1
-            yield KetQuaDongLocal(
-                noi_dung=noi_dung_chunk,
-                da_xong=False,
-                model=model,
-                bac=bac,
-                ma_yeu_cau=ma_yeu_cau,
-            )
-
-    t_ket_thuc = time.perf_counter()
-    do_tre_ms = round((t_ket_thuc - t0) * 1000, 2)
-    if t_dau_tien is not None:
-        thoi_gian_nap_ms = round((t_dau_tien - t0) * 1000, 2)
-        thoi_gian_sinh_giay = max(t_ket_thuc - t_dau_tien, 0.001)
-        toc_do_tok_s = round(so_token_ra / thoi_gian_sinh_giay, 2)
-    else:
-        thoi_gian_nap_ms = do_tre_ms
-        toc_do_tok_s = 0.0
-
-    # TODO: nếu bộ chạy không trả usage thì ước lượng bằng dem_token ở PROMPT 9
-    yield KetQuaDongLocal(
-        noi_dung="",
-        da_xong=True,
-        model=model,
-        bac=bac,
+def _loi_dau_vao(ma_trang_thai: int, noi_dung_loi: str, ma_yeu_cau: str) -> LoiDauVao:
+    """Tạo LoiDauVao cho phản hồi 4xx: lỗi do yêu cầu sai, không được hạ cấp."""
+    return LoiDauVao(
+        f"Lỗi client từ bộ chạy ({ma_trang_thai}): {noi_dung_loi}",
+        ma_trang_thai=ma_trang_thai,
         ma_yeu_cau=ma_yeu_cau,
-        thoi_gian_nap_ms=thoi_gian_nap_ms,
-        do_tre_ms=do_tre_ms,
-        toc_do_tok_s=toc_do_tok_s,
-        token_vao=token_vao,
-        token_ra=so_token_ra,
+        chi_tiet=noi_dung_loi,
     )
 
 
 class BoChay(ABC):
-    """Giao diện trừu tượng cho bộ chạy mô hình cục bộ."""
+    """Giao diện trừu tượng cho bộ chạy mô hình cục bộ.
+
+    Lớp con khai báo endpoint chat, thân yêu cầu và cách đọc phản hồi; phần gửi,
+    xử lý lỗi và đo chỉ số dùng chung ở đây.
+    """
 
     def __init__(
         self,
@@ -171,6 +108,10 @@ class BoChay(ABC):
         self.dia_chi = dia_chi
         self.timeout_giay = timeout_giay
         self._client = client
+
+    @abstractmethod
+    def _url_chat(self) -> str:
+        """Endpoint gọi hội thoại của bộ chạy."""
 
     @abstractmethod
     def _tao_than_yeu_cau(
@@ -185,35 +126,44 @@ class BoChay(ABC):
         max_tokens: int | None = None,
     ) -> dict[str, Any]:
         """Tạo thân JSON yêu cầu phù hợp với từng loại bộ chạy."""
-        ...
+
+    @abstractmethod
+    def _doc_phan_hoi(self, du_lieu: dict[str, Any]) -> MauTho:
+        """Đọc phản hồi không phát theo dòng."""
+
+    @abstractmethod
+    def _doc_dong(self, dong: str) -> MauTho | None:
+        """Đọc một dòng của luồng phát; trả None với dòng không mang dữ liệu."""
 
     @abstractmethod
     async def liet_ke_model(self) -> list[str]:
         """Liệt kê danh sách các mô hình có sẵn trong bộ chạy."""
-        ...
 
     @abstractmethod
     async def model_dang_nap(self) -> list[str]:
         """Liệt kê danh sách các mô hình đang được nạp vào VRAM/RAM."""
-        ...
 
     @abstractmethod
     async def doc_ngu_canh_thuc_te(self, model: str) -> int | None:
         """Đọc kích thước cửa sổ ngữ cảnh thực tế mà bộ chạy đang dùng cho model."""
-        ...
 
-    async def _gui_post(
+    async def _gui(
         self,
+        phuong_thuc: str,
         url: str,
-        headers: dict[str, str],
-        json_body: dict[str, Any],
-        timeout: float,
+        *,
+        json_body: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
     ) -> httpx.Response:
-        """Gửi yêu cầu POST qua httpx.AsyncClient tái sử dụng hoặc tạo mới."""
+        """Gửi yêu cầu qua client dùng chung (nếu có) hoặc client tạm, luôn có timeout."""
+        han = timeout if timeout is not None else self.timeout_giay
         if self._client is not None:
-            return await self._client.post(url, headers=headers, json=json_body, timeout=timeout)
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            return await client.post(url, headers=headers, json=json_body)
+            return await self._client.request(
+                phuong_thuc, url, json=json_body, headers=headers, timeout=han
+            )
+        async with httpx.AsyncClient(timeout=han) as client:
+            return await client.request(phuong_thuc, url, json=json_body, headers=headers)
 
     async def goi(
         self,
@@ -229,65 +179,70 @@ class BoChay(ABC):
     ) -> KetQuaGoiLocal:
         """Gửi yêu cầu hoàn thành hội thoại dạng không phát theo dòng."""
         t0 = time.perf_counter()
-        url = _chuan_hoa_url_chat(self.dia_chi)
-        than_yeu_cau = self._tao_than_yeu_cau(
-            model=model,
-            messages=messages,
-            stream=False,
-            num_ctx=num_ctx,
-            keep_alive=keep_alive,
-            temperature=temperature,
-            max_tokens=max_tokens,
+        than = self._tao_than_yeu_cau(
+            model, messages, stream=False, num_ctx=num_ctx, keep_alive=keep_alive,
+            temperature=temperature, max_tokens=max_tokens,
         )
-        headers = {"Authorization": "Bearer local", "Content-Type": "application/json"}
-        timeout = timeout_giay if timeout_giay is not None else self.timeout_giay
-
-        phan_hoi = await self._gui_post(url, headers, than_yeu_cau, timeout)
-
-        # Lỗi 4xx là do tham số hoặc mã gọi sai, ném LoiDauVao không hạ cấp
+        phan_hoi = await self._gui(
+            "POST", self._url_chat(), json_body=than, headers=HEADER_BO_CHAY, timeout=timeout_giay
+        )
         if 400 <= phan_hoi.status_code < 500:
-            raise LoiDauVao(
-                f"Lỗi client từ bộ chạy ({phan_hoi.status_code}): {phan_hoi.text}",
-                ma_trang_thai=phan_hoi.status_code,
-                ma_yeu_cau=ma_yeu_cau,
-                chi_tiet=phan_hoi.text,
-            )
+            raise _loi_dau_vao(phan_hoi.status_code, phan_hoi.text, ma_yeu_cau)
         phan_hoi.raise_for_status()
 
-        t1 = time.perf_counter()
-        du_lieu_json = phan_hoi.json()
-        lua_chon = du_lieu_json.get("choices", [])
-        noi_dung = lua_chon[0]["message"]["content"] if lua_chon else ""
-
-        usage = du_lieu_json.get("usage") or {}
-        token_vao = usage.get("prompt_tokens", 0)
-        token_ra = usage.get("completion_tokens", 0)
-        # TODO: Nếu bộ chạy không trả usage thì ước lượng bằng dem_token ở PROMPT 9
-
-        do_tre_ms = round((t1 - t0) * 1000, 2)
-        prompt_eval_ns = du_lieu_json.get("prompt_eval_duration")
-        if prompt_eval_ns is not None:
-            thoi_gian_nap_ms = round(prompt_eval_ns / 1_000_000, 2)
-        else:
-            thoi_gian_nap_ms = do_tre_ms
-
-        eval_duration_ns = du_lieu_json.get("eval_duration")
-        if eval_duration_ns is not None and token_ra > 0:
-            toc_do_tok_s = round(token_ra / (eval_duration_ns / 1e9), 2)
-        else:
-            thoi_gian_giay = max(do_tre_ms / 1000.0, 0.001)
-            toc_do_tok_s = round(token_ra / thoi_gian_giay, 2) if token_ra > 0 else 0.0
-
+        do_tre_ms = round((time.perf_counter() - t0) * 1000, 2)
+        mau = self._doc_phan_hoi(phan_hoi.json())
+        token_ra = mau.token_ra or 0
+        # TODO: nếu bộ chạy không trả số token thì ước lượng bằng dem_token ở PROMPT 9
+        sinh_giay = mau.thoi_gian_sinh_giay if mau.thoi_gian_sinh_giay is not None else do_tre_ms / 1000
         return KetQuaGoiLocal(
-            noi_dung=noi_dung,
+            noi_dung=mau.noi_dung,
             model=model,
             bac="",
-            thoi_gian_nap_ms=thoi_gian_nap_ms,
+            thoi_gian_nap_ms=mau.thoi_gian_nap_ms if mau.thoi_gian_nap_ms is not None else do_tre_ms,
             do_tre_ms=do_tre_ms,
-            toc_do_tok_s=toc_do_tok_s,
-            token_vao=token_vao,
+            toc_do_tok_s=_tinh_toc_do(token_ra, sinh_giay),
+            token_vao=mau.token_vao or 0,
             token_ra=token_ra,
             ma_yeu_cau=ma_yeu_cau,
+        )
+
+    async def _boc_luong(
+        self, phan_hoi: httpx.Response, *, model: str, ma_yeu_cau: str, t0: float
+    ) -> AsyncIterator[KetQuaDongLocal]:
+        """Phát từng mẩu nội dung, dừng ở dòng kết thúc, cuối cùng phát mẩu chỉ số."""
+        t_dau_tien: float | None = None
+        token_vao = 0
+        token_ra = 0
+        async for dong in phan_hoi.aiter_lines():
+            mau = self._doc_dong(dong)
+            if mau is None:
+                continue
+            token_vao = mau.token_vao if mau.token_vao is not None else token_vao
+            if mau.noi_dung:
+                t_dau_tien = t_dau_tien or time.perf_counter()
+                token_ra += 1
+                yield KetQuaDongLocal(
+                    noi_dung=mau.noi_dung, model=model, bac="", ma_yeu_cau=ma_yeu_cau
+                )
+            token_ra = mau.token_ra if mau.token_ra is not None else token_ra
+            if mau.ket_thuc:
+                break
+
+        t_ket_thuc = time.perf_counter()
+        moc_dau = t_dau_tien or t_ket_thuc
+        # TODO: nếu bộ chạy không trả số token thì ước lượng bằng dem_token ở PROMPT 9
+        yield KetQuaDongLocal(
+            noi_dung="",
+            da_xong=True,
+            model=model,
+            bac="",
+            ma_yeu_cau=ma_yeu_cau,
+            thoi_gian_nap_ms=round((moc_dau - t0) * 1000, 2),
+            do_tre_ms=round((t_ket_thuc - t0) * 1000, 2),
+            toc_do_tok_s=_tinh_toc_do(token_ra, t_ket_thuc - moc_dau),
+            token_vao=token_vao,
+            token_ra=token_ra,
         )
 
     async def goi_theo_dong(
@@ -302,49 +257,52 @@ class BoChay(ABC):
         ma_yeu_cau: str = "",
         timeout_giay: float | None = None,
     ) -> AsyncIterator[KetQuaDongLocal]:
-        """Gửi yêu cầu hoàn thành hội thoại dạng phát theo dòng (SSE)."""
+        """Gửi yêu cầu hoàn thành hội thoại dạng phát theo dòng."""
         t0 = time.perf_counter()
-        url = _chuan_hoa_url_chat(self.dia_chi)
-        than_yeu_cau = self._tao_than_yeu_cau(
-            model=model,
-            messages=messages,
-            stream=True,
-            num_ctx=num_ctx,
-            keep_alive=keep_alive,
-            temperature=temperature,
-            max_tokens=max_tokens,
+        than = self._tao_than_yeu_cau(
+            model, messages, stream=True, num_ctx=num_ctx, keep_alive=keep_alive,
+            temperature=temperature, max_tokens=max_tokens,
         )
-        headers = {"Authorization": "Bearer local", "Content-Type": "application/json"}
-        timeout = timeout_giay if timeout_giay is not None else self.timeout_giay
-
-        client = self._client or httpx.AsyncClient(timeout=timeout)
-        can_dong_client = self._client is None
+        han = timeout_giay if timeout_giay is not None else self.timeout_giay
+        client = self._client or httpx.AsyncClient(timeout=han)
         try:
-            async with client.stream("POST", url, headers=headers, json=than_yeu_cau) as phan_hoi:
+            async with client.stream(
+                "POST", self._url_chat(), headers=HEADER_BO_CHAY, json=than, timeout=han
+            ) as phan_hoi:
                 if 400 <= phan_hoi.status_code < 500:
-                    noi_dung_loi = await phan_hoi.aread()
-                    raise LoiDauVao(
-                        f"Lỗi client từ bộ chạy ({phan_hoi.status_code}): {noi_dung_loi.decode('utf-8', errors='replace')}",
-                        ma_trang_thai=phan_hoi.status_code,
-                        ma_yeu_cau=ma_yeu_cau,
-                    )
+                    noi_dung_loi = (await phan_hoi.aread()).decode("utf-8", errors="replace")
+                    raise _loi_dau_vao(phan_hoi.status_code, noi_dung_loi, ma_yeu_cau)
                 phan_hoi.raise_for_status()
-
-                async for chunk in _boc_dong_sse(
-                    phan_hoi,
-                    model=model,
-                    bac="",
-                    ma_yeu_cau=ma_yeu_cau,
-                    t0=t0,
+                async for mau in self._boc_luong(
+                    phan_hoi, model=model, ma_yeu_cau=ma_yeu_cau, t0=t0
                 ):
-                    yield chunk
+                    yield mau
         finally:
-            if can_dong_client:
+            if self._client is None:
                 await client.aclose()
 
 
 class BoChayOllama(BoChay):
-    """Hiện thực bộ chạy cho Ollama qua API chuẩn OpenAI và API quản lý nội bộ."""
+    """Bộ chạy Ollama qua API riêng /api/chat.
+
+    Không dùng /v1/chat/completions: giao diện tương thích OpenAI của Ollama bỏ qua
+    keep_alive và options.num_ctx (đã kiểm chứng trên Ollama 0.34), khiến model nạp với
+    ngữ cảnh mặc định và bị giải phóng theo thời gian mặc định.
+    """
+
+    def __init__(
+        self,
+        dia_chi: str,
+        timeout_giay: float = 120.0,
+        client: httpx.AsyncClient | None = None,
+        *,
+        suy_luan: bool = False,
+    ) -> None:
+        super().__init__(dia_chi, timeout_giay, client)
+        self.suy_luan = suy_luan
+
+    def _url_chat(self) -> str:
+        return f"{_chuan_hoa_url_goc(self.dia_chi)}/api/chat"
 
     def _tao_than_yeu_cau(
         self,
@@ -357,102 +315,92 @@ class BoChayOllama(BoChay):
         temperature: float,
         max_tokens: int | None = None,
     ) -> dict[str, Any]:
-        # keep_alive nằm ở CẤP CAO NHẤT, là anh em với options, KHÔNG nằm trong options
-        than_yeu_cau: dict[str, Any] = {
+        # keep_alive nằm ở CẤP CAO NHẤT, ngang cấp options; đặt trong options sẽ bị bỏ qua
+        tuy_chon: dict[str, Any] = {"num_ctx": num_ctx, "temperature": temperature}
+        if max_tokens is not None:
+            tuy_chon["num_predict"] = max_tokens
+        return {
             "model": model,
             "messages": messages,
             "stream": stream,
-            "temperature": temperature,
+            "think": self.suy_luan,
             "keep_alive": keep_alive,
-            "options": {
-                "num_ctx": num_ctx,
-            },
+            "options": tuy_chon,
         }
-        if max_tokens is not None:
-            than_yeu_cau["max_tokens"] = max_tokens
-        return than_yeu_cau
+
+    def _doc_phan_hoi(self, du_lieu: dict[str, Any]) -> MauTho:
+        # Thời gian tới token đầu tiên = nạp model + xử lý câu hỏi (Ollama đo bằng nano giây)
+        nap_ns = (du_lieu.get("load_duration") or 0) + (du_lieu.get("prompt_eval_duration") or 0)
+        sinh_ns = du_lieu.get("eval_duration")
+        return MauTho(
+            noi_dung=str(du_lieu.get("message", {}).get("content", "")),
+            token_vao=du_lieu.get("prompt_eval_count"),
+            token_ra=du_lieu.get("eval_count"),
+            thoi_gian_nap_ms=round(nap_ns / 1e6, 2) if nap_ns else None,
+            thoi_gian_sinh_giay=sinh_ns / 1e9 if sinh_ns else None,
+            ket_thuc=True,
+        )
+
+    def _doc_dong(self, dong: str) -> MauTho | None:
+        # Luồng của /api/chat là NDJSON: mỗi dòng một đối tượng, dòng cuối có done=true
+        du_lieu = _doc_json(dong.strip()) if dong.strip() else None
+        if du_lieu is None:
+            return None
+        return MauTho(
+            noi_dung=str(du_lieu.get("message", {}).get("content", "")),
+            token_vao=du_lieu.get("prompt_eval_count"),
+            token_ra=du_lieu.get("eval_count"),
+            ket_thuc=bool(du_lieu.get("done")),
+        )
+
+    async def _doc_danh_sach(self, duong_dan: str) -> list[dict[str, Any]]:
+        """Đọc danh sách model từ /api/tags hoặc /api/ps."""
+        phan_hoi = await self._gui("GET", f"{_chuan_hoa_url_goc(self.dia_chi)}{duong_dan}")
+        phan_hoi.raise_for_status()
+        return list(phan_hoi.json().get("models", []))
 
     async def liet_ke_model(self) -> list[str]:
         """Lấy danh sách các mô hình đã tải về thông qua GET /api/tags."""
-        url = f"{_chuan_hoa_url_goc(self.dia_chi)}/api/tags"
-        if self._client is not None:
-            phan_hoi = await self._client.get(url, timeout=self.timeout_giay)
-        else:
-            async with httpx.AsyncClient(timeout=self.timeout_giay) as client:
-                phan_hoi = await client.get(url)
-        phan_hoi.raise_for_status()
-        du_lieu = phan_hoi.json()
-        return [m.get("name", "") for m in du_lieu.get("models", []) if m.get("name")]
+        return [m["name"] for m in await self._doc_danh_sach("/api/tags") if m.get("name")]
 
     async def model_dang_nap(self) -> list[str]:
         """Lấy danh sách mô hình đang nạp trong VRAM thông qua GET /api/ps."""
-        url = f"{_chuan_hoa_url_goc(self.dia_chi)}/api/ps"
-        if self._client is not None:
-            phan_hoi = await self._client.get(url, timeout=self.timeout_giay)
-        else:
-            async with httpx.AsyncClient(timeout=self.timeout_giay) as client:
-                phan_hoi = await client.get(url)
+        return [m["name"] for m in await self._doc_danh_sach("/api/ps") if m.get("name")]
+
+    async def _ngu_canh_tu_ps(self, model: str) -> int | None:
+        """Đọc context_length của model đang nạp từ /api/ps."""
+        for m in await self._doc_danh_sach("/api/ps"):
+            if model in (m.get("name"), m.get("model")) and m.get("context_length"):
+                return int(m["context_length"])
+        return None
+
+    async def _ngu_canh_tu_show(self, model: str) -> int | None:
+        """Đọc context_length khai báo của model từ POST /api/show."""
+        phan_hoi = await self._gui(
+            "POST", f"{_chuan_hoa_url_goc(self.dia_chi)}/api/show", json_body={"model": model}
+        )
         phan_hoi.raise_for_status()
         du_lieu = phan_hoi.json()
-        return [m.get("name", "") for m in du_lieu.get("models", []) if m.get("name")]
-
-    async def thiet_lap_keep_alive(self, model: str, keep_alive: str) -> None:
-        """Thiết lập thời gian duy trì mô hình trong VRAM của Ollama qua /api/generate."""
-        try:
-            url = f"{_chuan_hoa_url_goc(self.dia_chi)}/api/generate"
-            body = {"model": model, "keep_alive": keep_alive}
-            if self._client is not None:
-                await self._client.post(url, json=body, timeout=self.timeout_giay)
-            else:
-                async with httpx.AsyncClient(timeout=self.timeout_giay) as client:
-                    await client.post(url, json=body)
-        except Exception as err:
-            logger.debug("Không cập nhật được keep_alive qua /api/generate: %s", err)
+        for khoa, gia_tri in du_lieu.get("model_info", {}).items():
+            if khoa.endswith(".context_length"):
+                return int(gia_tri)
+        gia_tri_chi_tiet = du_lieu.get("details", {}).get("context_length")
+        return int(gia_tri_chi_tiet) if gia_tri_chi_tiet else None
 
     async def doc_ngu_canh_thuc_te(self, model: str) -> int | None:
-        """Đọc cửa sổ ngữ cảnh thực tế từ GET /api/ps (nếu đang nạp) hoặc POST /api/show."""
-        goc = _chuan_hoa_url_goc(self.dia_chi)
-        # 1. Kiểm tra mô hình đang nạp qua /api/ps
+        """Đọc cửa sổ ngữ cảnh thực tế: ưu tiên /api/ps (đang nạp), sau đó /api/show."""
         try:
-            url_ps = f"{goc}/api/ps"
-            if self._client is not None:
-                ps_res = await self._client.get(url_ps, timeout=self.timeout_giay)
-            else:
-                async with httpx.AsyncClient(timeout=self.timeout_giay) as client:
-                    ps_res = await client.get(url_ps)
-            if ps_res.status_code == 200:
-                models_nap = ps_res.json().get("models", [])
-                for m in models_nap:
-                    if (m.get("name") == model or m.get("model") == model) and m.get("context_length"):
-                        return int(m["context_length"])
-        except Exception as err:
-            logger.debug("Không đọc được ngữ cảnh từ /api/ps cho %s: %s", model, err)
-
-        # 2. Đọc thông tin mô hình qua POST /api/show
-        try:
-            url_show = f"{goc}/api/show"
-            body = {"model": model}
-            if self._client is not None:
-                show_res = await self._client.post(url_show, json=body, timeout=self.timeout_giay)
-            else:
-                async with httpx.AsyncClient(timeout=self.timeout_giay) as client:
-                    show_res = await client.post(url_show, json=body)
-            if show_res.status_code == 200:
-                info = show_res.json().get("model_info", {})
-                for k, v in info.items():
-                    if k.endswith(".context_length"):
-                        return int(v)
-                details = show_res.json().get("details", {})
-                if details.get("context_length"):
-                    return int(details["context_length"])
-        except Exception as err:
-            logger.debug("Không đọc được ngữ cảnh từ /api/show cho %s: %s", model, err)
-
-        return None
+            return await self._ngu_canh_tu_ps(model) or await self._ngu_canh_tu_show(model)
+        except LOI_KICH_HOAT_HA_CAP as err:
+            logger.warning("Không đọc được ngữ cảnh thực tế của %s: %s", model, err)
+            return None
 
 
 class BoChayLMStudio(BoChay):
-    """Hiện thực bộ chạy cho LM Studio (lược bỏ options và keep_alive)."""
+    """Bộ chạy LM Studio qua giao diện /v1 tương thích OpenAI (phát theo dòng dạng SSE)."""
+
+    def _url_chat(self) -> str:
+        return f"{self.dia_chi.rstrip('/')}/chat/completions"
 
     def _tao_than_yeu_cau(
         self,
@@ -465,73 +413,165 @@ class BoChayLMStudio(BoChay):
         temperature: float,
         max_tokens: int | None = None,
     ) -> dict[str, Any]:
-        # LM Studio quản lý ngữ cảnh và thời gian nạp khi nạp model nên bỏ options và keep_alive
-        than_yeu_cau: dict[str, Any] = {
+        # LM Studio quản lý ngữ cảnh và thời gian giữ model khi nạp, nên bỏ options và keep_alive
+        than: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "stream": stream,
             "temperature": temperature,
         }
         if max_tokens is not None:
-            than_yeu_cau["max_tokens"] = max_tokens
-        return than_yeu_cau
+            than["max_tokens"] = max_tokens
+        return than
+
+    def _doc_phan_hoi(self, du_lieu: dict[str, Any]) -> MauTho:
+        lua_chon = du_lieu.get("choices") or []
+        usage = du_lieu.get("usage") or {}
+        return MauTho(
+            noi_dung=str(lua_chon[0]["message"]["content"]) if lua_chon else "",
+            token_vao=usage.get("prompt_tokens"),
+            token_ra=usage.get("completion_tokens"),
+            ket_thuc=True,
+        )
+
+    def _doc_dong(self, dong: str) -> MauTho | None:
+        # SSE: chỉ dòng "data:" mang dữ liệu; "data: [DONE]" kết thúc; dòng rỗng và
+        # dòng chú thích (bắt đầu bằng ":") bị bỏ qua
+        dong = dong.strip()
+        if not dong.startswith("data:"):
+            return None
+        noi_dung_dong = dong[5:].strip()
+        if noi_dung_dong == "[DONE]":
+            return MauTho(ket_thuc=True)
+        du_lieu = _doc_json(noi_dung_dong)
+        if du_lieu is None:
+            return None
+        lua_chon = du_lieu.get("choices") or []
+        usage = du_lieu.get("usage") or {}
+        return MauTho(
+            noi_dung=str(lua_chon[0].get("delta", {}).get("content") or "") if lua_chon else "",
+            token_vao=usage.get("prompt_tokens"),
+            token_ra=usage.get("completion_tokens"),
+        )
+
+    async def _doc_models(self) -> list[dict[str, Any]]:
+        """Đọc danh sách model từ endpoint /models chuẩn OpenAI."""
+        phan_hoi = await self._gui("GET", f"{self.dia_chi.rstrip('/')}/models")
+        phan_hoi.raise_for_status()
+        return list(phan_hoi.json().get("data", []))
 
     async def liet_ke_model(self) -> list[str]:
         """Lấy danh sách các mô hình qua endpoint /models chuẩn OpenAI."""
-        url = f"{self.dia_chi.rstrip('/')}/models"
-        if self._client is not None:
-            phan_hoi = await self._client.get(url, timeout=self.timeout_giay)
-        else:
-            async with httpx.AsyncClient(timeout=self.timeout_giay) as client:
-                phan_hoi = await client.get(url)
-        phan_hoi.raise_for_status()
-        du_lieu = phan_hoi.json()
-        return [m.get("id", "") for m in du_lieu.get("data", []) if m.get("id")]
+        return [m["id"] for m in await self._doc_models() if m.get("id")]
 
     async def model_dang_nap(self) -> list[str]:
-        """Trong LM Studio các model trả về qua /models là các model khả dụng/đang nạp."""
+        """LM Studio trả qua /models các model khả dụng, coi như đang nạp."""
         return await self.liet_ke_model()
 
     async def doc_ngu_canh_thuc_te(self, model: str) -> int | None:
         """Đọc ngữ cảnh từ trường context_length trong danh sách /models nếu có."""
         try:
-            url = f"{self.dia_chi.rstrip('/')}/models"
-            if self._client is not None:
-                phan_hoi = await self._client.get(url, timeout=self.timeout_giay)
-            else:
-                async with httpx.AsyncClient(timeout=self.timeout_giay) as client:
-                    phan_hoi = await client.get(url)
-            if phan_hoi.status_code == 200:
-                du_lieu = phan_hoi.json()
-                for m in du_lieu.get("data", []):
-                    if m.get("id") == model:
-                        val = m.get("context_length") or m.get("max_context_length")
-                        if val:
-                            return int(val)
-        except Exception as err:
-            logger.debug("Không đọc được ngữ cảnh từ LM Studio cho %s: %s", model, err)
+            danh_sach = await self._doc_models()
+        except LOI_KICH_HOAT_HA_CAP as err:
+            logger.warning("Không đọc được ngữ cảnh thực tế của %s: %s", model, err)
+            return None
+        for m in danh_sach:
+            gia_tri = m.get("context_length") or m.get("max_context_length")
+            if m.get("id") == model and gia_tri:
+                return int(gia_tri)
         return None
 
 
 def lay_bo_chay(
-    loai: str | None = None,
-    dia_chi: str | None = None,
-    timeout_giay: float | None = None,
+    cau_hinh_he_thong: CauHinhHeThong | None = None,
+    *,
     client: httpx.AsyncClient | None = None,
 ) -> BoChay:
-    """Factory khởi tạo bộ chạy BoChay phù hợp theo LOAI_BO_CHAY."""
-    loai_duoc_chon = (loai or cau_hinh.bo_chay.loai).lower().strip()
-    dia_chi_duoc_chon = dia_chi or cau_hinh.bo_chay.dia_chi
-    timeout = timeout_giay if timeout_giay is not None else float(cau_hinh.bo_chay.timeout_giay)
+    """Khởi tạo bộ chạy theo LOAI_BO_CHAY của cấu hình được truyền (mặc định: toàn cục)."""
+    cfg = cau_hinh_he_thong or cau_hinh
+    bo_chay = cfg.bo_chay
+    han = float(bo_chay.timeout_giay)
+    if bo_chay.loai == "ollama":
+        return BoChayOllama(
+            dia_chi=bo_chay.dia_chi,
+            timeout_giay=han,
+            client=client,
+            suy_luan=cfg.local_chung.suy_luan,
+        )
+    if bo_chay.loai == "lmstudio":
+        return BoChayLMStudio(dia_chi=bo_chay.dia_chi, timeout_giay=han, client=client)
+    raise ValueError(f"LOAI_BO_CHAY không hợp lệ: '{bo_chay.loai}'. Chỉ hỗ trợ ollama hoặc lmstudio.")
 
-    if loai_duoc_chon == "ollama":
-        return BoChayOllama(dia_chi=dia_chi_duoc_chon, timeout_giay=timeout, client=client)
-    if loai_duoc_chon in ("lmstudio", "lm_studio"):
-        return BoChayLMStudio(dia_chi=dia_chi_duoc_chon, timeout_giay=timeout, client=client)
 
-    raise ValueError(
-        f"LOAI_BO_CHAY không hợp lệ: '{loai_duoc_chon}'. Chỉ hỗ trợ 'ollama' hoặc 'lmstudio'."
+def _lap_ke_hoach_bac(
+    cfg: CauHinhHeThong, do_dai_hang_doi: int, ma_yeu_cau: str
+) -> tuple[list[CauHinhBacLocal], dict[str, str]]:
+    """Chọn các bậc sẽ thử theo thứ tự; trả kèm lý do đã bỏ qua bậc nào."""
+    nguong = cfg.local_chung.nguong_hang_doi_ha_cap
+    # Khi chỉ nạp được một model, đổi model trong VRAM mất 5-20 giây và đẩy bậc chinh ra,
+    # chậm hơn cả việc chờ: không bỏ qua bậc 1 vì hàng đợi.
+    if cfg.so_model_nap_cung_luc > 1 and do_dai_hang_doi > nguong:
+        ly_do = (
+            f"Bỏ qua bậc 1 vì hàng đợi dài ({do_dai_hang_doi} > {nguong}) "
+            f"và so_model_nap_cung_luc={cfg.so_model_nap_cung_luc}"
+        )
+        logger.info("[%s] %s", ma_yeu_cau, ly_do)
+        return [cfg.bac_local[1]], {"chinh": ly_do}
+    return list(cfg.bac_local), {}
+
+
+def _ghi_ly_do_that_bai(bac: CauHinhBacLocal, err: Exception, ma_yeu_cau: str) -> str:
+    """Ghi nhật ký và trả lý do một bậc thất bại để gom vào LoiHetBacLocal."""
+    ly_do = f"Bậc {bac.bac} ({bac.model}) thất bại: {type(err).__name__}: {err}"
+    logger.warning("[%s] %s", ma_yeu_cau, ly_do)
+    return ly_do
+
+
+def _loi_het_bac(ly_do: dict[str, str], ma_yeu_cau: str) -> LoiHetBacLocal:
+    """Tạo LoiHetBacLocal kèm lý do của từng bậc."""
+    return LoiHetBacLocal(
+        f"Hết cả hai bậc local cho yêu cầu {ma_yeu_cau}. "
+        f"Bậc 1: {ly_do.get('chinh')}. Bậc 2: {ly_do.get('nho')}.",
+        ly_do_bac_1=ly_do.get("chinh"),
+        ly_do_bac_2=ly_do.get("nho"),
+        ma_yeu_cau=ma_yeu_cau,
     )
+
+
+def _tham_so_goi(
+    cfg: CauHinhHeThong, temperature: float | None, max_tokens: int | None
+) -> dict[str, Any]:
+    """Gom tham số gọi dùng chung cho mọi bậc."""
+    return {
+        "keep_alive": cfg.local_chung.keep_alive,
+        "temperature": temperature if temperature is not None else cfg.local_chung.nhiet_do,
+        "max_tokens": max_tokens if max_tokens is not None else cfg.cai_dat_chung.gioi_han_token_ra,
+    }
+
+
+async def _goi_local_mot_lan(
+    tin_nhan: list[dict[str, str]],
+    *,
+    ma_yeu_cau: str,
+    do_dai_hang_doi: int,
+    bo_chay: BoChay,
+    cfg: CauHinhHeThong,
+    tham_so: dict[str, Any],
+) -> KetQuaGoiLocal:
+    """Thử lần lượt từng bậc cho lời gọi không phát theo dòng."""
+    cac_bac, ly_do = _lap_ke_hoach_bac(cfg, do_dai_hang_doi, ma_yeu_cau)
+    for bac in cac_bac:
+        try:
+            kq = await bo_chay.goi(
+                bac.model, tin_nhan, num_ctx=bac.num_ctx, ma_yeu_cau=ma_yeu_cau, **tham_so
+            )
+        except LOI_KICH_HOAT_HA_CAP as err:
+            ly_do[bac.bac] = _ghi_ly_do_that_bai(bac, err, ma_yeu_cau)
+            continue
+        kq.bac = bac.bac
+        kq.do_dai_hang_doi = do_dai_hang_doi
+        return kq
+    raise _loi_het_bac(ly_do, ma_yeu_cau)
 
 
 async def _goi_local_theo_dong(
@@ -541,86 +581,54 @@ async def _goi_local_theo_dong(
     do_dai_hang_doi: int,
     bo_chay: BoChay,
     cfg: CauHinhHeThong,
-    temperature: float | None,
-    max_tokens: int | None,
+    tham_so: dict[str, Any],
 ) -> AsyncIterator[KetQuaDongLocal]:
-    """Luồng phát theo dòng qua chuỗi bậc 1 (chính) và bậc 2 (nhỏ)."""
-    so_model = cfg.so_model_nap_cung_luc
-    nguong_hang_doi = cfg.local_chung.nguong_hang_doi_ha_cap
-    bac_1 = cfg.bac_local[0]
-    bac_2 = cfg.bac_local[1]
-    keep_alive = cfg.local_chung.keep_alive
-    temp = temperature if temperature is not None else cfg.local_chung.nhiet_do
-    max_tok = max_tokens if max_tokens is not None else cfg.cai_dat_chung.gioi_han_token_ra
-
-    bo_qua_bac_1 = False
-    ly_do_bac_1: str | None = None
-    ly_do_bac_2: str | None = None
-
-    if so_model > 1 and do_dai_hang_doi > nguong_hang_doi:
-        bo_qua_bac_1 = True
-        ly_do_bac_1 = (
-            f"Bỏ qua bậc 1 vì hàng đợi dài ({do_dai_hang_doi} > {nguong_hang_doi}) "
-            f"và so_model_nap_cung_luc={so_model} > 1"
-        )
-        logger.info("[%s] %s", ma_yeu_cau, ly_do_bac_1)
-
-    if not bo_qua_bac_1:
-        co_token_tra_ve = False
+    """Thử lần lượt từng bậc cho luồng phát theo dòng."""
+    cac_bac, ly_do = _lap_ke_hoach_bac(cfg, do_dai_hang_doi, ma_yeu_cau)
+    for bac in cac_bac:
+        da_phat = False
         try:
-            async for chunk in bo_chay.goi_theo_dong(
-                model=bac_1.model,
-                messages=tin_nhan,
-                num_ctx=bac_1.num_ctx,
-                keep_alive=keep_alive,
-                temperature=temp,
-                max_tokens=max_tok,
-                ma_yeu_cau=ma_yeu_cau,
+            async for mau in bo_chay.goi_theo_dong(
+                bac.model, tin_nhan, num_ctx=bac.num_ctx, ma_yeu_cau=ma_yeu_cau, **tham_so
             ):
-                co_token_tra_ve = True
-                chunk.bac = "chinh"
-                yield chunk
+                da_phat = True
+                mau.bac = bac.bac
+                yield mau
             return
-        except LoiDauVao:
-            raise
-        except Exception as err:
-            if co_token_tra_ve:
-                logger.error("[%s] Bậc 1 bị gián đoạn truyền dòng: %s", ma_yeu_cau, err)
+        except LOI_KICH_HOAT_HA_CAP as err:
+            # Đã gửi một phần câu trả lời cho người dùng thì không thể đổi sang model khác
+            if da_phat:
                 raise
-            ly_do_bac_1 = f"Bậc 1 ({bac_1.model}) thất bại: {type(err).__name__}: {err}"
-            logger.warning(
-                "[%s] %s, tiến hành hạ cấp sang bậc 2 (%s)",
-                ma_yeu_cau,
-                ly_do_bac_1,
-                bac_2.model,
-            )
+            ly_do[bac.bac] = _ghi_ly_do_that_bai(bac, err, ma_yeu_cau)
+    raise _loi_het_bac(ly_do, ma_yeu_cau)
 
-    # Thử bậc 2 khi bậc 1 lỗi hoặc bị bỏ qua
-    try:
-        async for chunk in bo_chay.goi_theo_dong(
-            model=bac_2.model,
-            messages=tin_nhan,
-            num_ctx=bac_2.num_ctx,
-            keep_alive=keep_alive,
-            temperature=temp,
-            max_tokens=max_tok,
-            ma_yeu_cau=ma_yeu_cau,
-        ):
-            chunk.bac = "nho"
-            yield chunk
-        return
-    except LoiDauVao:
-        raise
-    except Exception as err:
-        ly_do_bac_2 = f"Bậc 2 ({bac_2.model}) thất bại: {type(err).__name__}: {err}"
-        logger.error("[%s] Bậc 2 thất bại: %s", ma_yeu_cau, ly_do_bac_2)
 
-    raise LoiHetBacLocal(
-        f"Hết cả hai bậc local cho yêu cầu {ma_yeu_cau}. Bậc 1: {ly_do_bac_1}. Bậc 2: {ly_do_bac_2}.",
-        ly_do_bac_1=ly_do_bac_1,
-        ly_do_bac_2=ly_do_bac_2,
-        ma_yeu_cau=ma_yeu_cau,
-    )
+@overload
+async def goi_local(
+    tin_nhan: list[dict[str, str]],
+    *,
+    ma_yeu_cau: str,
+    do_dai_hang_doi: int = 0,
+    phat_theo_dong: Literal[False] = False,
+    bo_chay: BoChay | None = None,
+    cau_hinh_he_thong: CauHinhHeThong | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+) -> KetQuaGoiLocal: ...
+
+
+@overload
+async def goi_local(
+    tin_nhan: list[dict[str, str]],
+    *,
+    ma_yeu_cau: str,
+    do_dai_hang_doi: int = 0,
+    phat_theo_dong: Literal[True],
+    bo_chay: BoChay | None = None,
+    cau_hinh_he_thong: CauHinhHeThong | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+) -> AsyncIterator[KetQuaDongLocal]: ...
 
 
 async def goi_local(
@@ -633,133 +641,59 @@ async def goi_local(
     cau_hinh_he_thong: CauHinhHeThong | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
-) -> Any:
-    """Điều phối gọi chuỗi local theo thứ tự bậc 1 (chính) rồi bậc 2 (nhỏ)."""
+) -> KetQuaGoiLocal | AsyncIterator[KetQuaDongLocal]:
+    """Gọi chuỗi local theo thứ tự bậc 1 (chinh) rồi bậc 2 (nho).
+
+    Hạ cấp khi quá hạn, lỗi kết nối hoặc 5xx; lỗi 4xx nổi lên dạng LoiDauVao.
+    Hết hai bậc thì ném LoiHetBacLocal để router quyết định bước tiếp theo.
+    """
     cfg = cau_hinh_he_thong or cau_hinh
-    runner = bo_chay or lay_bo_chay()
-
+    tham_so_chung: dict[str, Any] = {
+        "ma_yeu_cau": ma_yeu_cau,
+        "do_dai_hang_doi": do_dai_hang_doi,
+        "bo_chay": bo_chay or lay_bo_chay(cfg),
+        "cfg": cfg,
+        "tham_so": _tham_so_goi(cfg, temperature, max_tokens),
+    }
     if phat_theo_dong:
-        return LuongKetQuaDong(
-            _goi_local_theo_dong(
-                tin_nhan,
-                ma_yeu_cau=ma_yeu_cau,
-                do_dai_hang_doi=do_dai_hang_doi,
-                bo_chay=runner,
-                cfg=cfg,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-        )
-
-    so_model = cfg.so_model_nap_cung_luc
-    nguong_hang_doi = cfg.local_chung.nguong_hang_doi_ha_cap
-    bac_1 = cfg.bac_local[0]
-    bac_2 = cfg.bac_local[1]
-    keep_alive = cfg.local_chung.keep_alive
-    temp = temperature if temperature is not None else cfg.local_chung.nhiet_do
-    max_tok = max_tokens if max_tokens is not None else cfg.cai_dat_chung.gioi_han_token_ra
-
-    bo_qua_bac_1 = False
-    ly_do_bac_1: str | None = None
-    ly_do_bac_2: str | None = None
-
-    # Hàng đợi dài chỉ bỏ qua bậc 1 khi hệ thống nạp đồng thời >= 2 model.
-    # Khi so_model_nap_cung_luc = 1, đổi model tốn 5-20s nên tuyệt đối không hạ cấp vì hàng đợi.
-    if so_model > 1 and do_dai_hang_doi > nguong_hang_doi:
-        bo_qua_bac_1 = True
-        ly_do_bac_1 = (
-            f"Bỏ qua bậc 1 vì hàng đợi dài ({do_dai_hang_doi} > {nguong_hang_doi}) "
-            f"và so_model_nap_cung_luc={so_model} > 1"
-        )
-        logger.info("[%s] %s", ma_yeu_cau, ly_do_bac_1)
-
-    if not bo_qua_bac_1:
-        try:
-            kq_1 = await runner.goi(
-                model=bac_1.model,
-                messages=tin_nhan,
-                num_ctx=bac_1.num_ctx,
-                keep_alive=keep_alive,
-                temperature=temp,
-                max_tokens=max_tok,
-                ma_yeu_cau=ma_yeu_cau,
-            )
-            kq_1.bac = "chinh"
-            kq_1.do_dai_hang_doi = do_dai_hang_doi
-            return kq_1
-        except LoiDauVao:
-            raise
-        except Exception as err:
-            ly_do_bac_1 = f"Bậc 1 ({bac_1.model}) thất bại: {type(err).__name__}: {err}"
-            logger.warning(
-                "[%s] %s, tiến hành hạ cấp sang bậc 2 (%s)",
-                ma_yeu_cau,
-                ly_do_bac_1,
-                bac_2.model,
-            )
-
-    # Thử tiếp bậc 2
-    try:
-        kq_2 = await runner.goi(
-            model=bac_2.model,
-            messages=tin_nhan,
-            num_ctx=bac_2.num_ctx,
-            keep_alive=keep_alive,
-            temperature=temp,
-            max_tokens=max_tok,
-            ma_yeu_cau=ma_yeu_cau,
-        )
-        kq_2.bac = "nho"
-        kq_2.do_dai_hang_doi = do_dai_hang_doi
-        return kq_2
-    except LoiDauVao:
-        raise
-    except Exception as err:
-        ly_do_bac_2 = f"Bậc 2 ({bac_2.model}) thất bại: {type(err).__name__}: {err}"
-        logger.error("[%s] Bậc 2 thất bại: %s", ma_yeu_cau, ly_do_bac_2)
-
-    raise LoiHetBacLocal(
-        f"Hết cả hai bậc local cho yêu cầu {ma_yeu_cau}. Bậc 1: {ly_do_bac_1}. Bậc 2: {ly_do_bac_2}.",
-        ly_do_bac_1=ly_do_bac_1,
-        ly_do_bac_2=ly_do_bac_2,
-        ma_yeu_cau=ma_yeu_cau,
-    )
+        return _goi_local_theo_dong(tin_nhan, **tham_so_chung)
+    return await _goi_local_mot_lan(tin_nhan, **tham_so_chung)
 
 
 async def ham_nong(
     bo_chay: BoChay | None = None,
     cau_hinh_he_thong: CauHinhHeThong | None = None,
 ) -> bool:
-    """Hâm nóng mô hình bậc 1 bằng cách gửi yêu cầu 'xin chào' với max_tokens=1.
+    """Nạp sẵn model bậc 1 bằng một lời gọi 'xin chào' với max_tokens=1.
 
     CHỈ hâm nóng bậc 1; không bao giờ hâm nóng bậc 2 khi so_model_nap_cung_luc = 1.
-    Chạy trong sự kiện lifespan nhưng không chặn khởi động nếu thất bại.
+    Trả False thay vì ném lỗi để không chặn khởi động ứng dụng.
     """
     cfg = cau_hinh_he_thong or cau_hinh
-    runner = bo_chay or lay_bo_chay()
+    runner = bo_chay or lay_bo_chay(cfg)
     bac_1 = cfg.bac_local[0]
-
     try:
-        logger.info("Bắt đầu hâm nóng mô hình bậc 1 (%s)...", bac_1.model)
         await runner.goi(
-            model=bac_1.model,
-            messages=[{"role": "user", "content": "xin chào"}],
+            bac_1.model,
+            [{"role": "user", "content": "xin chào"}],
             num_ctx=bac_1.num_ctx,
             keep_alive=cfg.local_chung.keep_alive,
             temperature=cfg.local_chung.nhiet_do,
             max_tokens=1,
             ma_yeu_cau="ham_nong_khoi_dong",
         )
-        if isinstance(runner, BoChayOllama):
-            await runner.thiet_lap_keep_alive(bac_1.model, cfg.local_chung.keep_alive)
-        logger.info("Hâm nóng mô hình bậc 1 (%s) thành công.", bac_1.model)
-        return True
-    except Exception as err:
-        logger.warning(
-            "Hâm nóng mô hình bậc 1 thất bại (%s): %s. Không chặn tiến trình khởi động.",
-            bac_1.model,
-            err,
-        )
+    except (*LOI_KICH_HOAT_HA_CAP, LoiDauVao) as err:
+        logger.warning("Hâm nóng bậc 1 (%s) thất bại, không chặn khởi động: %s", bac_1.model, err)
+        return False
+    logger.info("Hâm nóng bậc 1 (%s) thành công.", bac_1.model)
+    return True
+
+
+async def _dang_nap(runner: BoChay, model: str) -> bool:
+    """Model có đang nằm trong bộ nhớ của bộ chạy hay không (lỗi mạng coi như không)."""
+    try:
+        return model in await runner.model_dang_nap()
+    except LOI_KICH_HOAT_HA_CAP:
         return False
 
 
@@ -768,25 +702,38 @@ async def doc_ngu_canh_thuc_te(
     bo_chay: BoChay | None = None,
     cau_hinh_he_thong: CauHinhHeThong | None = None,
 ) -> int | None:
-    """Đọc kích thước cửa sổ ngữ cảnh thực tế của model và cảnh báo nếu có độ lệch."""
+    """Đọc cửa sổ ngữ cảnh thực tế của model và cảnh báo nếu lệch num_ctx cấu hình.
+
+    Model đang nạp: số đọc được là ngữ cảnh đang dùng, lệch theo hướng nào cũng cảnh báo
+    (lớn hơn thì tốn VRAM, nhỏ hơn thì câu hỏi dài bị cắt). Model chưa nạp: số đọc được
+    là ngữ cảnh tối đa của model, chỉ cảnh báo khi nhỏ hơn cấu hình.
+    """
     cfg = cau_hinh_he_thong or cau_hinh
-    runner = bo_chay or lay_bo_chay()
-    ngu_canh_thuc_te = await runner.doc_ngu_canh_thuc_te(model)
+    runner = bo_chay or lay_bo_chay(cfg)
+    thuc_te = await runner.doc_ngu_canh_thuc_te(model)
+    cau_hinh_ctx = next((b.num_ctx for b in cfg.bac_local if b.model == model), None)
+    if thuc_te is None or cau_hinh_ctx is None or thuc_te == cau_hinh_ctx:
+        return thuc_te
+    if await _dang_nap(runner, model):
+        logger.warning(
+            "Model '%s' đang chạy với context_length=%d, khác num_ctx cấu hình %d.",
+            model, thuc_te, cau_hinh_ctx,
+        )
+    elif thuc_te < cau_hinh_ctx:
+        logger.warning(
+            "Model '%s' chỉ hỗ trợ context_length=%d, nhỏ hơn num_ctx cấu hình %d.",
+            model, thuc_te, cau_hinh_ctx,
+        )
+    return thuc_te
 
-    num_ctx_cau_hinh: int | None = None
-    for b in cfg.bac_local:
-        if b.model == model:
-            num_ctx_cau_hinh = b.num_ctx
-            break
 
-    if ngu_canh_thuc_te is not None and num_ctx_cau_hinh is not None:
-        if ngu_canh_thuc_te != num_ctx_cau_hinh:
-            logger.warning(
-                "Cảnh báo độ lệch ngữ cảnh: model '%s' đang dùng context_length=%d, "
-                "trong khi num_ctx trong cấu hình là %d. (Ollama có thể tự hạ ngữ cảnh khi VRAM căng)",
-                model,
-                ngu_canh_thuc_te,
-                num_ctx_cau_hinh,
-            )
+async def kiem_tra_khi_khoi_dong(cau_hinh_he_thong: CauHinhHeThong | None = None) -> None:
+    """Hâm nóng bậc 1 rồi so ngữ cảnh thực tế của hai bậc với cấu hình.
 
-    return ngu_canh_thuc_te
+    Gọi nền từ lifespan của FastAPI; chỉ ghi nhật ký, không bao giờ làm hỏng khởi động.
+    """
+    cfg = cau_hinh_he_thong or cau_hinh
+    runner = lay_bo_chay(cfg)
+    await ham_nong(runner, cfg)
+    for bac in cfg.bac_local:
+        await doc_ngu_canh_thuc_te(bac.model, runner, cfg)
