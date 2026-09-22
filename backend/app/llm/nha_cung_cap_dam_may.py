@@ -492,14 +492,13 @@ async def goi_dam_may(
     khoa_api = lay_khoa_api(tang.api_key_env)
     if not khoa_api:
         logger.warning(
-            "[%s] Tầng %s (%s): Thiếu khoá API trong biến môi trường '%s'",
+            "[%s] Tầng %s (%s): Thiếu khoá API đã cấu hình",
             ma_yeu_cau,
             tang.tang,
             tang.ten,
-            tang.api_key_env,
         )
         raise LoiVinhVien(
-            f"Thiếu khoá API trong biến môi trường '{tang.api_key_env}' cho tầng {tang.tang} ({tang.ten})",
+            f"Thiếu khoá API đã cấu hình cho tầng {tang.tang} ({tang.ten})",
             ma_trang_thai=401,
             ma_yeu_cau=ma_yeu_cau,
         )
