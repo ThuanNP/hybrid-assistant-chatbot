@@ -117,3 +117,5 @@ cai_dat_chung:
   gioi_han_token_ra: 1024
   ngu_canh_du_phong_token: 512
   he_so_an_toan_token: 1.15
+  nguong_canh_bao_ngan_sach: 0.80
+  nguong_ty_le_roi_tang: 0.20

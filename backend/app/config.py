@@ -78,6 +78,8 @@ class CauHinhCaiDatChung(BaseModel):
     gioi_han_token_ra: int = 1024
     ngu_canh_du_phong_token: int = 512
     he_so_an_toan_token: float = 1.15
+    nguong_canh_bao_ngan_sach: float = 0.80
+    nguong_ty_le_roi_tang: float = 0.20
 
 
 class CaiDatMoiTruong(BaseSettings):

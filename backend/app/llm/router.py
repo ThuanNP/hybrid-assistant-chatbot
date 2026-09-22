@@ -10,26 +10,38 @@ Tuân thủ tuyệt đối Quy tắc 1, 2 và Quy tắc kỹ thuật 7 trong AGE
 import argparse
 import asyncio
 import logging
-from pathlib import Path
 import re
 import time
-from typing import Any, AsyncIterator, Literal
+from collections.abc import AsyncIterator
+from pathlib import Path
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from app.config import CauHinhHeThong, CauHinhTangDamMay, cau_hinh
 from app.core.loi import (
     LoiDauVao,
+    LoiHangDoiDay,
     LoiHetBacLocal,
     LoiHetChuoiDuPhong,
     LoiTamThoi,
     LoiVinhVien,
+    LoiVuotNganSach,
 )
 from app.core.xac_thuc import NguoiDung
+from app.hang_doi.dieu_phoi import DieuPhoi, dieu_phoi_mac_dinh
 from app.llm.bo_chay_local import (
     KetQuaDongLocal,
     KetQuaGoiLocal,
     goi_local,
+)
+from app.llm.chi_phi import (
+    KhoLuotGoi,
+    LuotGoi,
+    kho_luot_goi_mac_dinh,
+    kiem_tra_canh_bao_ty_le_roi_tang,
+    kiem_tra_ngan_sach,
+    uoc_tinh_chi_phi,
 )
 from app.llm.chinh_sach import (
     NhanDuLieu,
@@ -71,9 +83,11 @@ class KetQuaGoi(BaseModel):
 class ManhPhatRa(BaseModel):
     """Mảnh dữ liệu phát theo dòng (SSE) trả về cho người dùng."""
 
-    loai: Literal["manh", "xong", "loi"]
+    loai: Literal["manh", "xong", "loi", "hang_doi"]
     noi_dung: str = ""
     ket_qua: KetQuaGoi | None = None
+    vi_tri: int | None = None
+    uoc_luong_giay: float | None = None
 
 
 def _tinh_toc_do(so_token: int, thoi_gian_giay: float) -> float:
@@ -120,6 +134,39 @@ def _ghi_nhat_ky(kq: KetQuaGoi, ma_yeu_cau: str) -> None:
         kq.thoi_gian_nap_ms,
         kq.toc_do_tok_s,
     )
+
+
+def _luu_nhat_ky_va_kho(
+    kq: KetQuaGoi,
+    *,
+    ma_yeu_cau: str,
+    nguoi_id: str,
+    kho: KhoLuotGoi,
+    cfg: CauHinhHeThong,
+    roi_tang: bool,
+    ly_do_that_bai_tang_dau: str | None,
+) -> None:
+    """Ghi nhật ký hệ thống và lưu bản ghi vào KhoLuotGoi theo Quy tắc kỹ thuật 7."""
+    _ghi_nhat_ky(kq, ma_yeu_cau)
+    lg = LuotGoi(
+        nguoi_id=nguoi_id,
+        nguon=str(kq.nguon),
+        tang=kq.tang,
+        bac=kq.bac_local,
+        model=kq.ten_model,
+        token_vao=kq.token_vao,
+        token_ra=kq.token_ra,
+        chi_phi_usd=kq.chi_phi_usd,
+        do_tre_ms=kq.do_tre_ms,
+        thoi_gian_nap_ms=kq.thoi_gian_nap_ms,
+        toc_do_tok_s=kq.toc_do_tok_s,
+        thanh_cong=True,
+        ma_yeu_cau=ma_yeu_cau,
+        roi_tang=roi_tang,
+        ly_do_that_bai_tang_dau=ly_do_that_bai_tang_dau,
+    )
+    kho.ghi(lg)
+    kiem_tra_canh_bao_ty_le_roi_tang(kho=kho, cfg=cfg)
 
 
 def _tao_ket_qua_khi_ban(
@@ -202,7 +249,14 @@ async def _thuc_hien_goi_dam_may(
     cac_tham_so = {
         k: v
         for k, v in tuy_chon.items()
-        if k not in ("bo_chay", "cau_hinh_he_thong", "cau_hinh_cs", "do_dai_hang_doi")
+        if k not in (
+            "bo_chay",
+            "cau_hinh_he_thong",
+            "cau_hinh_cs",
+            "do_dai_hang_doi",
+            "dieu_phoi",
+            "kho_luot_goi",
+        )
     }
     return await goi_dam_may(
         tang_dm,
@@ -227,6 +281,9 @@ async def goi_mo_hinh(
     Điểm nhập duy nhất trong ứng dụng cho các lời gọi mô hình không phát dòng.
     """
     cfg: CauHinhHeThong = tuy_chon.get("cau_hinh_he_thong") or cau_hinh
+    dp: DieuPhoi = tuy_chon.get("dieu_phoi") or dieu_phoi_mac_dinh
+    kho: KhoLuotGoi = tuy_chon.get("kho_luot_goi") or kho_luot_goi_mac_dinh
+
     che_do = getattr(nguoi, "che_do_dinh_tuyen", None) or cfg.che_do_dinh_tuyen
     kq_chuoi = xac_dinh_chuoi(
         nguoi,
@@ -236,20 +293,60 @@ async def goi_mo_hinh(
         cau_hinh_cs=tuy_chon.get("cau_hinh_cs"),
     )
     chuoi = kq_chuoi.chuoi
+    tang_dau = chuoi[0].so if chuoi else None
+    co_tang_dam_may = any(t.so > 0 for t in chuoi)
+
     danh_sach_tang_da_hong: list[int] = []
     ly_do_cac_tang: dict[int, str] = {}
-    do_dai_hang_doi = int(tuy_chon.get("do_dai_hang_doi", 0))
 
     for t in chuoi:
         try:
             if t.so == 0:
-                kq_local = await _thuc_hien_goi_local(
-                    tin_nhan,
-                    ma_yeu_cau=ma_yeu_cau,
-                    do_dai_hang_doi=do_dai_hang_doi,
-                    cfg=cfg,
-                    tuy_chon=tuy_chon,
-                )
+                if dp.can_vao_hang() or bool(tuy_chon.get("luon_vao_hang")):
+                    if dp.kiem_tra_hang_doi_day():
+                        dp.ghi_nhan_tu_choi()
+                        if co_tang_dam_may:
+                            logger.warning(
+                                "[%s] Hàng đợi local đầy (%d/%d), chuỗi có đám mây -> chuyển tầng sau",
+                                ma_yeu_cau,
+                                dp.dang_cho,
+                                dp.do_dai_hang_doi_toi_da,
+                            )
+                            danh_sach_tang_da_hong.append(0)
+                            ly_do_cac_tang[0] = "HANG_DOI_DAY"
+                            continue
+                        raise LoiHangDoiDay(
+                            f"Hàng đợi xử lý cục bộ đã đầy ({dp.dang_cho}/{dp.do_dai_hang_doi_toi_da})",
+                            ma_yeu_cau=ma_yeu_cau,
+                        )
+
+                    await dp.vao_hang(ma_yeu_cau)
+                    cho_luot = True
+                else:
+                    cho_luot = False
+
+                da_chay = False
+                t0 = 0.0
+                try:
+                    if cho_luot:
+                        await dp.cho_den_luot(ma_yeu_cau)
+                    else:
+                        await dp.bat_dau_chay_ngay(ma_yeu_cau)
+                    da_chay = True
+                    t0 = time.perf_counter()
+                    kq_local = await _thuc_hien_goi_local(
+                        tin_nhan,
+                        ma_yeu_cau=ma_yeu_cau,
+                        do_dai_hang_doi=dp.dang_cho,
+                        cfg=cfg,
+                        tuy_chon=tuy_chon,
+                    )
+                finally:
+                    if da_chay:
+                        dp.giai_phong(time.perf_counter() - t0)
+                    elif cho_luot:
+                        dp.huy_cho()
+
                 kq = KetQuaGoi(
                     noi_dung=kq_local.noi_dung,
                     nguon="local",
@@ -268,8 +365,51 @@ async def goi_mo_hinh(
                     so_luot_bi_cat=int(tuy_chon.get("so_luot_bi_cat", 0)),
                     ly_do_chuoi=kq_chuoi.ly_do_chuoi,
                 )
-                _ghi_nhat_ky(kq, ma_yeu_cau)
+                roi_tang = tang_dau is not None and t.so != tang_dau
+                ly_do_tang_dau = ly_do_cac_tang.get(tang_dau) if roi_tang and tang_dau is not None else None
+                _luu_nhat_ky_va_kho(
+                    kq,
+                    ma_yeu_cau=ma_yeu_cau,
+                    nguoi_id=nguoi.id,
+                    kho=kho,
+                    cfg=cfg,
+                    roi_tang=roi_tang,
+                    ly_do_that_bai_tang_dau=ly_do_tang_dau,
+                )
                 return kq
+
+            # Kiểm tra ngân sách trước MỖI lời gọi tầng đám mây
+            vuot_ngan_sach, vuot_canh_bao, tong_chi_phi = kiem_tra_ngan_sach(
+                ngan_sach_ngay_usd=cfg.ngan_sach_ngay_usd,
+                nguong_canh_bao=cfg.cai_dat_chung.nguong_canh_bao_ngan_sach,
+                kho=kho,
+                cfg=cfg,
+            )
+            if vuot_canh_bao:
+                logger.warning(
+                    "[%s] Cảnh báo ngân sách ngày: tổng chi phí hiện tại %.4f USD "
+                    "đạt ngưỡng %.0f%% của ngân sách %.2f USD",
+                    ma_yeu_cau,
+                    tong_chi_phi,
+                    cfg.cai_dat_chung.nguong_canh_bao_ngan_sach * 100,
+                    cfg.ngan_sach_ngay_usd,
+                )
+            if vuot_ngan_sach:
+                logger.warning(
+                    "[%s] VƯỢT NGÂN SÁCH ngày (%.4f/%.2f USD). Bỏ qua các tầng đám mây.",
+                    ma_yeu_cau,
+                    tong_chi_phi,
+                    cfg.ngan_sach_ngay_usd,
+                )
+                idx = chuoi.index(t)
+                con_local_sau = any(sau.so == 0 for sau in chuoi[idx + 1:])
+                if not con_local_sau:
+                    raise LoiVuotNganSach(
+                        f"Chi phí trong ngày ({tong_chi_phi:.4f} USD) đã vượt ngân sách "
+                        f"({cfg.ngan_sach_ngay_usd:.2f} USD) và không còn tầng local",
+                        ma_yeu_cau=ma_yeu_cau,
+                    )
+                continue
 
             tang_dm = _tim_cau_hinh_tang_dam_may(cfg, t)
             kq_dm = await _thuc_hien_goi_dam_may(
@@ -279,6 +419,7 @@ async def goi_mo_hinh(
                 cfg=cfg,
                 tuy_chon=tuy_chon,
             )
+            chi_phi = uoc_tinh_chi_phi(t.so, kq_dm.token_vao, kq_dm.token_ra, cfg)
             toc_do = _tinh_toc_do(kq_dm.token_ra, kq_dm.do_tre_ms / 1000.0)
             kq = KetQuaGoi(
                 noi_dung=kq_dm.noi_dung,
@@ -288,7 +429,7 @@ async def goi_mo_hinh(
                 ten_model=kq_dm.model,
                 token_vao=kq_dm.token_vao,
                 token_ra=kq_dm.token_ra,
-                chi_phi_usd=0.0,
+                chi_phi_usd=chi_phi,
                 do_tre_ms=kq_dm.do_tre_ms,
                 thoi_gian_nap_ms=0.0,
                 toc_do_tok_s=toc_do,
@@ -298,10 +439,20 @@ async def goi_mo_hinh(
                 so_luot_bi_cat=int(tuy_chon.get("so_luot_bi_cat", 0)),
                 ly_do_chuoi=kq_chuoi.ly_do_chuoi,
             )
-            _ghi_nhat_ky(kq, ma_yeu_cau)
+            roi_tang = tang_dau is not None and t.so != tang_dau
+            ly_do_tang_dau = ly_do_cac_tang.get(tang_dau) if roi_tang and tang_dau is not None else None
+            _luu_nhat_ky_va_kho(
+                kq,
+                ma_yeu_cau=ma_yeu_cau,
+                nguoi_id=nguoi.id,
+                kho=kho,
+                cfg=cfg,
+                roi_tang=roi_tang,
+                ly_do_that_bai_tang_dau=ly_do_tang_dau,
+            )
             return kq
 
-        except LoiDauVao:
+        except (LoiDauVao, LoiHangDoiDay, LoiVuotNganSach):
             raise
         except (LoiHetBacLocal, LoiTamThoi, LoiVinhVien) as err:
             danh_sach_tang_da_hong.append(t.so)
@@ -364,7 +515,14 @@ async def _dong_dam_may(
     cac_tham_so = {
         k: v
         for k, v in tuy_chon.items()
-        if k not in ("bo_chay", "cau_hinh_he_thong", "cau_hinh_cs", "do_dai_hang_doi")
+        if k not in (
+            "bo_chay",
+            "cau_hinh_he_thong",
+            "cau_hinh_cs",
+            "do_dai_hang_doi",
+            "dieu_phoi",
+            "kho_luot_goi",
+        )
     }
     gen = await goi_dam_may(
         tang_dm,
@@ -390,10 +548,14 @@ async def goi_mo_hinh_theo_dong(
     """Gọi mô hình LLM dạng phát theo dòng (SSE) qua chuỗi định tuyến.
 
     Xử lý đặc biệt:
+    - Phát mảnh "hang_doi" ngay khi yêu cầu vào hàng đợi tầng 0.
     - Lỗi trước mảnh đầu: chuyển sang tầng sau bình thường.
     - Lỗi giữa chừng sau khi đã phát: kết thúc luồng bằng mảnh 'loi', không rơi tầng.
     """
     cfg: CauHinhHeThong = tuy_chon.get("cau_hinh_he_thong") or cau_hinh
+    dp: DieuPhoi = tuy_chon.get("dieu_phoi") or dieu_phoi_mac_dinh
+    kho: KhoLuotGoi = tuy_chon.get("kho_luot_goi") or kho_luot_goi_mac_dinh
+
     che_do = getattr(nguoi, "che_do_dinh_tuyen", None) or cfg.che_do_dinh_tuyen
     kq_chuoi = xac_dinh_chuoi(
         nguoi,
@@ -403,6 +565,9 @@ async def goi_mo_hinh_theo_dong(
         cau_hinh_cs=tuy_chon.get("cau_hinh_cs"),
     )
     chuoi = kq_chuoi.chuoi
+    tang_dau = chuoi[0].so if chuoi else None
+    co_tang_dam_may = any(t.so > 0 for t in chuoi)
+
     danh_sach_tang_da_hong: list[int] = []
     ly_do_cac_tang: dict[int, str] = {}
 
@@ -411,45 +576,134 @@ async def goi_mo_hinh_theo_dong(
         da_phat_mau = False
         try:
             if t.so == 0:
-                async for mau_local in _dong_local(
-                    tin_nhan,
-                    ma_yeu_cau=ma_yeu_cau,
-                    do_dai_hang_doi=do_dai_hang_doi,
-                    cfg=cfg,
-                    tuy_chon=tuy_chon,
-                ):
-                    if not mau_local.da_xong:
-                        if mau_local.noi_dung:
-                            van_ban_da_nhan += mau_local.noi_dung
-                            da_phat_mau = True
-                            yield ManhPhatRa(
-                                loai="manh",
-                                noi_dung=mau_local.noi_dung,
-                                ket_qua=None,
+                if dp.can_vao_hang() or bool(tuy_chon.get("luon_vao_hang")):
+                    if dp.kiem_tra_hang_doi_day():
+                        dp.ghi_nhan_tu_choi()
+                        if co_tang_dam_may:
+                            logger.warning(
+                                "[%s] Hàng đợi local đầy, luồng phát chuyển tầng sau",
+                                ma_yeu_cau,
                             )
-                    else:
-                        kq = KetQuaGoi(
-                            noi_dung=van_ban_da_nhan,
-                            nguon="local",
-                            tang=0,
-                            bac_local=mau_local.bac,
-                            ten_model=mau_local.model,
-                            token_vao=mau_local.token_vao,
-                            token_ra=mau_local.token_ra,
-                            chi_phi_usd=0.0,
-                            do_tre_ms=mau_local.do_tre_ms,
-                            thoi_gian_nap_ms=mau_local.thoi_gian_nap_ms,
-                            toc_do_tok_s=mau_local.toc_do_tok_s,
-                            so_lan_thu=1,
-                            danh_sach_tang_da_hong=list(danh_sach_tang_da_hong),
-                            da_cat_ngu_canh=bool(tuy_chon.get("da_cat_ngu_canh", False)),
-                            so_luot_bi_cat=int(tuy_chon.get("so_luot_bi_cat", 0)),
-                            ly_do_chuoi=kq_chuoi.ly_do_chuoi,
+                            danh_sach_tang_da_hong.append(0)
+                            ly_do_cac_tang[0] = "HANG_DOI_DAY"
+                            continue
+                        raise LoiHangDoiDay(
+                            f"Hàng đợi xử lý cục bộ đã đầy ({dp.dang_cho}/{dp.do_dai_hang_doi_toi_da})",
+                            ma_yeu_cau=ma_yeu_cau,
                         )
-                        _ghi_nhat_ky(kq, ma_yeu_cau)
-                        yield ManhPhatRa(loai="xong", noi_dung="", ket_qua=kq)
-                        return
+
+                    vi_tri = await dp.vao_hang(ma_yeu_cau)
+                    yield ManhPhatRa(
+                        loai="hang_doi",
+                        noi_dung=f"Yêu cầu đang chờ tại vị trí {vi_tri.vi_tri}",
+                        vi_tri=vi_tri.vi_tri,
+                        uoc_luong_giay=vi_tri.uoc_luong_giay,
+                    )
+                    cho_luot = True
+                else:
+                    cho_luot = False
+
+                da_chay = False
+                t0 = 0.0
+                try:
+                    if cho_luot:
+                        await dp.cho_den_luot(ma_yeu_cau)
+                    else:
+                        await dp.bat_dau_chay_ngay(ma_yeu_cau)
+                    da_chay = True
+                    t0 = time.perf_counter()
+                    async for mau_local in _dong_local(
+                        tin_nhan,
+                        ma_yeu_cau=ma_yeu_cau,
+                        do_dai_hang_doi=dp.dang_cho,
+                        cfg=cfg,
+                        tuy_chon=tuy_chon,
+                    ):
+                        if not mau_local.da_xong:
+                            if mau_local.noi_dung:
+                                van_ban_da_nhan += mau_local.noi_dung
+                                da_phat_mau = True
+                                yield ManhPhatRa(
+                                    loai="manh",
+                                    noi_dung=mau_local.noi_dung,
+                                    ket_qua=None,
+                                )
+                        else:
+                            kq = KetQuaGoi(
+                                noi_dung=van_ban_da_nhan,
+                                nguon="local",
+                                tang=0,
+                                bac_local=mau_local.bac,
+                                ten_model=mau_local.model,
+                                token_vao=mau_local.token_vao,
+                                token_ra=mau_local.token_ra,
+                                chi_phi_usd=0.0,
+                                do_tre_ms=mau_local.do_tre_ms,
+                                thoi_gian_nap_ms=mau_local.thoi_gian_nap_ms,
+                                toc_do_tok_s=mau_local.toc_do_tok_s,
+                                so_lan_thu=1,
+                                danh_sach_tang_da_hong=list(danh_sach_tang_da_hong),
+                                da_cat_ngu_canh=bool(tuy_chon.get("da_cat_ngu_canh", False)),
+                                so_luot_bi_cat=int(tuy_chon.get("so_luot_bi_cat", 0)),
+                                ly_do_chuoi=kq_chuoi.ly_do_chuoi,
+                            )
+                            roi_tang = tang_dau is not None and t.so != tang_dau
+                            ly_do_tang_dau = (
+                                ly_do_cac_tang.get(tang_dau)
+                                if roi_tang and tang_dau is not None
+                                else None
+                            )
+                            _luu_nhat_ky_va_kho(
+                                kq,
+                                ma_yeu_cau=ma_yeu_cau,
+                                nguoi_id=nguoi.id,
+                                kho=kho,
+                                cfg=cfg,
+                                roi_tang=roi_tang,
+                                ly_do_that_bai_tang_dau=ly_do_tang_dau,
+                            )
+                            yield ManhPhatRa(loai="xong", noi_dung="", ket_qua=kq)
+                            return
+                finally:
+                    if da_chay:
+                        dp.giai_phong(time.perf_counter() - t0)
+                    elif cho_luot:
+                        dp.huy_cho()
+
             else:
+                # Kiểm tra ngân sách trước MỖI lời gọi tầng đám mây
+                vuot_ngan_sach, vuot_canh_bao, tong_chi_phi = kiem_tra_ngan_sach(
+                    ngan_sach_ngay_usd=cfg.ngan_sach_ngay_usd,
+                    nguong_canh_bao=cfg.cai_dat_chung.nguong_canh_bao_ngan_sach,
+                    kho=kho,
+                    cfg=cfg,
+                )
+                if vuot_canh_bao:
+                    logger.warning(
+                        "[%s] Cảnh báo ngân sách ngày: tổng chi phí hiện tại %.4f USD "
+                        "đạt ngưỡng %.0f%% của ngân sách %.2f USD",
+                        ma_yeu_cau,
+                        tong_chi_phi,
+                        cfg.cai_dat_chung.nguong_canh_bao_ngan_sach * 100,
+                        cfg.ngan_sach_ngay_usd,
+                    )
+                if vuot_ngan_sach:
+                    logger.warning(
+                        "[%s] VƯỢT NGÂN SÁCH ngày (%.4f/%.2f USD). Bỏ qua các tầng đám mây.",
+                        ma_yeu_cau,
+                        tong_chi_phi,
+                        cfg.ngan_sach_ngay_usd,
+                    )
+                    idx = chuoi.index(t)
+                    con_local_sau = any(sau.so == 0 for sau in chuoi[idx + 1:])
+                    if not con_local_sau:
+                        raise LoiVuotNganSach(
+                            f"Chi phí trong ngày ({tong_chi_phi:.4f} USD) đã vượt ngân sách "
+                            f"({cfg.ngan_sach_ngay_usd:.2f} USD) và không còn tầng local",
+                            ma_yeu_cau=ma_yeu_cau,
+                        )
+                    continue
+
                 tang_dm = _tim_cau_hinh_tang_dam_may(cfg, t)
                 async for mau_dm in _dong_dam_may(
                     tang_dm,
@@ -468,6 +722,7 @@ async def goi_mo_hinh_theo_dong(
                                 ket_qua=None,
                             )
                     else:
+                        chi_phi = uoc_tinh_chi_phi(t.so, mau_dm.token_vao, mau_dm.token_ra, cfg)
                         toc_do = _tinh_toc_do(mau_dm.token_ra, mau_dm.do_tre_ms / 1000.0)
                         kq = KetQuaGoi(
                             noi_dung=van_ban_da_nhan,
@@ -477,7 +732,7 @@ async def goi_mo_hinh_theo_dong(
                             ten_model=mau_dm.model,
                             token_vao=mau_dm.token_vao,
                             token_ra=mau_dm.token_ra,
-                            chi_phi_usd=0.0,
+                            chi_phi_usd=chi_phi,
                             do_tre_ms=mau_dm.do_tre_ms,
                             thoi_gian_nap_ms=0.0,
                             toc_do_tok_s=toc_do,
@@ -487,10 +742,26 @@ async def goi_mo_hinh_theo_dong(
                             so_luot_bi_cat=int(tuy_chon.get("so_luot_bi_cat", 0)),
                             ly_do_chuoi=kq_chuoi.ly_do_chuoi,
                         )
-                        _ghi_nhat_ky(kq, ma_yeu_cau)
+                        roi_tang = tang_dau is not None and t.so != tang_dau
+                        ly_do_tang_dau = (
+                            ly_do_cac_tang.get(tang_dau)
+                            if roi_tang and tang_dau is not None
+                            else None
+                        )
+                        _luu_nhat_ky_va_kho(
+                            kq,
+                            ma_yeu_cau=ma_yeu_cau,
+                            nguoi_id=nguoi.id,
+                            kho=kho,
+                            cfg=cfg,
+                            roi_tang=roi_tang,
+                            ly_do_that_bai_tang_dau=ly_do_tang_dau,
+                        )
                         yield ManhPhatRa(loai="xong", noi_dung="", ket_qua=kq)
                         return
 
+        except (LoiDauVao, LoiHangDoiDay, LoiVuotNganSach):
+            raise
         except Exception as err:
             if da_phat_mau:
                 logger.warning(
@@ -501,9 +772,6 @@ async def goi_mo_hinh_theo_dong(
                 )
                 yield ManhPhatRa(loai="loi", noi_dung=van_ban_da_nhan, ket_qua=None)
                 return
-
-            if isinstance(err, LoiDauVao):
-                raise
 
             danh_sach_tang_da_hong.append(t.so)
             ly_do_cac_tang[t.so] = str(err)

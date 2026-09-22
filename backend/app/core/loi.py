@@ -130,3 +130,39 @@ class LoiNguCanhQuaDai(LoiHeThong):
 # Bí danh NGU_CANH_QUA_DAI cho phép ném hoặc bắt lỗi theo mã lỗi nghiệp vụ
 NGU_CANH_QUA_DAI = LoiNguCanhQuaDai
 
+
+class LoiHangDoiDay(LoiHeThong):
+    """Ngoại lệ khi hàng đợi cục bộ vượt quá giới hạn tối đa cho phép."""
+
+    ma_loi: str = "HANG_DOI_DAY"
+
+    def __init__(
+        self,
+        thong_diep: str = "Hàng đợi xử lý cục bộ đã đầy",
+        *,
+        ma_yeu_cau: str = "",
+    ) -> None:
+        super().__init__(thong_diep, ma_yeu_cau=ma_yeu_cau)
+
+
+# Bí danh HANG_DOI_DAY cho phép ném hoặc bắt lỗi theo mã nghiệp vụ
+HANG_DOI_DAY = LoiHangDoiDay
+
+
+class LoiVuotNganSach(LoiHeThong):
+    """Ngoại lệ khi chi phí gọi mô hình đám mây vượt quá ngân sách cho phép."""
+
+    ma_loi: str = "VUOT_NGAN_SACH"
+
+    def __init__(
+        self,
+        thong_diep: str = "Vượt ngân sách gọi mô hình đám mây trong ngày",
+        *,
+        ma_yeu_cau: str = "",
+    ) -> None:
+        super().__init__(thong_diep, ma_yeu_cau=ma_yeu_cau)
+
+
+# Bí danh VUOT_NGAN_SACH cho phép ném hoặc bắt lỗi theo mã nghiệp vụ
+VUOT_NGAN_SACH = LoiVuotNganSach
+
