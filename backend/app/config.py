@@ -285,10 +285,9 @@ def _tao_chuoi_dam_may_da_xac_thuc(
         if not gia_tri_khoa or not gia_tri_khoa.strip() or gia_tri_khoa == "dan-khoa-that-vao-day":
             tang_obj.kha_dung = False
             logger.info(
-                "Tầng %s (%s) thiếu khoá API '%s', đánh dấu không khả dụng (kha_dung=False)",
+                "Tầng %s (%s) thiếu khoá API, đánh dấu không khả dụng (kha_dung=False)",
                 tang_obj.tang,
                 tang_obj.ten,
-                ten_bien_khoa,
             )
         else:
             tang_obj.kha_dung = True
