@@ -10,5 +10,6 @@ frontend/dist/
 frontend/.angular/
 ket_qua_eval/
 secret/
+specs/
 ~*
 
