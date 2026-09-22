@@ -286,7 +286,7 @@ async def test_khoa_api_khong_xuat_hien_trong_nhat_ky(
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     monkeypatch.setattr("app.llm.nha_cung_cap_dam_may.lay_khoa_api", lambda _k: None)
 
-    with pytest.raises(LoiVinhVien):
+    with pytest.raises(LoiVinhVien) as thong_tin_loi:
         await goi_dam_may(
             TANG_GEMINI,
             [{"role": "user", "content": "Test thiếu khoá"}],
@@ -295,3 +295,5 @@ async def test_khoa_api_khong_xuat_hien_trong_nhat_ky(
 
     # Khẳng định chuỗi khoá bí mật không hề có trong bất kỳ dòng log nào
     assert chuoi_khoa_bi_mat not in caplog.text
+    assert "GOOGLE_API_KEY" not in caplog.text
+    assert "GOOGLE_API_KEY" not in str(thong_tin_loi.value)
