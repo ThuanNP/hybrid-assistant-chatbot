@@ -35,18 +35,18 @@ muốn đổi rule phải hỏi trước.
 
 ## Quy tắc kỹ thuật của dự án
 
-5\. Tên model, thứ tự chuỗi, hồ sơ GPU, `num_ctx`, `keep_alive`, giá và ngưỡng chỉ khai báo
+1. Tên model, thứ tự chuỗi, hồ sơ GPU, `num_ctx`, `keep_alive`, giá và ngưỡng chỉ khai báo
    trong `config/*.yaml`.
-6\. Ghim thẻ model đầy đủ kèm mức lượng tử hoá, ví dụ `qwen3.5:9b-q4_K_M`.
-7\. Mọi lượt gọi model ghi: nguồn, tầng, bậc, model, token vào/ra, chi phí, độ trễ,
+2. Ghim thẻ model đầy đủ kèm mức lượng tử hoá, ví dụ `qwen3.5:9b-q4_K_M`.
+3. Mọi lượt gọi model ghi: nguồn, tầng, bậc, model, token vào/ra, chi phí, độ trễ,
    thời gian nạp, tok/s.
-8\. Chat phát theo dòng (SSE); POST `/chat` không phát theo dòng chỉ cho tích hợp
+4. Chat phát theo dòng (SSE); POST `/chat` không phát theo dòng chỉ cho tích hợp
    máy với máy.
-9\. Mọi lời gọi ra ngoài có timeout tường minh và số lần thử lại rõ ràng.
-10\. `ma_yeu_cau` truyền xuyên suốt, có trong mọi dòng nhật ký và mọi phản hồi lỗi.
-11\. Mọi phép đếm token dùng `dem_token()`; mọi con số nghiệp vụ do công cụ tính,
+5. Mọi lời gọi ra ngoài có timeout tường minh và số lần thử lại rõ ràng.
+6. `ma_yeu_cau` truyền xuyên suốt, có trong mọi dòng nhật ký và mọi phản hồi lỗi.
+7. Mọi phép đếm token dùng `dem_token()`; mọi con số nghiệp vụ do công cụ tính,
     không do model.
-12\. Trần tự chủ L2: chỉ tra cứu, diễn giải, soạn thảo; không có trường `hop_le`
+8. Trần tự chủ L2: chỉ tra cứu, diễn giải, soạn thảo; không có trường `hop_le`
     hay `duoc_duyet`.
 
 ## Phạm vi làm việc
@@ -86,8 +86,9 @@ Các hạng mục sau được tạm hoãn có chủ đích trong giai đoạn h
 ## Cách làm việc
 
 - Trước khi viết mã: nêu rõ tệp sẽ tạo hoặc sửa và rule nào được áp dụng.
-- Kiểm tra tài liệu thiết kế: khi tạo hoặc sửa `DESIGN.md`, bắt buộc kiểm tra bằng
-  lệnh `npx -p @google/design.md designmd lint DESIGN.md`.
+- Kiểm tra tài liệu thiết kế: chỉ kiểm tra bằng lệnh
+  `npx -p @google/design.md designmd lint DESIGN.md` khi và chỉ khi tập tin `DESIGN.md`
+  có thay đổi (tạo mới hoặc chỉnh sửa).
 - Quét bảo mật bí mật: chạy `gitleaks` (`gitleaks detect`) để bảo đảm không rò rỉ.
 - Sau mỗi prompt: tự chạy TỰ ĐÁNH GIÁ và trả về bảng kết quả.
 - Quy trình phát hành: tuân thủ theo quy định tại `.agents/rules/versioning.md`.
