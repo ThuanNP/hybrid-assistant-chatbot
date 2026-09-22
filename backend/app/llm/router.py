@@ -146,7 +146,7 @@ def _luu_nhat_ky_va_kho(
     kq: KetQuaGoi,
     *,
     ma_yeu_cau: str,
-    nguoi_id: str,
+    nguoi_id: str | int,
     kho: KhoLuotGoi,
     cfg: CauHinhHeThong,
     roi_tang: bool,
@@ -155,7 +155,7 @@ def _luu_nhat_ky_va_kho(
     """Ghi nhật ký hệ thống và lưu bản ghi vào KhoLuotGoi theo Quy tắc kỹ thuật 7."""
     _ghi_nhat_ky(kq, ma_yeu_cau)
     lg = LuotGoi(
-        nguoi_id=nguoi_id,
+        nguoi_id=str(nguoi_id),
         nguon=str(kq.nguon),
         tang=kq.tang,
         bac=kq.bac_local,
@@ -231,6 +231,7 @@ async def _thuc_hien_goi_local(
     bo_chay = tuy_chon.get("bo_chay")
     temperature = tuy_chon.get("temperature")
     max_tokens = tuy_chon.get("max_tokens")
+    uu_tien_bac_nho = bool(tuy_chon.get("uu_tien_bac_nho", False))
     return await goi_local(
         tin_nhan,
         ma_yeu_cau=ma_yeu_cau,
@@ -240,6 +241,7 @@ async def _thuc_hien_goi_local(
         cau_hinh_he_thong=cfg,
         temperature=temperature,
         max_tokens=max_tokens,
+        uu_tien_bac_nho=uu_tien_bac_nho,
     )
 
 
@@ -280,15 +282,23 @@ async def goi_mo_hinh(
     nguoi: NguoiDung,
     ma_yeu_cau: str,
     nhan_du_lieu: NhanDuLieu = NhanDuLieu.THUONG,
+    uu_tien_bac_nho: bool = False,
     **tuy_chon: Any,
 ) -> KetQuaGoi:
     """Gọi mô hình LLM qua chuỗi định tuyến đã được xác thực chính sách.
 
     Điểm nhập duy nhất trong ứng dụng cho các lời gọi mô hình không phát dòng.
+    Khi uu_tien_bac_nho=True: Chuỗi chỉ gồm tầng 0, không rơi sang đám mây.
     """
     cfg: CauHinhHeThong = tuy_chon.get("cau_hinh_he_thong") or cau_hinh
     dp: DieuPhoi = tuy_chon.get("dieu_phoi") or dieu_phoi_mac_dinh
     kho: KhoLuotGoi = tuy_chon.get("kho_luot_goi") or kho_luot_goi_mac_dinh
+
+    uu_tien_bac_nho_hieu_luc = bool(
+        uu_tien_bac_nho or tuy_chon.get("uu_tien_bac_nho", False)
+    )
+    if uu_tien_bac_nho_hieu_luc:
+        tuy_chon["uu_tien_bac_nho"] = True
 
     che_do = getattr(nguoi, "che_do_dinh_tuyen", None) or cfg.che_do_dinh_tuyen
     kq_chuoi = xac_dinh_chuoi(
@@ -299,6 +309,12 @@ async def goi_mo_hinh(
         cau_hinh_cs=tuy_chon.get("cau_hinh_cs"),
     )
     chuoi = kq_chuoi.chuoi
+    if uu_tien_bac_nho_hieu_luc:
+        # Chuỗi BẮT BUỘC chỉ gồm tầng 0, tuyệt đối không rơi sang đám mây
+        chuoi = [t for t in chuoi if t.so == 0]
+        if not chuoi:
+            chuoi = [Tang(so=0, ten="local", cua_so_ngu_canh=4096, nguon="local")]
+
     tang_dau = chuoi[0].so if chuoi else None
     co_tang_dam_may = any(t.so > 0 for t in chuoi)
 
@@ -495,6 +511,7 @@ async def _dong_local(
     bo_chay = tuy_chon.get("bo_chay")
     temperature = tuy_chon.get("temperature")
     max_tokens = tuy_chon.get("max_tokens")
+    uu_tien_bac_nho = bool(tuy_chon.get("uu_tien_bac_nho", False))
     gen = await goi_local(
         tin_nhan,
         ma_yeu_cau=ma_yeu_cau,
@@ -504,6 +521,7 @@ async def _dong_local(
         cau_hinh_he_thong=cfg,
         temperature=temperature,
         max_tokens=max_tokens,
+        uu_tien_bac_nho=uu_tien_bac_nho,
     )
     async for item in gen:
         yield item
@@ -528,6 +546,7 @@ async def _dong_dam_may(
             "do_dai_hang_doi",
             "dieu_phoi",
             "kho_luot_goi",
+            "uu_tien_bac_nho",
         )
     }
     gen = await goi_dam_may(
@@ -562,6 +581,7 @@ async def goi_mo_hinh_theo_dong(
     dp: DieuPhoi = tuy_chon.get("dieu_phoi") or dieu_phoi_mac_dinh
     kho: KhoLuotGoi = tuy_chon.get("kho_luot_goi") or kho_luot_goi_mac_dinh
 
+    uu_tien_bac_nho_hieu_luc = bool(tuy_chon.get("uu_tien_bac_nho", False))
     che_do = getattr(nguoi, "che_do_dinh_tuyen", None) or cfg.che_do_dinh_tuyen
     kq_chuoi = xac_dinh_chuoi(
         nguoi,
@@ -571,6 +591,11 @@ async def goi_mo_hinh_theo_dong(
         cau_hinh_cs=tuy_chon.get("cau_hinh_cs"),
     )
     chuoi = kq_chuoi.chuoi
+    if uu_tien_bac_nho_hieu_luc:
+        chuoi = [t for t in chuoi if t.so == 0]
+        if not chuoi:
+            chuoi = [Tang(so=0, ten="local", cua_so_ngu_canh=4096, nguon="local")]
+
     tang_dau = chuoi[0].so if chuoi else None
     co_tang_dam_may = any(t.so > 0 for t in chuoi)
 
@@ -851,7 +876,7 @@ if __name__ == "__main__":
 
     async def _chay_thu() -> None:
         nguoi_gia = NguoiDung(
-            id="nd_kiem_thu",
+            id=1,
             ten_dang_nhap="can_bo_cntt",
             vai_tro="chuyen_vien",
             bac="chinh",

@@ -512,9 +512,35 @@ def lay_bo_chay(
 
 
 def _lap_ke_hoach_bac(
-    cfg: CauHinhHeThong, do_dai_hang_doi: int, ma_yeu_cau: str
+    cfg: CauHinhHeThong,
+    do_dai_hang_doi: int,
+    ma_yeu_cau: str,
+    uu_tien_bac_nho: bool = False,
 ) -> tuple[list[CauHinhBacLocal], dict[str, str]]:
-    """Chọn các bậc sẽ thử theo thứ tự; trả kèm lý do đã bỏ qua bậc nào."""
+    """Chọn các bậc sẽ thử theo thứ tự; trả kèm lý do đã bỏ qua bậc nào.
+
+    Chú thích kỹ thuật:
+    - Khi uu_tien_bac_nho=True: Dùng bậc nhỏ để không chiếm khe của model chính,
+      và không gửi nội dung hội thoại ra đám mây chỉ để đặt tiêu đề.
+    - NGOẠI LỆ: Khi so_model_nap_cung_luc = 1 (gpu8 trên laptop), dùng bậc chinh đang nằm
+      trong VRAM, vì nạp bậc nho sẽ đẩy model chính ra và người hỏi tiếp theo phải chờ nạp lại.
+    """
+    if uu_tien_bac_nho:
+        if cfg.so_model_nap_cung_luc == 1:
+            ly_do_ngoai_le = (
+                f"so_model_nap_cung_luc=1: giữ bậc chinh ({cfg.bac_local[0].model}) "
+                "đang nạp trong VRAM để tránh đẩy model ra ngoài"
+            )
+            logger.info("[%s] %s", ma_yeu_cau, ly_do_ngoai_le)
+            return [cfg.bac_local[0]], {}
+
+        ly_do_bac_nho = (
+            f"Ưu tiên bậc nho ({cfg.bac_local[1].model}) để không chiếm khe model chính "
+            f"khi so_model_nap_cung_luc={cfg.so_model_nap_cung_luc}"
+        )
+        logger.info("[%s] %s", ma_yeu_cau, ly_do_bac_nho)
+        return [cfg.bac_local[1]], {"chinh": ly_do_bac_nho}
+
     nguong = cfg.local_chung.nguong_hang_doi_ha_cap
     # Khi chỉ nạp được một model, đổi model trong VRAM mất 5-20 giây và đẩy bậc chinh ra,
     # chậm hơn cả việc chờ: không bỏ qua bậc 1 vì hàng đợi.
@@ -565,9 +591,12 @@ async def _goi_local_mot_lan(
     bo_chay: BoChay,
     cfg: CauHinhHeThong,
     tham_so: dict[str, Any],
+    uu_tien_bac_nho: bool = False,
 ) -> KetQuaGoiLocal:
     """Thử lần lượt từng bậc cho lời gọi không phát theo dòng."""
-    cac_bac, ly_do = _lap_ke_hoach_bac(cfg, do_dai_hang_doi, ma_yeu_cau)
+    cac_bac, ly_do = _lap_ke_hoach_bac(
+        cfg, do_dai_hang_doi, ma_yeu_cau, uu_tien_bac_nho=uu_tien_bac_nho
+    )
     for bac in cac_bac:
         try:
             kq = await bo_chay.goi(
@@ -590,9 +619,12 @@ async def _goi_local_theo_dong(
     bo_chay: BoChay,
     cfg: CauHinhHeThong,
     tham_so: dict[str, Any],
+    uu_tien_bac_nho: bool = False,
 ) -> AsyncIterator[KetQuaDongLocal]:
     """Thử lần lượt từng bậc cho luồng phát theo dòng."""
-    cac_bac, ly_do = _lap_ke_hoach_bac(cfg, do_dai_hang_doi, ma_yeu_cau)
+    cac_bac, ly_do = _lap_ke_hoach_bac(
+        cfg, do_dai_hang_doi, ma_yeu_cau, uu_tien_bac_nho=uu_tien_bac_nho
+    )
     for bac in cac_bac:
         da_phat = False
         try:
@@ -622,6 +654,7 @@ async def goi_local(
     cau_hinh_he_thong: CauHinhHeThong | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
+    uu_tien_bac_nho: bool = False,
 ) -> KetQuaGoiLocal: ...
 
 
@@ -636,6 +669,7 @@ async def goi_local(
     cau_hinh_he_thong: CauHinhHeThong | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
+    uu_tien_bac_nho: bool = False,
 ) -> AsyncIterator[KetQuaDongLocal]: ...
 
 
@@ -649,6 +683,7 @@ async def goi_local(
     cau_hinh_he_thong: CauHinhHeThong | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
+    uu_tien_bac_nho: bool = False,
 ) -> KetQuaGoiLocal | AsyncIterator[KetQuaDongLocal]:
     """Gọi chuỗi local theo thứ tự bậc 1 (chinh) rồi bậc 2 (nho).
 
@@ -662,6 +697,7 @@ async def goi_local(
         "bo_chay": bo_chay or lay_bo_chay(cfg),
         "cfg": cfg,
         "tham_so": _tham_so_goi(cfg, temperature, max_tokens),
+        "uu_tien_bac_nho": uu_tien_bac_nho,
     }
     if phat_theo_dong:
         return _goi_local_theo_dong(tin_nhan, **tham_so_chung)

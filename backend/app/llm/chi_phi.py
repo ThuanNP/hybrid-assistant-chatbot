@@ -2,18 +2,22 @@
 
 import logging
 from abc import ABC, abstractmethod
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time as time_obj, timedelta, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from app.config import CauHinhHeThong, cau_hinh
+from app.core.csdl import LuotGoiModel, lay_engine_dong_bo
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
     "KhoLuotGoi",
     "KhoLuotGoiBoNho",
+    "KhoLuotGoiPostgres",
     "LuotGoi",
     "bao_cao_chi_phi",
     "kho_luot_goi_mac_dinh",
@@ -159,7 +163,111 @@ class KhoLuotGoiBoNho(KhoLuotGoi):
         return round(tong, 6)
 
 
-kho_luot_goi_mac_dinh = KhoLuotGoiBoNho()
+class KhoLuotGoiPostgres(KhoLuotGoi):
+    """Hiện thực lưu trữ và truy vấn lượt gọi mô hình trên cơ sở dữ liệu PostgreSQL."""
+
+    def __init__(self) -> None:
+        self._engine = lay_engine_dong_bo()
+
+    def ghi(self, luot_goi: LuotGoi) -> None:
+        """Ghi nhận một bản ghi lượt gọi vào bảng luot_goi của PostgreSQL."""
+        ban_ghi = LuotGoiModel(
+            thoi_diem=luot_goi.thoi_diem,
+            nguoi_id=str(luot_goi.nguoi_id),
+            nguon=str(luot_goi.nguon),
+            tang=luot_goi.tang,
+            bac=luot_goi.bac,
+            model=luot_goi.model,
+            token_vao=luot_goi.token_vao,
+            token_ra=luot_goi.token_ra,
+            chi_phi_usd=luot_goi.chi_phi_usd,
+            do_tre_ms=luot_goi.do_tre_ms,
+            thoi_gian_nap_ms=luot_goi.thoi_gian_nap_ms,
+            toc_do_tok_s=luot_goi.toc_do_tok_s,
+            thanh_cong=luot_goi.thanh_cong,
+            ma_yeu_cau=luot_goi.ma_yeu_cau,
+        )
+        try:
+            with Session(self._engine) as phien:
+                phien.add(ban_ghi)
+                phien.commit()
+        except Exception as err:  # noqa: BLE001
+            logger.warning("Ghi nhận lượt gọi vào cơ sở dữ liệu thất bại: %s", err)
+
+    def _chuyen_doi_model_sang_schema(self, row: LuotGoiModel) -> LuotGoi:
+        """Chuyển đổi thực thể ORM LuotGoiModel sang mô hình dữ liệu LuotGoi."""
+        return LuotGoi(
+            thoi_diem=row.thoi_diem,
+            nguoi_id=row.nguoi_id,
+            nguon=row.nguon,
+            tang=row.tang,
+            bac=row.bac,
+            model=row.model,
+            token_vao=row.token_vao,
+            token_ra=row.token_ra,
+            chi_phi_usd=row.chi_phi_usd,
+            do_tre_ms=row.do_tre_ms,
+            thoi_gian_nap_ms=row.thoi_gian_nap_ms,
+            toc_do_tok_s=row.toc_do_tok_s,
+            thanh_cong=row.thanh_cong,
+            ma_yeu_cau=row.ma_yeu_cau,
+        )
+
+    def lay_tat_ca(self) -> list[LuotGoi]:
+        """Truy vấn toàn bộ danh sách lượt gọi từ PostgreSQL."""
+        with Session(self._engine) as phien:
+            cau_lenh = select(LuotGoiModel).order_by(LuotGoiModel.thoi_diem.asc())
+            ket_qua = phien.scalars(cau_lenh).all()
+            return [self._chuyen_doi_model_sang_schema(r) for r in ket_qua]
+
+    def lay_trong_khoang(
+        self, tu_thoi_diem: datetime, den_thoi_diem: datetime
+    ) -> list[LuotGoi]:
+        """Truy vấn danh sách lượt gọi trong khoảng thời gian [tu_thoi_diem, den_thoi_diem]."""
+        with Session(self._engine) as phien:
+            cau_lenh = (
+                select(LuotGoiModel)
+                .where(
+                    LuotGoiModel.thoi_diem >= tu_thoi_diem,
+                    LuotGoiModel.thoi_diem <= den_thoi_diem,
+                )
+                .order_by(LuotGoiModel.thoi_diem.asc())
+            )
+            ket_qua = phien.scalars(cau_lenh).all()
+            return [self._chuyen_doi_model_sang_schema(r) for r in ket_qua]
+
+    def lay_trong_ngay(self, ngay: date | None = None) -> list[LuotGoi]:
+        """Lấy danh sách các lượt gọi trong ngày (UTC)."""
+        ngay_chon = ngay or datetime.now(timezone.utc).date()
+        tu_thoi_diem = datetime.combine(ngay_chon, time_obj.min).replace(
+            tzinfo=timezone.utc
+        )
+        den_thoi_diem = datetime.combine(ngay_chon, time_obj.max).replace(
+            tzinfo=timezone.utc
+        )
+        return self.lay_trong_khoang(tu_thoi_diem, den_thoi_diem)
+
+    def tinh_tong_chi_phi_ngay(self, ngay: date | None = None) -> float:
+        """Tính tổng chi phí gọi mô hình trong ngày từ bảng luot_goi."""
+        ngay_chon = ngay or datetime.now(timezone.utc).date()
+        tu_thoi_diem = datetime.combine(ngay_chon, time_obj.min).replace(
+            tzinfo=timezone.utc
+        )
+        den_thoi_diem = datetime.combine(ngay_chon, time_obj.max).replace(
+            tzinfo=timezone.utc
+        )
+        with Session(self._engine) as phien:
+            cau_lenh = select(
+                func.coalesce(func.sum(LuotGoiModel.chi_phi_usd), 0.0)
+            ).where(
+                LuotGoiModel.thoi_diem >= tu_thoi_diem,
+                LuotGoiModel.thoi_diem <= den_thoi_diem,
+            )
+            tong = phien.scalar(cau_lenh)
+            return round(float(tong or 0.0), 6)
+
+
+kho_luot_goi_mac_dinh = KhoLuotGoiPostgres()
 
 
 def uoc_tinh_chi_phi(

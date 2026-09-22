@@ -12,10 +12,18 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import StreamingResponse
 
 from app.chat.su_kien_sse import YeuCauChatStream, tao_luong_su_kien
-from app.core.xac_thuc import NguoiDung, lay_nguoi_dung_hien_tai
+from app.core.xac_thuc import (
+    NguoiDung,
+    khoi_tao_nguoi_dung_gia_dev,
+    kiem_tra_an_toan_xac_thuc,
+    lay_nguoi_dung_hien_tai,
+)
 from app.llm.bo_chay_local import kiem_tra_khi_khoi_dong
 
 logger = logging.getLogger(__name__)
+
+# Kiểm tra an toàn cấu hình ngay khi nạp module
+kiem_tra_an_toan_xac_thuc()
 
 # Header chuẩn Server-Sent Events ngăn proxy và nginx đệm luồng dữ liệu
 HEADER_SSE = {
@@ -49,7 +57,9 @@ def _ghi_loi_tac_vu_nen(tac_vu: asyncio.Task[None]) -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Hâm nóng bậc 1 và so ngữ cảnh ở chế độ nền để không chặn khởi động."""
+    """Kiểm tra an toàn, nạp người dùng dev và hâm nóng bộ chạy nền."""
+    kiem_tra_an_toan_xac_thuc()
+    await khoi_tao_nguoi_dung_gia_dev()
     tac_vu = asyncio.create_task(kiem_tra_khi_khoi_dong())
     tac_vu.add_done_callback(_ghi_loi_tac_vu_nen)
     yield

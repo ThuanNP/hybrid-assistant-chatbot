@@ -1,8 +1,8 @@
 """Định dạng và xử lý sự kiện phát dòng Server-Sent Events (SSE).
 
 Mô-đun quản lý các mô hình dữ liệu sự kiện SSE, định dạng chuỗi sự kiện
-tuân thủ chuẩn text/event-stream, điều phối tác vụ phát dòng và giám sát
-kết nối của máy khách để giải phóng tài nguyên kịp thời.
+tuân thủ chuẩn text/event-stream, điều phối tác vụ phát dòng, quản lý ngữ cảnh
+từ cơ sở dữ liệu và lưu vết các lượt hội thoại.
 """
 
 import asyncio
@@ -16,11 +16,21 @@ from typing import Any
 from fastapi import Request
 from pydantic import BaseModel
 
+from app.chat.hoi_thoai import (
+    doc_phien_ban_loi_nhac,
+    lay_danh_sach_luot,
+    lay_hoi_thoai,
+    luu_cap_luot_hoi_thoai,
+    tao_hoi_thoai,
+    tu_dat_tieu_de,
+)
 from app.chat.ngu_canh import dung_ngu_canh
 from app.config import cau_hinh
+from app.core.csdl import HoiThoaiModel, NguoiDungModel, lay_sessionmaker_async
+from app.core.loi import LoiDauVao
 from app.core.xac_thuc import NguoiDung
 from app.llm.chinh_sach import nhan_cua_hoi_thoai, xac_dinh_chuoi
-from app.llm.router import ManhPhatRa, goi_mo_hinh_theo_dong
+from app.llm.router import KetQuaGoi, ManhPhatRa, goi_mo_hinh_theo_dong
 
 logger = logging.getLogger(__name__)
 
@@ -187,18 +197,99 @@ async def _tien_trinh_san_xuat(
     yeu_cau: YeuCauChatStream,
     nguoi: NguoiDung,
     ma_yeu_cau: str,
+    hoi_thoai_id_hop: list[int | None],
 ) -> None:
     """Tác vụ nền thực hiện chuỗi xác định chính sách, ngữ cảnh và gọi mô hình theo dòng."""
+    hoi_thoai_id: int | None = None
+    noi_dung_tro_ly = ""
+    maker = lay_sessionmaker_async()
+    nhan_du_lieu_str: str | None = None
+    kq_hoan_thanh: KetQuaGoi | None = None
+    da_luu_db = False
+
     try:
-        nhan = nhan_cua_hoi_thoai(lich_su=[], tin_nhan_moi=yeu_cau.noi_dung)
+        # 1. Truy vấn hoặc khởi tạo hội thoại và đọc lịch sử theo thứ tự thời gian
+        async with maker() as phien_doc:
+            if cau_hinh.xac_thuc_gia:
+                nd = await phien_doc.get(NguoiDungModel, nguoi.id)
+                if nd is None:
+                    phien_doc.add(
+                        NguoiDungModel(
+                            id=nguoi.id,
+                            ten_dang_nhap=f"can_bo_{nguoi.id}",
+                            ho_ten="Cán bộ kiểm thử",
+                            vai_tro="nguoi_dung",
+                            bac="chinh",
+                            phong_ban="CNTT",
+                            dang_hoat_dong=True,
+                        )
+                    )
+                    await phien_doc.flush()
+
+            if yeu_cau.hoi_thoai_id is None:
+                ht = await tao_hoi_thoai(phien_doc, nguoi_id=nguoi.id)
+                await phien_doc.commit()
+                hoi_thoai_id = ht.id
+                hoi_thoai_id_hop[0] = hoi_thoai_id
+                la_luot_dau = True
+                lich_su_tin_nhan: list[dict[str, str]] = []
+            else:
+                ht = await lay_hoi_thoai(phien_doc, yeu_cau.hoi_thoai_id)
+                if ht is None:
+                    if cau_hinh.xac_thuc_gia:
+                        ht = HoiThoaiModel(
+                            id=yeu_cau.hoi_thoai_id,
+                            nguoi_id=nguoi.id,
+                            tieu_de="Cuộc trò chuyện mới",
+                            da_xoa=False,
+                        )
+                        phien_doc.add(ht)
+                        await phien_doc.commit()
+                        hoi_thoai_id = ht.id
+                        hoi_thoai_id_hop[0] = hoi_thoai_id
+                        la_luot_dau = True
+                        lich_su_tin_nhan = []
+                    else:
+                        raise LoiDauVao(
+                            f"Cuộc hội thoại {yeu_cau.hoi_thoai_id} không tồn tại hoặc đã bị xoá",
+                            ma_trang_thai=404,
+                            ma_yeu_cau=ma_yeu_cau,
+                        )
+                else:
+                    hoi_thoai_id = ht.id
+                    hoi_thoai_id_hop[0] = hoi_thoai_id
+                    cac_luot = await lay_danh_sach_luot(phien_doc, hoi_thoai_id)
+                    la_luot_dau = len(cac_luot) == 0
+                    lich_su_tin_nhan = []
+                    for luot in cac_luot:
+                        if luot.vai_tro == "nguoi_dung":
+                            vai_tro_role = "user"
+                        elif luot.vai_tro == "tro_ly":
+                            vai_tro_role = "assistant"
+                        else:
+                            vai_tro_role = "system"
+                        lich_su_tin_nhan.append(
+                            {"role": vai_tro_role, "content": luot.noi_dung}
+                        )
+
+        # 2. Xác định nhãn dữ liệu, chuỗi định tuyến và dựng ngữ cảnh
+        nhan = nhan_cua_hoi_thoai(
+            lich_su=lich_su_tin_nhan, tin_nhan_moi=yeu_cau.noi_dung
+        )
+        nhan_du_lieu_str = nhan.value
         che_do = getattr(nguoi, "che_do_dinh_tuyen", None) or cau_hinh.che_do_dinh_tuyen
-        kq_chuoi = xac_dinh_chuoi(nguoi, nhan, che_do=che_do, cau_hinh_he_thong=cau_hinh)
+        kq_chuoi = xac_dinh_chuoi(
+            nguoi, nhan, che_do=che_do, cau_hinh_he_thong=cau_hinh
+        )
         kq_ngu_canh = dung_ngu_canh(
-            [],
+            lich_su_tin_nhan,
             yeu_cau.noi_dung,
             kq_chuoi.chuoi,
             ma_yeu_cau=ma_yeu_cau,
         )
+
+        # 3. Phát phản hồi theo dòng và gom nội dung trợ lý
+        kq_hoan_thanh: KetQuaGoi | None = None
         async for manh in goi_mo_hinh_theo_dong(
             kq_ngu_canh.danh_sach,
             nguoi=nguoi,
@@ -207,12 +298,99 @@ async def _tien_trinh_san_xuat(
             da_cat_ngu_canh=kq_ngu_canh.da_cat,
             so_luot_bi_cat=kq_ngu_canh.so_luot_bi_cat,
         ):
+            if manh.loai == "manh":
+                noi_dung_tro_ly += manh.noi_dung
+            elif manh.loai == "xong":
+                kq_hoan_thanh = manh.ket_qua
             await hang_doi.put(manh)
+
+        # 4. Lưu cả lượt người dùng và lượt trả lời trong MỘT giao dịch duy nhất
+        phien_ban_prompt = doc_phien_ban_loi_nhac()
+        da_luu_db = False
+        if hoi_thoai_id is not None:
+            async def _luu_db() -> None:
+                async with maker() as phien_luu, phien_luu.begin():
+                    await luu_cap_luot_hoi_thoai(
+                        phien_luu,
+                        hoi_thoai_id=hoi_thoai_id,
+                        noi_dung_nguoi=yeu_cau.noi_dung,
+                        noi_dung_tro_ly=noi_dung_tro_ly,
+                        kq_goi=kq_hoan_thanh,
+                        ma_yeu_cau=ma_yeu_cau,
+                        nhan_du_lieu=nhan.value,
+                        phien_ban_prompt=phien_ban_prompt,
+                    )
+
+            await asyncio.shield(_luu_db())
+            da_luu_db = True
+
+        # 5. Tự đặt tiêu đề chạy nền sau lượt trả lời ĐẦU TIÊN
+        if la_luot_dau and hoi_thoai_id is not None:
+            asyncio.create_task(
+                tu_dat_tieu_de(
+                    hoi_thoai_id=hoi_thoai_id,
+                    noi_dung_nguoi=yeu_cau.noi_dung,
+                    noi_dung_tro_ly=noi_dung_tro_ly,
+                    nguoi=nguoi,
+                )
+            )
+
         await hang_doi.put(None)
     except asyncio.CancelledError:
+        logger.info(
+            "[%s] Tiến trình phát dòng bị huỷ, kiểm tra lưu CSDL...", ma_yeu_cau
+        )
+        if hoi_thoai_id is not None and not da_luu_db:
+            try:
+                pb_prompt = doc_phien_ban_loi_nhac()
+
+                async def _luu_khi_huy() -> None:
+                    async with maker() as phien_huy, phien_huy.begin():
+                        await luu_cap_luot_hoi_thoai(
+                            phien_huy,
+                            hoi_thoai_id=hoi_thoai_id,
+                            noi_dung_nguoi=yeu_cau.noi_dung,
+                            noi_dung_tro_ly=noi_dung_tro_ly,
+                            kq_goi=kq_hoan_thanh,
+                            ma_yeu_cau=ma_yeu_cau,
+                            nhan_du_lieu=nhan_du_lieu_str,
+                            phien_ban_prompt=pb_prompt,
+                        )
+
+                await asyncio.shield(_luu_khi_huy())
+            except Exception as e_huy:  # noqa: BLE001
+                logger.error(
+                    "[%s] Không thể lưu lượt dở dang khi bị huỷ: %s",
+                    ma_yeu_cau,
+                    e_huy,
+                )
         raise
-    except Exception as err:  # noqa: BLE001 - Bắt mọi ngoại lệ để đóng gói sự kiện lỗi SSE
-        logger.warning("[%s] Lỗi trong tiến trình phát dòng: %s", ma_yeu_cau, err)
+    except Exception as err:  # noqa: BLE001
+        logger.warning(
+            "[%s] ket_thuc_do_loi: Tiến trình phát dòng gián đoạn: %s",
+            ma_yeu_cau,
+            err,
+        )
+        if hoi_thoai_id is not None and not da_luu_db:
+            try:
+                pb_prompt = doc_phien_ban_loi_nhac()
+                async with maker() as phien_loi, phien_loi.begin():
+                    await luu_cap_luot_hoi_thoai(
+                        phien_loi,
+                        hoi_thoai_id=hoi_thoai_id,
+                        noi_dung_nguoi=yeu_cau.noi_dung,
+                        noi_dung_tro_ly=noi_dung_tro_ly,
+                        kq_goi=None,
+                        ma_yeu_cau=ma_yeu_cau,
+                        nhan_du_lieu=nhan_du_lieu_str,
+                        phien_ban_prompt=pb_prompt,
+                    )
+            except Exception as e_luu:  # noqa: BLE001
+                logger.error(
+                    "[%s] Không thể lưu lượt dở dang khi bị lỗi: %s",
+                    ma_yeu_cau,
+                    e_luu,
+                )
         await hang_doi.put(err)
 
 
@@ -225,9 +403,12 @@ async def tao_luong_su_kien(
     ma_yeu_cau = sinh_ma_yeu_cau()
     phan_da_nhan = ""
     dang_trong_hang_doi = False
+    hoi_thoai_id_hop: list[int | None] = [yeu_cau.hoi_thoai_id]
     hang_doi: asyncio.Queue[ManhPhatRa | Exception | None] = asyncio.Queue()
     tac_vu = asyncio.create_task(
-        _tien_trinh_san_xuat(hang_doi, yeu_cau, nguoi, ma_yeu_cau)
+        _tien_trinh_san_xuat(
+            hang_doi, yeu_cau, nguoi, ma_yeu_cau, hoi_thoai_id_hop
+        )
     )
 
     try:
@@ -257,9 +438,11 @@ async def tao_luong_su_kien(
                 if muc.loai == "manh":
                     phan_da_nhan += muc.noi_dung
 
-            yield _tao_su_kien_tu_manh(muc, yeu_cau.hoi_thoai_id, phan_da_nhan, ma_yeu_cau)
+            yield _tao_su_kien_tu_manh(
+                muc, hoi_thoai_id_hop[0], phan_da_nhan, ma_yeu_cau
+            )
 
-            if muc.loai in ("xong", "loi"):
+            if muc.loai == "loi":
                 break
 
     except asyncio.CancelledError:
@@ -272,5 +455,5 @@ async def tao_luong_su_kien(
                 await tac_vu
             except asyncio.CancelledError:
                 pass
-            except Exception as err:  # noqa: BLE001 - Ghi nhật ký gỡ lỗi nếu có sự cố khi huỷ
+            except Exception as err:  # noqa: BLE001
                 logger.debug("[%s] Lỗi huỷ tác vụ: %s", ma_yeu_cau, err)
