@@ -1,0 +1,15 @@
+{
+  "globs": [
+    "**/*.md"
+  ],
+  "ignores": [
+    "node_modules/**",
+    ".venv/**",
+    "backend/.venv/**",
+    "**/.venv/**",
+    "frontend/dist/**",
+    ".agents/skills/**",
+    "specs/**",
+    ".remember/**"
+  ]
+}

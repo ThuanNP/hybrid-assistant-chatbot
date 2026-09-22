@@ -1,0 +1,70 @@
+english,vietnamese,label,do_not_use,domain,note
+model (AI model),model,KEEP,mô hình (khi nói về model AI),AI,CHỜ XÁC NHẬN: xem xung đột 1
+reference model (architecture),mô hình tham chiếu,STD,,kiến trúc,Nghĩa phi AI: mô hình tham chiếu bảy lớp
+token,token,KEEP,mã thông báo,AI,
+prompt (task given to the IDE agent),prompt,KEEP,,quy trình,Đơn vị giao việc: PROMPT 1 đến PROMPT 55
+system prompt,lời nhắc hệ thống,STD,,AI,Văn bản gửi tới model của sản phẩm
+prompt injection,tiêm lời nhắc,STD,,bảo mật,
+agent,agent,KEEP,tác tử,IDE,
+backend,backend,KEEP,back-end,phần mềm,Khớp tên thư mục backend/
+frontend,frontend,KEEP,front-end,phần mềm,Khớp tên thư mục frontend/
+endpoint,endpoint,KEEP,điểm cuối,API,
+container,container,KEEP,vùng chứa,hạ tầng,
+fallback chain,chuỗi dự phòng,STD,,định tuyến,
+hybrid chain,chuỗi lai,NEW,,định tuyến,Tầng 0 local cộng 4 tầng đám mây
+tier (cloud fallback),tầng,STD,,định tuyến,Tầng 0 đến 4
+level (local model),bậc,STD,,định tuyến,Bậc 1 chính / bậc 2 nhỏ; phân biệt với tầng
+fall back to the next tier,rơi tầng,STD,,định tuyến,Theo tài liệu gốc
+downgrade (local level),hạ cấp,STD,,định tuyến,Theo tài liệu gốc
+last-resort tier,tầng dự phòng cuối cùng,STD,chốt chặn,định tuyến,Khẩu ngữ bị loại
+routing mode,chế độ định tuyến,STD,,định tuyến,
+streaming,phát theo dòng,STD,,API,
+Server-Sent Events,SSE,KEEP,,API,
+context window,cửa sổ ngữ cảnh,STD,,AI,
+KV cache,bộ đệm KV,STD,,AI,Khác bộ nhớ đệm câu trả lời
+response cache,bộ nhớ đệm,STD,,hạ tầng,Redis ở Giai đoạn 9
+proxy buffering,gom đệm của proxy,STD,,hạ tầng,
+quantization,lượng tử hoá,STD,,AI,
+model tag,thẻ model,STD,,AI,Ví dụ qwen3.5:9b-q4_K_M
+GPU profile,hồ sơ GPU,NEW,,AI,gpu6 đến gpu24
+Docker Compose profile,profile,KEEP,hồ sơ,hạ tầng,Phân biệt với hồ sơ GPU
+inference runtime,bộ chạy,STD,,AI,Ollama / LM Studio / vLLM; theo tài liệu gốc
+warm-up,hâm nóng,STD,,AI,
+queue,hàng đợi,STD,,hạ tầng,
+concurrency limit,giới hạn đồng thời,STD,,hạ tầng,
+quota / rate limit,hạn mức,STD,,API,
+budget cap,trần ngân sách,STD,,chi phí,
+request ID,mã yêu cầu,STD,,quan sát,ma_yeu_cau
+structured log,nhật ký có cấu trúc,STD,log (trong văn xuôi),quan sát,log chỉ dùng trong tên công cụ
+audit log,nhật ký kiểm toán,STD,,quan sát,
+health check,kiểm tra sức khoẻ,STD,,API,
+readiness,sẵn sàng,STD,,API,/ready
+moderation hook,móc kiểm duyệt,STD,,bảo mật,
+PII masking,che dữ liệu cá nhân,STD,,bảo mật,Thẻ đại diện có đánh số
+retrieval-augmented generation,RAG,KEEP,,AI,
+hybrid retrieval,truy hồi lai,STD,,RAG,BM25 + vector + RRF
+embedding,nhúng (vector nhúng),GLOSS,,RAG,model nhúng
+chunking,cắt đoạn,STD,,RAG,
+reranking,tái xếp hạng,STD,,RAG,
+refusal threshold,ngưỡng từ chối,STD,,RAG,
+keyword coverage gate,cổng phủ từ khoá,STD,,RAG,Theo Module 3
+citation,trích dẫn,STD,,RAG,
+vector database,cơ sở dữ liệu vector,STD,,RAG,
+tool calling,gọi công cụ,STD,,AI,
+autonomy level,mức tự chủ,STD,,quản trị,Trần L2
+single sign-on (SSO),đăng nhập một lần,STD,,bảo mật,
+AI gateway,cổng AI,STD,gateway (trong văn xuôi),hạ tầng,Luôn viết đủ "cổng AI"
+port,cổng,STD,,mạng,Cổng 8080; phân biệt với cổng AI
+virtual key,khoá ảo,STD,,hạ tầng,
+observability,quan sát,STD,,vận hành,
+admin dashboard,bảng quản trị,STD,,giao diện,
+fine-tuning,tinh chỉnh,STD,,AI,
+golden question set,bộ câu hỏi vàng,STD,,đánh giá,
+regression evaluation,đánh giá hồi quy,STD,,đánh giá,
+production environment,môi trường vận hành,STD,chạy thật,vận hành,Khẩu ngữ bị loại
+release,phát hành,STD,,phiên bản,
+version tag,thẻ phiên bản,STD,,phiên bản,vX.Y.Z
+pre-release,bản phát hành thử nghiệm,GLOSS,,phiên bản,
+build metadata,siêu dữ liệu bản dựng,GLOSS,,phiên bản,
+stage-closing prompt,prompt chốt giai đoạn,NEW,,quy trình,Chốt Giai đoạn N trong sổ tay
+self-assessment,Tự đánh giá,STD,tự kiểm chứng,quy trình,Theo yêu cầu người dùng
