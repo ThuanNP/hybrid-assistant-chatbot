@@ -92,3 +92,19 @@ class LoiVinhVien(LoiHeThong):
         super().__init__(thong_diep, ma_yeu_cau=ma_yeu_cau)
         self.ma_trang_thai = ma_trang_thai
         self.chi_tiet = chi_tiet
+
+
+class LoiHetChuoiDuPhong(LoiHeThong):
+    """Ngoại lệ khi toàn bộ các tầng trong chuỗi định tuyến dự phòng đều thất bại."""
+
+    def __init__(
+        self,
+        thong_diep: str,
+        *,
+        danh_sach_ly_do: dict[int, str] | None = None,
+        ma_yeu_cau: str = "",
+    ) -> None:
+        super().__init__(thong_diep, ma_yeu_cau=ma_yeu_cau)
+        self.danh_sach_ly_do = danh_sach_ly_do or {}
+        self.ly_do = self.danh_sach_ly_do
+
