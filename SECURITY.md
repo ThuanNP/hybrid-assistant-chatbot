@@ -74,8 +74,5 @@ Issue công khai trên repository. Hãy gửi thông báo bảo mật riêng tư
 
 ### 4.3. Cam kết Xử lý
 
-- **Phản hồi ban đầu**: Trong vòng **24 giờ** làm việc kể từ khi nhận được báo cáo.
-- **Đánh giá & Bản vá**: Cập nhật tiến độ xử lý cho người báo cáo mỗi **48 giờ** cho đến
-  khi bản vá chính thức được phát hành.
 - **Bảo mật thông tin**: Chúng tôi cam kết bảo mật danh tính người báo cáo (nếu được yêu cầu)
   và phối hợp xử lý theo đúng quy trình nội bộ.
