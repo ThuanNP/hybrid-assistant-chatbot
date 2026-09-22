@@ -267,10 +267,9 @@ def _tao_chuoi_dam_may_da_xac_thuc(
         tang.kha_dung = bool(gia_tri_khoa) and gia_tri_khoa != GIA_TRI_MAU_GIA
         if not tang.kha_dung:
             logger.info(
-                "Tầng %s (%s) thiếu khoá API '%s', đánh dấu không khả dụng (kha_dung=False)",
+                "Tầng %s (%s) thiếu cấu hình khoá API, đánh dấu không khả dụng (kha_dung=False)",
                 tang.tang,
                 tang.ten,
-                tang.api_key_env,
             )
         ket_qua.append(tang)
     return ket_qua
