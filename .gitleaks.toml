@@ -1,0 +1,72 @@
+# Cấu hình Gitleaks cho dự án Trợ lý AI Nội bộ.
+#
+# Phục vụ quy tắc tuyệt đối 4 trong AGENTS.md: không ghim khoá API, mật khẩu hay chuỗi
+# kết nối vào mã nguồn. Hướng dẫn sử dụng đầy đủ: .agents/skills/secrets-gitleaks/SKILL.md
+#
+# Nguyên tắc loại trừ: chỉ loại trừ mã bên thứ ba, sản phẩm dựng và thư mục cục bộ đã nằm
+# trong .gitignore. KHÔNG loại trừ docs/, prompts/, config/, backend/, frontend/src/ hay
+# các tệp *.md do dự án viết, vì đó chính là nơi bí mật dễ lọt vào nhất.
+
+title = "Cau hinh Gitleaks - Tro ly AI Noi bo"
+
+[extend]
+# Giữ toàn bộ bộ luật dựng sẵn của Gitleaks làm nền.
+useDefault = true
+
+[allowlist]
+description = "Loai tru ma ben thu ba, san pham dung va thu muc cuc bo"
+
+paths = [
+  # Thư viện Python bên thứ ba: nguồn gốc của toàn bộ 200 dương tính giả đo được
+  # ở lần quét nền ngày 2026-09-23.
+  '''backend/\.venv/''',
+  '''(^|/)\.venv/''',
+  '''(^|/)__pycache__/''',
+  '''(^|/)\.pytest_cache/''',
+
+  # Phụ thuộc và sản phẩm dựng của frontend Angular.
+  '''(^|/)node_modules/''',
+  '''^frontend/dist/''',
+  '''^frontend/\.angular/''',
+
+  # Thư mục cục bộ đã được .gitignore, không bao giờ vào kho mã.
+  '''^specs/''',
+  '''^secret/''',
+  '''^ket_qua_eval/''',
+
+  # Kỹ năng bên thứ ba nhúng vào kho mã, gồm cả tài liệu tham chiếu của chính
+  # kỹ năng secrets-gitleaks (chứa mẫu khoá minh hoạ).
+  '''^\.agents/skills/''',
+
+  # Tệp khoá đã tối giản hoá, không chứa bí mật thật.
+  '''\.min\.(js|css)$''',
+  '''(^|/)package-lock\.json$''',
+]
+
+stopwords = [
+  # Giá trị giữ chỗ trong .env.example và tài liệu hướng dẫn.
+  "example",
+  "placeholder",
+  "changeme",
+  "change_me",
+  "replace_me",
+  "your_api_key",
+  "your_key_here",
+  "your_secret_here",
+  "xxxxxxxx",
+  "dummy",
+  "sample",
+  "TODO",
+]
+
+regexes = [
+  # Chứng thư và khoá công khai không phải bí mật.
+  '''-----BEGIN CERTIFICATE-----''',
+  '''-----BEGIN PUBLIC KEY-----''',
+  # Ảnh nhúng dạng base64 trong tài liệu và giao diện.
+  '''data:image/[^;]+;base64,''',
+]
+
+# Các commit đã được rà soát thủ công và xác nhận là dương tính giả.
+# Mỗi mục phải kèm chú thích nêu rõ người rà soát và lý do.
+commits = []

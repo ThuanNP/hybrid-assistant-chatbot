@@ -42,7 +42,30 @@ Hệ thống được thiết kế theo các quy tắc bảo mật nghiêm ngặ
 - Nội dung chi tiết tin nhắn chat của người dùng **KHÔNG** được ghi vào tập tin nhật ký (logs).
 - Mã định danh yêu cầu `ma_yeu_cau` được truyền xuyên suốt mọi dòng nhật ký để truy vết
   mà không làm rò rỉ nội dung nghiệp vụ.
-- Định kỳ thực hiện quét mã nguồn bằng công cụ `gitleaks` để ngăn chặn rò rỉ bí mật.
+
+### 2.4. Quét Bí mật Tự động bằng Gitleaks
+
+Dự án triển khai ba lớp kiểm soát nhằm ngăn bí mật lọt vào kho mã:
+
+| Lớp kiểm soát | Thời điểm | Cơ chế |
+| :--- | :--- | :--- |
+| Móc `pre-commit` | Trước mỗi lần commit trên máy cá nhân | `gitleaks git --staged`, chặn commit khi phát hiện |
+| Quét thủ công | Trước khi phát hành, khi rà soát định kỳ | `python scripts/quet_bi_mat.py` |
+| Quy trình CI | Mỗi lần đẩy mã, pull request vào `main`, và hằng tuần | `.github/workflows/quet-bi-mat.yml` |
+
+Quy định vận hành:
+
+- Cấu hình quét nằm tại `.gitleaks.toml`; hướng dẫn đầy đủ tại
+  `.agents/skills/secrets-gitleaks/SKILL.md`.
+- Mỗi thành viên **bắt buộc** chạy `python scripts/cai_dat_moc_git.py` ngay sau khi clone
+  kho mã, vì móc git chỉ có hiệu lực trên máy cục bộ và không đi theo kho mã.
+- Mọi kết quả quét đều bật chế độ che giá trị (`--redact`). Báo cáo quét là **tài liệu mật**,
+  lưu trong thư mục `secret/` (đã loại trừ khỏi git), không đính kèm vào issue hay pull request.
+- Khi phát hiện bí mật thật, thứ tự xử lý bắt buộc là: **thu hồi và xoay vòng khoá trước**,
+  sau đó mới gỡ khỏi mã nguồn và viết lại lịch sử git. Bí mật đã vào git phải luôn được
+  coi là đã lộ, kể cả khi kho mã ở chế độ riêng tư.
+- Việc bỏ qua móc kiểm tra bằng `git commit --no-verify` chỉ được chấp nhận trong trường hợp
+  đặc biệt và phải nêu rõ lý do trong mô tả commit.
 
 ## 3. Quản lý Quyền hạn & Mức độ Tự chủ
 
@@ -61,7 +84,7 @@ Nếu phát hiện sự cố hoặc lỗ hổng bảo mật liên quan đến h�
 Issue công khai trên repository. Hãy gửi thông báo bảo mật riêng tư tới:
 
 - **Bộ phận tiếp nhận**: Ban An toàn thông tin / Phòng CNTT Doanh nghiệp
-- **Email**: `security@evn-internal.local` (hoặc email quản trị viên hệ thống)
+- **Email**: `thuannp.hcmc@gmail.com` (quản trị viên hệ thống)
 - **Tiêu đề email**: `[SECURITY VULNERABILITY] <Tóm tắt ngắn gọn sự cố>`
 
 ### 4.2. Thông tin Cần Cung cấp
@@ -74,5 +97,40 @@ Issue công khai trên repository. Hãy gửi thông báo bảo mật riêng tư
 
 ### 4.3. Cam kết Xử lý
 
-- **Bảo mật thông tin**: Chúng tôi cam kết bảo mật danh tính người báo cáo (nếu được yêu cầu)
-  và phối hợp xử lý theo đúng quy trình nội bộ.
+Chúng tôi cam kết bảo mật danh tính người báo cáo (nếu được yêu cầu)
+và phối hợp xử lý theo đúng quy trình nội bộ.
+
+## 5. Miễn trừ Trách nhiệm Pháp lý (Legal Disclaimer)
+
+### 5.1. Phạm vi áp dụng
+
+Tài liệu này là quy định kỹ thuật nội bộ, không phải văn bản tư vấn pháp lý và không thay thế
+cho các quy chế, quy trình an toàn thông tin do cấp có thẩm quyền của doanh nghiệp ban hành.
+Khi có mâu thuẫn, quy chế của doanh nghiệp và pháp luật Việt Nam hiện hành được ưu tiên áp dụng.
+
+### 5.2. Giới hạn của công cụ quét tự động
+
+- Các công cụ quét bí mật (`gitleaks`) hoạt động theo mẫu nhận dạng và ngưỡng entropy đã biết,
+  do đó **không bảo đảm phát hiện được toàn bộ** thông tin xác thực bị ghim cứng.
+- Kết quả quét không phát hiện rò rỉ **không đồng nghĩa** với việc hệ thống không có lỗ hổng,
+  và không thay thế cho rà soát mã nguồn thủ công, kiểm thử thâm nhập hay đánh giá an toàn
+  thông tin độc lập.
+- Các khung tham chiếu được viện dẫn trong tài liệu (OWASP, CWE, PCI-DSS, SOC2, GDPR) chỉ mang
+  tính định hướng kỹ thuật. Việc tuân thủ phải do bộ phận có thẩm quyền đánh giá và công nhận
+  bằng văn bản; tài liệu này không phải là chứng nhận tuân thủ.
+
+### 5.3. Trách nhiệm của người sử dụng
+
+- Người sử dụng và quản trị viên chịu trách nhiệm cấu hình, vận hành hệ thống đúng quy định,
+  bao gồm bảo quản khoá API, mật khẩu và dữ liệu nhãn `NHAY_CAM`.
+- Trợ lý AI có thể tạo ra nội dung không chính xác. Mọi số liệu nghiệp vụ, quyết định chuyên môn
+  và văn bản có giá trị pháp lý phải được nhân sự có thẩm quyền kiểm tra, xác nhận trước khi
+  sử dụng. Hệ thống hoạt động ở trần tự chủ Bậc 2 nêu tại mục 3 và không thay thế thẩm quyền
+  phê duyệt của con người.
+- Việc sử dụng phần mềm bên thứ ba đi kèm dự án tuân theo giấy phép tương ứng của từng phần mềm.
+
+### 5.4. Phạm vi sử dụng
+
+Hệ thống chỉ dành cho mục đích sử dụng nội bộ của doanh nghiệp. Nghiêm cấm sử dụng công cụ và
+tài liệu trong dự án để dò quét, khai thác hay truy cập trái phép vào bất kỳ hệ thống nào mà
+người sử dụng không được trao quyền hợp pháp.

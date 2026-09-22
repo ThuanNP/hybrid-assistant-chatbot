@@ -1,0 +1,56 @@
+name: Quet bi mat
+
+# Phục vụ quy tắc tuyệt đối 4 trong AGENTS.md: kiểm tra rò rỉ bí mật bằng gitleaks.
+# Hướng dẫn đầy đủ: .agents/skills/secrets-gitleaks/SKILL.md
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Quét định kỳ 02:00 UTC thứ Hai hằng tuần để bắt bí mật lọt qua các đường khác.
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lay ma nguon
+        uses: actions/checkout@v4
+        with:
+          # fetch-depth 0 để quét được toàn bộ lịch sử commit, không chỉ commit cuối.
+          fetch-depth: 0
+
+      - name: Cai dat Gitleaks
+        env:
+          # Ghim phiên bản để kết quả quét không đổi ngoài ý muốn khi Gitleaks phát hành bản mới.
+          PHIEN_BAN_GITLEAKS: 8.30.1
+        run: |
+          set -euo pipefail
+          curl -sSL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${PHIEN_BAN_GITLEAKS}/gitleaks_${PHIEN_BAN_GITLEAKS}_linux_x64.tar.gz"
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Quet lich su git
+        run: gitleaks git . --redact --no-banner --report-format sarif --report-path ket-qua.sarif
+
+      - name: Quet cay lam viec
+        run: gitleaks dir . --redact --no-banner
+
+      - name: Luu ket qua SARIF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ket-qua-gitleaks
+          path: ket-qua.sarif
+          # Giữ ngắn ngày vì tệp kết quả là tài liệu mật.
+          retention-days: 7
+          if-no-files-found: ignore

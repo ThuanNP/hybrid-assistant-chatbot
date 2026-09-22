@@ -35,7 +35,7 @@ muốn đổi rule phải hỏi trước.
 3. Ollama/LM Studio chỉ nghe ở địa chỉ vòng lặp hoặc mạng nội bộ Docker; mọi truy cập
    đi qua ứng dụng.
 4. Không ghi khoá API, mật khẩu, chuỗi kết nối vào mã; không ghi nội dung tin nhắn
-   vào nhật ký; kiểm tra rò rỉ bí mật bằng `gitleaks`.
+   vào nhật ký; kiểm tra rò rỉ bí mật theo kỹ năng `.agents/skills/secrets-gitleaks/`.
 
 ## Quy tắc kỹ thuật của dự án
 
@@ -57,10 +57,10 @@ muốn đổi rule phải hỏi trước.
 
 Chỉ sửa đổi các thư mục và tệp sau:
 
-- Thư mục: `.agents/`, `backend/`, `frontend/`, `config/`, `prompts/`, `eval/`,
+- Thư mục: `.agents/`, `.github/`, `backend/`, `frontend/`, `config/`, `prompts/`, `eval/`,
   `scripts/`, `deploy/`, `docs/`, `data/mau/`.
-- Tệp gốc: `AGENTS.md`, `README.md`, `CHANGELOG.md`, `docker-compose.yml`,
-  `.env.example`, `.gitignore`, `.gitattributes`, `.markdownlint.json`,
+- Tệp gốc: `AGENTS.md`, `README.md`, `CHANGELOG.md`, `SECURITY.md`, `docker-compose.yml`,
+  `.env.example`, `.gitignore`, `.gitattributes`, `.gitleaks.toml`, `.markdownlint.json`,
   `.markdownlint-cli2.jsonc`.
 
 ## Phải hỏi trước khi làm
@@ -93,6 +93,5 @@ Các hạng mục sau được tạm hoãn có chủ đích trong giai đoạn h
 - Kiểm tra tài liệu thiết kế: chỉ kiểm tra bằng lệnh
   `npx -p @google/design.md designmd lint DESIGN.md` khi và chỉ khi tập tin `DESIGN.md`
   có thay đổi (tạo mới hoặc chỉnh sửa).
-- Quét bảo mật bí mật: chạy `gitleaks` (`gitleaks detect`) để bảo đảm không rò rỉ.
 - Sau mỗi prompt: tự chạy TỰ ĐÁNH GIÁ và trả về bảng kết quả.
 - Quy trình phát hành: tuân thủ theo quy định tại `.agents/rules/versioning.md`.
