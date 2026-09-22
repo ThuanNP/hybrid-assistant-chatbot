@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.db
+.DS_Store
+node_modules/
+frontend/dist/
+frontend/.angular/
+ket_qua_eval/
+secret/
+~$*

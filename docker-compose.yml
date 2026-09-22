@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-tro_ly_dien_luc}
+    volumes:
+      - du_lieu_postgres:/var/lib/postgresql/data
+    # Cổng 127.0.0.1:5432 CHỈ ở dev để chạy alembic và pytest từ máy.
+    # Chú thích: không bao giờ mở 0.0.0.0; nếu máy đã có PostgreSQL chiếm 5432 thì đổi cổng bên trái, ví dụ 127.0.0.1:55432.
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-tro_ly_dien_luc}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    # đây là cách container trên Docker Engine cho Linux gọi được Ollama chạy trên máy chủ; Docker Desktop cho Windows/macOS đã có sẵn tên này nên dòng này vô hại, giữ để chạy được cả trên máy chủ Linux.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend/index.html:/usr/share/nginx/html/index.html:ro
+
+volumes:
+  du_lieu_postgres:
