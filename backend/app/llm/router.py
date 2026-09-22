@@ -264,8 +264,8 @@ async def goi_mo_hinh(
                     toc_do_tok_s=kq_local.toc_do_tok_s,
                     so_lan_thu=1,
                     danh_sach_tang_da_hong=list(danh_sach_tang_da_hong),
-                    da_cat_ngu_canh=False,
-                    so_luot_bi_cat=0,
+                    da_cat_ngu_canh=bool(tuy_chon.get("da_cat_ngu_canh", False)),
+                    so_luot_bi_cat=int(tuy_chon.get("so_luot_bi_cat", 0)),
                     ly_do_chuoi=kq_chuoi.ly_do_chuoi,
                 )
                 _ghi_nhat_ky(kq, ma_yeu_cau)
@@ -294,8 +294,8 @@ async def goi_mo_hinh(
                 toc_do_tok_s=toc_do,
                 so_lan_thu=kq_dm.so_lan_thu,
                 danh_sach_tang_da_hong=list(danh_sach_tang_da_hong),
-                da_cat_ngu_canh=False,
-                so_luot_bi_cat=0,
+                da_cat_ngu_canh=bool(tuy_chon.get("da_cat_ngu_canh", False)),
+                so_luot_bi_cat=int(tuy_chon.get("so_luot_bi_cat", 0)),
                 ly_do_chuoi=kq_chuoi.ly_do_chuoi,
             )
             _ghi_nhat_ky(kq, ma_yeu_cau)
@@ -442,8 +442,8 @@ async def goi_mo_hinh_theo_dong(
                             toc_do_tok_s=mau_local.toc_do_tok_s,
                             so_lan_thu=1,
                             danh_sach_tang_da_hong=list(danh_sach_tang_da_hong),
-                            da_cat_ngu_canh=False,
-                            so_luot_bi_cat=0,
+                            da_cat_ngu_canh=bool(tuy_chon.get("da_cat_ngu_canh", False)),
+                            so_luot_bi_cat=int(tuy_chon.get("so_luot_bi_cat", 0)),
                             ly_do_chuoi=kq_chuoi.ly_do_chuoi,
                         )
                         _ghi_nhat_ky(kq, ma_yeu_cau)
@@ -483,8 +483,8 @@ async def goi_mo_hinh_theo_dong(
                             toc_do_tok_s=toc_do,
                             so_lan_thu=1,
                             danh_sach_tang_da_hong=list(danh_sach_tang_da_hong),
-                            da_cat_ngu_canh=False,
-                            so_luot_bi_cat=0,
+                            da_cat_ngu_canh=bool(tuy_chon.get("da_cat_ngu_canh", False)),
+                            so_luot_bi_cat=int(tuy_chon.get("so_luot_bi_cat", 0)),
                             ly_do_chuoi=kq_chuoi.ly_do_chuoi,
                         )
                         _ghi_nhat_ky(kq, ma_yeu_cau)

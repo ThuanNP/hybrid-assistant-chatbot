@@ -116,3 +116,4 @@ cai_dat_chung:
   giay_gian_cach_dau: 0.5
   gioi_han_token_ra: 1024
   ngu_canh_du_phong_token: 512
+  he_so_an_toan_token: 1.15

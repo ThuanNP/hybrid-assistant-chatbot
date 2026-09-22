@@ -24,6 +24,7 @@ from app.config import (
     cau_hinh,
 )
 from app.core.loi import LoiDauVao, LoiHeThong, LoiTamThoi, LoiVinhVien
+from app.llm.dem_token import dem_token
 
 logger = logging.getLogger(__name__)
 
@@ -322,7 +323,12 @@ async def _goi_dam_may_mot_lan(
             do_tre_ms = round((time.perf_counter() - t0) * 1000, 2)
             noi_dung, token_vao, token_ra, model_thuc = _trich_xuat_noi_dung_va_usage(phan_hoi)
             la_openrouter = _la_openrouter_auto(tang)
-            # TODO: nếu nhà cung cấp không trả usage thì ước lượng bằng dem_token ở PROMPT 9
+            if token_vao == 0 and tin_nhan:
+                token_vao = sum(
+                    dem_token(m.get("content", "")) for m in tin_nhan if isinstance(m, dict)
+                )
+            if token_ra == 0 and noi_dung:
+                token_ra = dem_token(noi_dung)
             return KetQuaGoiDamMay(
                 noi_dung=noi_dung,
                 model=model_thuc or tang.model,
@@ -382,6 +388,7 @@ async def _goi_dam_may_theo_dong(
             token_vao = 0
             token_ra = 0
 
+            van_ban_da_nhan = ""
             async for chunk in phan_hoi_stream:
                 chunk_model = getattr(chunk, "model", None)
                 if chunk_model:
@@ -403,6 +410,7 @@ async def _goi_dam_may_theo_dong(
 
                 if noi_dung_chunk:
                     da_phat_mau = True
+                    van_ban_da_nhan += noi_dung_chunk
                     token_ra += 1
                     yield KetQuaDongDamMay(
                         noi_dung=noi_dung_chunk,
@@ -413,7 +421,12 @@ async def _goi_dam_may_theo_dong(
                     )
 
             do_tre_ms = round((time.perf_counter() - t0) * 1000, 2)
-            # TODO: nếu nhà cung cấp không trả usage khi stream, ước lượng bằng dem_token ở PROMPT 9
+            if token_vao == 0 and tin_nhan:
+                token_vao = sum(
+                    dem_token(m.get("content", "")) for m in tin_nhan if isinstance(m, dict)
+                )
+            if token_ra == 0 and van_ban_da_nhan:
+                token_ra = dem_token(van_ban_da_nhan)
             yield KetQuaDongDamMay(
                 noi_dung="",
                 da_xong=True,

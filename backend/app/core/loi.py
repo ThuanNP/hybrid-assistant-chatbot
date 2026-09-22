@@ -108,3 +108,25 @@ class LoiHetChuoiDuPhong(LoiHeThong):
         self.danh_sach_ly_do = danh_sach_ly_do or {}
         self.ly_do = self.danh_sach_ly_do
 
+
+class LoiNguCanhQuaDai(LoiHeThong):
+    """Ngoại lệ khi riêng lời nhắc hệ thống cộng tin nhắn mới vượt ngân sách ngữ cảnh."""
+
+    ma_loi: str = "NGU_CANH_QUA_DAI"
+
+    def __init__(
+        self,
+        thong_diep: str = "Ngữ cảnh hội thoại vượt quá ngân sách cho phép của mô hình",
+        *,
+        ma_yeu_cau: str = "",
+        so_token: int = 0,
+        ngan_sach: int = 0,
+    ) -> None:
+        super().__init__(thong_diep, ma_yeu_cau=ma_yeu_cau)
+        self.so_token = so_token
+        self.ngan_sach = ngan_sach
+
+
+# Bí danh NGU_CANH_QUA_DAI cho phép ném hoặc bắt lỗi theo mã lỗi nghiệp vụ
+NGU_CANH_QUA_DAI = LoiNguCanhQuaDai
+

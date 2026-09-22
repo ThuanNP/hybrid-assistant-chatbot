@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.config import CauHinhBacLocal, CauHinhHeThong, cau_hinh
 from app.core.loi import LoiDauVao, LoiHetBacLocal
+from app.llm.dem_token import dem_token
 
 logger = logging.getLogger(__name__)
 
@@ -192,8 +193,12 @@ class BoChay(ABC):
 
         do_tre_ms = round((time.perf_counter() - t0) * 1000, 2)
         mau = self._doc_phan_hoi(phan_hoi.json())
-        token_ra = mau.token_ra or 0
-        # TODO: nếu bộ chạy không trả số token thì ước lượng bằng dem_token ở PROMPT 9
+        token_vao = (
+            mau.token_vao
+            if mau.token_vao is not None
+            else sum(dem_token(m.get("content", "")) for m in messages if isinstance(m, dict))
+        )
+        token_ra = mau.token_ra if mau.token_ra is not None else dem_token(mau.noi_dung)
         sinh_giay = mau.thoi_gian_sinh_giay if mau.thoi_gian_sinh_giay is not None else do_tre_ms / 1000
         return KetQuaGoiLocal(
             noi_dung=mau.noi_dung,
@@ -202,7 +207,7 @@ class BoChay(ABC):
             thoi_gian_nap_ms=mau.thoi_gian_nap_ms if mau.thoi_gian_nap_ms is not None else do_tre_ms,
             do_tre_ms=do_tre_ms,
             toc_do_tok_s=_tinh_toc_do(token_ra, sinh_giay),
-            token_vao=mau.token_vao or 0,
+            token_vao=token_vao,
             token_ra=token_ra,
             ma_yeu_cau=ma_yeu_cau,
         )
@@ -214,6 +219,7 @@ class BoChay(ABC):
         t_dau_tien: float | None = None
         token_vao = 0
         token_ra = 0
+        van_ban_da_nhan = ""
         async for dong in phan_hoi.aiter_lines():
             mau = self._doc_dong(dong)
             if mau is None:
@@ -221,6 +227,7 @@ class BoChay(ABC):
             token_vao = mau.token_vao if mau.token_vao is not None else token_vao
             if mau.noi_dung:
                 t_dau_tien = t_dau_tien or time.perf_counter()
+                van_ban_da_nhan += mau.noi_dung
                 token_ra += 1
                 yield KetQuaDongLocal(
                     noi_dung=mau.noi_dung, model=model, bac="", ma_yeu_cau=ma_yeu_cau
@@ -231,7 +238,8 @@ class BoChay(ABC):
 
         t_ket_thuc = time.perf_counter()
         moc_dau = t_dau_tien or t_ket_thuc
-        # TODO: nếu bộ chạy không trả số token thì ước lượng bằng dem_token ở PROMPT 9
+        if token_ra == 0 and van_ban_da_nhan:
+            token_ra = dem_token(van_ban_da_nhan)
         yield KetQuaDongLocal(
             noi_dung="",
             da_xong=True,
