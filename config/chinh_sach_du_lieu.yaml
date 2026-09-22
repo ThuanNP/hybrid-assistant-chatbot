@@ -1,0 +1,27 @@
+# Chính sách bảo vệ dữ liệu nhạy cảm và phân loại phòng ban
+# Căn cứ: Quy tắc tuyệt đối 2 trong AGENTS.md
+
+# Bộ phát hiện tối giản, thiên về an toàn; việc nhận nhầm thành nhạy cảm
+# chỉ khiến câu hỏi được xử lý ở local, không gây rò rỉ.
+bieu_thuc_nhay_cam:
+  ma_khach_hang: "(?i)\\bKH\\d{8}\\b"
+  so_dien_thoai: "(?<!\\d)0(?:[.\\s]?\\d){9}(?!\\d)"
+  so_cccd: "(?<!\\d)\\d{12}(?!\\d)"
+  chi_so_cong_to: "(?i)(?:chỉ số công tơ|chi so cong to)[^\\d\\n\\r]{0,25}\\d+|\\d+[^\\d\\n\\r]{0,25}(?:chỉ số công tơ|chi so cong to)"
+  email: "[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+"
+
+# Phòng ban chỉ được định tuyến qua mô hình nội bộ local, không bao giờ gửi ra đám mây
+phong_ban_chi_local:
+  - CHAM_SOC_KHACH_HANG
+  - KINH_DOANH
+
+# Phòng ban mặc định khi người dùng chưa có thông tin phòng ban
+phong_ban_mac_dinh: CNTT
+
+# Danh sách phòng ban mẫu trong hệ thống doanh nghiệp điện lực
+phong_ban_mau:
+  - KINH_DOANH
+  - KY_THUAT
+  - AN_TOAN
+  - CHAM_SOC_KHACH_HANG
+  - CNTT

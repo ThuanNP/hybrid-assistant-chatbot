@@ -52,6 +52,9 @@ muốn đổi rule phải hỏi trước.
     không do model.
 8. Trần tự chủ L2: chỉ tra cứu, diễn giải, soạn thảo; không có trường `hop_le`
     hay `duoc_duyet`.
+9. Công cụ Python (pytest, pyright, ruff...) chỉ cài trong `backend/.venv`; luôn chạy
+   từ `backend/` bằng `uv run --frozen <công cụ>` (ví dụ `uv run --frozen pytest -q`),
+   không gọi tên công cụ trần và không dựa vào việc kích hoạt venv.
 
 ## Phạm vi làm việc
 
