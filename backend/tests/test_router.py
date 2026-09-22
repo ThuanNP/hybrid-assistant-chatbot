@@ -230,14 +230,17 @@ async def test_stream_loi_truoc_manh_dau_roi_tang(monkeypatch: pytest.MonkeyPatc
     ):
         cac_manh.append(manh)
 
-    assert len(cac_manh) == 3
-    assert cac_manh[0].loai == "manh" and cac_manh[0].noi_dung == "Xin "
-    assert cac_manh[1].loai == "manh" and cac_manh[1].noi_dung == "chào các bạn!"
-    assert cac_manh[2].loai == "xong"
-    assert cac_manh[2].ket_qua is not None
-    assert cac_manh[2].ket_qua.tang == 1
-    assert cac_manh[2].ket_qua.noi_dung == "Xin chào các bạn!"
-    assert cac_manh[2].ket_qua.danh_sach_tang_da_hong == [0]
+    assert len(cac_manh) == 4
+    assert cac_manh[0].loai == "bat_dau"
+    assert cac_manh[0].nguon == "dam_may"
+    assert cac_manh[0].tang == 1
+    assert cac_manh[1].loai == "manh" and cac_manh[1].noi_dung == "Xin "
+    assert cac_manh[2].loai == "manh" and cac_manh[2].noi_dung == "chào các bạn!"
+    assert cac_manh[3].loai == "xong"
+    assert cac_manh[3].ket_qua is not None
+    assert cac_manh[3].ket_qua.tang == 1
+    assert cac_manh[3].ket_qua.noi_dung == "Xin chào các bạn!"
+    assert cac_manh[3].ket_qua.danh_sach_tang_da_hong == [0]
 
 
 @pytest.mark.asyncio
@@ -280,12 +283,15 @@ async def test_stream_loi_sau_hai_manh_tra_manh_loi_khong_goi_tang_sau(
     ):
         cac_manh.append(manh)
 
-    assert len(cac_manh) == 3
-    assert cac_manh[0].loai == "manh" and cac_manh[0].noi_dung == "Đoạn 1 "
-    assert cac_manh[1].loai == "manh" and cac_manh[1].noi_dung == "Đoạn 2 "
-    assert cac_manh[2].loai == "loi"
-    assert cac_manh[2].noi_dung == "Đoạn 1 Đoạn 2 "
-    assert cac_manh[2].ket_qua is None
+    assert len(cac_manh) == 4
+    assert cac_manh[0].loai == "bat_dau"
+    assert cac_manh[0].nguon == "local"
+    assert cac_manh[0].tang == 0
+    assert cac_manh[1].loai == "manh" and cac_manh[1].noi_dung == "Đoạn 1 "
+    assert cac_manh[2].loai == "manh" and cac_manh[2].noi_dung == "Đoạn 2 "
+    assert cac_manh[3].loai == "loi"
+    assert cac_manh[3].noi_dung == "Đoạn 1 Đoạn 2 "
+    assert cac_manh[3].ket_qua is None
     assert mock_dam_may.call_count == 0
 
 

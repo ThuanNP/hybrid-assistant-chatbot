@@ -83,11 +83,17 @@ class KetQuaGoi(BaseModel):
 class ManhPhatRa(BaseModel):
     """Mảnh dữ liệu phát theo dòng (SSE) trả về cho người dùng."""
 
-    loai: Literal["manh", "xong", "loi", "hang_doi"]
+    loai: Literal["bat_dau", "manh", "xong", "loi", "hang_doi"]
     noi_dung: str = ""
     ket_qua: KetQuaGoi | None = None
     vi_tri: int | None = None
     uoc_luong_giay: float | None = None
+    nguon: Literal["local", "dam_may"] | str | None = None
+    tang: int | None = None
+    bac_local: str | None = None
+    ten_model: str | None = None
+    da_cat_ngu_canh: bool = False
+    so_luot_bi_cat: int = 0
 
 
 def _tinh_toc_do(so_token: int, thoi_gian_giay: float) -> float:
@@ -574,6 +580,7 @@ async def goi_mo_hinh_theo_dong(
     for t in chuoi:
         van_ban_da_nhan = ""
         da_phat_mau = False
+        da_phat_bat_dau = False
         try:
             if t.so == 0:
                 if dp.can_vao_hang() or bool(tuy_chon.get("luon_vao_hang")):
@@ -619,6 +626,17 @@ async def goi_mo_hinh_theo_dong(
                         cfg=cfg,
                         tuy_chon=tuy_chon,
                     ):
+                        if not da_phat_bat_dau:
+                            da_phat_bat_dau = True
+                            yield ManhPhatRa(
+                                loai="bat_dau",
+                                nguon="local",
+                                tang=0,
+                                bac_local=mau_local.bac,
+                                ten_model=mau_local.model,
+                                da_cat_ngu_canh=bool(tuy_chon.get("da_cat_ngu_canh", False)),
+                                so_luot_bi_cat=int(tuy_chon.get("so_luot_bi_cat", 0)),
+                            )
                         if not mau_local.da_xong:
                             if mau_local.noi_dung:
                                 van_ban_da_nhan += mau_local.noi_dung
@@ -712,6 +730,17 @@ async def goi_mo_hinh_theo_dong(
                     cfg=cfg,
                     tuy_chon=tuy_chon,
                 ):
+                    if not da_phat_bat_dau:
+                        da_phat_bat_dau = True
+                        yield ManhPhatRa(
+                            loai="bat_dau",
+                            nguon="dam_may",
+                            tang=t.so,
+                            bac_local=None,
+                            ten_model=mau_dm.model or tang_dm.model,
+                            da_cat_ngu_canh=bool(tuy_chon.get("da_cat_ngu_canh", False)),
+                            so_luot_bi_cat=int(tuy_chon.get("so_luot_bi_cat", 0)),
+                        )
                     if not mau_dm.da_xong:
                         if mau_dm.noi_dung:
                             van_ban_da_nhan += mau_dm.noi_dung
@@ -762,8 +791,8 @@ async def goi_mo_hinh_theo_dong(
 
         except (LoiDauVao, LoiHangDoiDay, LoiVuotNganSach):
             raise
-        except Exception as err:
-            if da_phat_mau:
+        except Exception as err:  # noqa: BLE001 - Bắt ngoại lệ để chuyển tầng sau hoặc phát mảnh lỗi
+            if da_phat_bat_dau or da_phat_mau:
                 logger.warning(
                     "[%s] Tầng %s bị ngắt giữa chừng khi đang phát dòng: %s. Trả mảnh lỗi.",
                     ma_yeu_cau,
@@ -786,6 +815,13 @@ async def goi_mo_hinh_theo_dong(
     if all(t.so == 0 for t in chuoi):
         kq_ban = _tao_ket_qua_khi_ban(ma_yeu_cau, kq_chuoi.ly_do_chuoi, danh_sach_tang_da_hong)
         _ghi_nhat_ky(kq_ban, ma_yeu_cau)
+        yield ManhPhatRa(
+            loai="bat_dau",
+            nguon="local",
+            tang=0,
+            bac_local=None,
+            ten_model="khong_co",
+        )
         yield ManhPhatRa(loai="manh", noi_dung=kq_ban.noi_dung, ket_qua=None)
         yield ManhPhatRa(loai="xong", noi_dung="", ket_qua=kq_ban)
         return

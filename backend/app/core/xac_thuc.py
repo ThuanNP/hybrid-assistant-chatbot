@@ -2,6 +2,9 @@
 
 from dataclasses import dataclass, field
 
+from fastapi import HTTPException
+
+from app.config import cau_hinh
 from app.llm.chinh_sach import CheDoDinhTuyen
 
 
@@ -18,4 +21,13 @@ class NguoiDung:
     che_do_dinh_tuyen: CheDoDinhTuyen | str | None = None
 
 
-# TODO: Cài đặt giải mã JWT và chế độ xác thực giả lập dev
+async def lay_nguoi_dung_hien_tai() -> NguoiDung:
+    """Lấy thông tin người dùng hiện tại phục vụ phân quyền và định tuyến.
+
+    Khi XAC_THUC_GIA=true, tạm thời trả về đối tượng NguoiDung giả lập.
+    PROMPT 12 sẽ hoàn thiện giải mã JWT, trả lỗi 401 và chặn khởi động ở prod.
+    """
+    if cau_hinh.xac_thuc_gia:
+        return NguoiDung()
+
+    raise HTTPException(status_code=401, detail="Chưa xác thực người dùng")
