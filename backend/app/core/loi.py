@@ -50,3 +50,45 @@ class LoiHetBacLocal(LoiHeThong):
         super().__init__(thong_diep, ma_yeu_cau=ma_yeu_cau)
         self.ly_do_bac_1 = ly_do_bac_1
         self.ly_do_bac_2 = ly_do_bac_2
+
+
+class LoiTamThoi(LoiHeThong):
+    """Ngoại lệ khi gặp lỗi tạm thời (429, 500, 502, 503, 504, quá hạn, lỗi mạng).
+
+    Lỗi này có thể tự phục hồi, được phép thử lại tối đa số lần cấu hình với
+    chính sách giãn cách lũy thừa trước khi router quyết định chuyển tầng.
+    """
+
+    def __init__(
+        self,
+        thong_diep: str,
+        *,
+        ma_trang_thai: int | None = None,
+        ma_yeu_cau: str = "",
+        chi_tiet: Any = None,
+        so_lan_thu: int = 1,
+    ) -> None:
+        super().__init__(thong_diep, ma_yeu_cau=ma_yeu_cau)
+        self.ma_trang_thai = ma_trang_thai
+        self.chi_tiet = chi_tiet
+        self.so_lan_thu = so_lan_thu
+
+
+class LoiVinhVien(LoiHeThong):
+    """Ngoại lệ khi gặp lỗi vĩnh viễn (401 sai khoá, 403 không có quyền, 404 sai model).
+
+    Lỗi cấu hình hoặc quyền hạn không thể tự phục hồi, tuyệt đối không thử lại,
+    router sẽ lập tức chuyển sang tầng tiếp theo trong chuỗi định tuyến.
+    """
+
+    def __init__(
+        self,
+        thong_diep: str,
+        *,
+        ma_trang_thai: int | None = None,
+        ma_yeu_cau: str = "",
+        chi_tiet: Any = None,
+    ) -> None:
+        super().__init__(thong_diep, ma_yeu_cau=ma_yeu_cau)
+        self.ma_trang_thai = ma_trang_thai
+        self.chi_tiet = chi_tiet
