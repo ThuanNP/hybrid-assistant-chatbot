@@ -28,6 +28,12 @@ và tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
   của model local để câu trả lời không bị phần suy luận chiếm hết giới hạn token ra.
 - `scripts/kiem_tra_bo_chay.py` gọi thử model bậc chinh với đúng `num_ctx` và `keep_alive`.
 - Chỉ quá hạn, lỗi kết nối và lỗi 5xx kích hoạt hạ cấp bậc local; lỗi khác nổi lên.
+- `cua_so_ngu_canh` bắt buộc cho mọi tầng đám mây (bổ sung cho tầng 2-4) để tính ngân sách
+  token theo cửa sổ nhỏ nhất của chuỗi.
+- `SO_LUONG_DONG_THOI` để trống thì lấy `num_parallel` của hồ sơ GPU; `DO_DAI_HANG_DOI_TOI_DA`
+  mặc định 20; biến để trống trong `.env` coi như chưa khai báo.
+- `AGENTS.md` quy tắc tuyệt đối 1 ghi rõ httpx tới bộ chạy chỉ ở `bo_chay_local.py`, litellm chỉ
+  ở `nha_cung_cap_dam_may.py`, `router.py` gọi qua hai mô-đun đó.
 - Ghim `python-dotenv` trong `backend/requirements.txt` (vốn là phụ thuộc bắt buộc
   của `pydantic-settings`, nay được `config.py` dùng trực tiếp).
 

@@ -149,6 +149,7 @@ def test_tang_thieu_khoa_danh_dau_khong_kha_dung(
                 "gia_vao_usd_moi_trieu": 1.0,
                 "gia_ra_usd_moi_trieu": 2.0,
                 "timeout_giay": 60,
+                "cua_so_ngu_canh": 128000,
             },
             {
                 "tang": 2,
@@ -158,6 +159,7 @@ def test_tang_thieu_khoa_danh_dau_khong_kha_dung(
                 "gia_vao_usd_moi_trieu": 1.0,
                 "gia_ra_usd_moi_trieu": 2.0,
                 "timeout_giay": 60,
+                "cua_so_ngu_canh": 128000,
             },
         ],
         "cai_dat_chung": {
@@ -276,3 +278,22 @@ def test_doc_dung_tep_env_duoc_truyen_va_khong_co_bi_mat_mac_dinh(
     assert cau_hinh_kq.ho_so_gpu_dang_chon == "gpu12"
     assert cau_hinh_kq.database_url is None
     assert cau_hinh_kq.app_secret is None
+
+
+def test_bien_rong_dung_mac_dinh_theo_ho_so(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """SO_LUONG_DONG_THOI để trống thì lấy num_parallel của hồ sơ GPU, không làm hỏng khởi động."""
+    for ten_bien in ("HO_SO_GPU", "LOAI_BO_CHAY", "SO_LUONG_DONG_THOI", "DO_DAI_HANG_DOI_TOI_DA"):
+        monkeypatch.delenv(ten_bien, raising=False)
+    tep_env = tmp_path / ".env"
+    tep_env.write_text(
+        "HO_SO_GPU=gpu16\nLOAI_BO_CHAY=ollama\nSO_LUONG_DONG_THOI=\nDO_DAI_HANG_DOI_TOI_DA=\n",
+        encoding="utf-8",
+    )
+
+    cau_hinh_kq = nap_cau_hinh(duong_dan_env=tep_env)
+
+    assert cau_hinh_kq.so_luong_dong_thoi == 2
+    assert cau_hinh_kq.do_dai_hang_doi_toi_da == 20

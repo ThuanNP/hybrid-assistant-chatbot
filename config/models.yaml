@@ -90,6 +90,7 @@ chuoi_dam_may:                    # thứ tự này là thứ tự thử
     gia_vao_usd_moi_trieu: 0.50
     gia_ra_usd_moi_trieu: 3.00
     timeout_giay: 90
+    cua_so_ngu_canh: 128000           # model do openrouter/auto chọn thay đổi; lấy mức thấp an toàn
     ghi_chu: "Không tiền định - chỉ làm dự phòng"
 
   - tang: 3
@@ -99,6 +100,7 @@ chuoi_dam_may:                    # thứ tự này là thứ tự thử
     gia_vao_usd_moi_trieu: 3.00
     gia_ra_usd_moi_trieu: 15.00
     timeout_giay: 90
+    cua_so_ngu_canh: 200000
 
   - tang: 4
     ten: openai
@@ -107,6 +109,7 @@ chuoi_dam_may:                    # thứ tự này là thứ tự thử
     gia_vao_usd_moi_trieu: 2.00
     gia_ra_usd_moi_trieu: 12.00
     timeout_giay: 90
+    cua_so_ngu_canh: 400000
 
 cai_dat_chung:
   so_lan_thu_lai_moi_tang: 2

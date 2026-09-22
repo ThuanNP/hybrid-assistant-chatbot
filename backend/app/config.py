@@ -46,7 +46,8 @@ class CauHinhTangDamMay(BaseModel):
     gia_vao_usd_moi_trieu: float
     gia_ra_usd_moi_trieu: float
     timeout_giay: int = 90
-    cua_so_ngu_canh: int | None = None
+    # Bắt buộc: ngân sách token của hội thoại tính theo cửa sổ nhỏ nhất trong chuỗi
+    cua_so_ngu_canh: int
     tham_so_them: dict[str, Any] = Field(default_factory=dict)
     ghi_chu: str | None = None
     kha_dung: bool = True
@@ -96,8 +97,9 @@ class CaiDatMoiTruong(BaseSettings):
 
     cors_origins: str = "http://localhost:4200,http://localhost:8080"
     ngan_sach_ngay_usd: float = 10.0
-    so_luong_dong_thoi: int = 5
-    do_dai_hang_doi_toi_da: int = 50
+    # Để trống thì lấy num_parallel của hồ sơ GPU (phải khớp OLLAMA_NUM_PARALLEL)
+    so_luong_dong_thoi: int | None = None
+    do_dai_hang_doi_toi_da: int = 20
     timeout_giay: int = 60
     ghi_noi_dung: bool = False
     xac_thuc_gia: bool = True
@@ -105,6 +107,7 @@ class CaiDatMoiTruong(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=DUONG_DAN_ENV_MAC_DINH,
         env_file_encoding="utf-8",
+        env_ignore_empty=True,
         extra="ignore",
     )
 
@@ -300,6 +303,7 @@ def _doc_cai_dat_moi_truong(duong_dan_env: Path) -> CaiDatMoiTruong:
         model_config = SettingsConfigDict(
             env_file=duong_dan_env,
             env_file_encoding="utf-8",
+            env_ignore_empty=True,
             extra="ignore",
         )
 
@@ -346,7 +350,7 @@ def nap_cau_hinh(
         database_url=database_url,
         moi_truong=cai_dat_env.moi_truong,
         ngan_sach_ngay_usd=cai_dat_env.ngan_sach_ngay_usd,
-        so_luong_dong_thoi=cai_dat_env.so_luong_dong_thoi,
+        so_luong_dong_thoi=cai_dat_env.so_luong_dong_thoi or ho_so_chon["num_parallel"],
         do_dai_hang_doi_toi_da=cai_dat_env.do_dai_hang_doi_toi_da,
         timeout_giay=cai_dat_env.timeout_giay,
         ghi_noi_dung=cai_dat_env.ghi_noi_dung,

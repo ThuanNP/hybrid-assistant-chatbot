@@ -22,11 +22,13 @@ muốn đổi rule phải hỏi trước.
 
 ## Quy tắc tuyệt đối
 
-1. Mọi lời gọi model đi qua ĐÚNG MỘT nơi: `goi_mo_hinh()`, `goi_mo_hinh_theo_dong()`
-   (sau này thêm `goi_nhung()`) trong `backend/app/llm/router.py`. Cấm gọi httpx tới
-   bộ chạy hoặc litellm ở nơi khác (Ngoại lệ duy nhất: `scripts/kiem_tra_bo_chay.py`
-   và `scripts/kiem_tra_nha_cung_cap.py` được phép gọi thẳng bộ chạy và litellm ngoài
-   `router.py`, vì chúng là công cụ chẩn đoán chạy tay, không nằm trong ứng dụng).
+1. Mọi lời gọi model trong ứng dụng đi qua ĐÚNG MỘT cửa: `goi_mo_hinh()`,
+   `goi_mo_hinh_theo_dong()` (sau này thêm `goi_nhung()`) trong `backend/app/llm/router.py`.
+   Phía sau cửa này, httpx tới bộ chạy chỉ nằm trong `backend/app/llm/bo_chay_local.py`,
+   litellm chỉ nằm trong `backend/app/llm/nha_cung_cap_dam_may.py`; `router.py` gọi qua
+   hai mô-đun đó. Cấm gọi httpx tới bộ chạy hoặc litellm ở mọi nơi khác (Ngoại lệ duy nhất:
+   `scripts/kiem_tra_bo_chay.py` và `scripts/kiem_tra_nha_cung_cap.py` được phép gọi thẳng
+   bộ chạy và litellm, vì chúng là công cụ chẩn đoán chạy tay, không nằm trong ứng dụng).
 2. Dữ liệu nhãn `NHAY_CAM` (mã khách hàng, số điện thoại, số và chỉ số công tơ, số CCCD)
    hoặc thuộc phòng ban cấu hình `chi_local` KHÔNG BAO GIỜ được gửi ra đám mây, kể cả khi
    model local hỏng; hết chuỗi local thì trả lời có kiểm soát, không im lặng.
