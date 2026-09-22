@@ -171,7 +171,11 @@ def _doc_bien_gop(duong_dan_env: Path | None) -> dict[str, str]:
 def _kiem_tra_phan_giai_host(host: str) -> bool:
     """Kiểm tra xem tên miền máy chủ có phân giải được qua DNS hay không."""
     try:
-        socket.gethostbyname(host)
+        ip = socket.gethostbyname(host)
+        # Trên Windows khi có Docker Desktop, host.docker.internal trỏ về IP của WSL (172.x),
+        # trong khi dịch vụ local của máy chủ Windows (Ollama) lắng nghe tại loopback (127.0.0.1).
+        if host == "host.docker.internal" and not ip.startswith("127."):
+            return False
         return True
     except (socket.gaierror, OSError):
         return False
