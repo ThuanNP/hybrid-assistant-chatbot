@@ -1,2 +1,112 @@
-# Cấu hình danh sách mô hình và chuỗi định tuyến
-# TODO: Khai báo chi tiết mô hình theo quy định tại config/*.yaml
+# Rà soát lần cuối: 22/09/2026 - kiểm tra lại mỗi quý
+
+bo_chay:
+  loai: ${LOAI_BO_CHAY}          # ollama | lmstudio
+  dia_chi: ${DIA_CHI_BO_CHAY}
+  timeout_giay: 120
+
+ho_so_gpu:                        # chọn bằng biến HO_SO_GPU
+  # gpu6: VRAM ước tính ~4-5 GB khi chạy bậc chinh, phù hợp máy trạm/laptop GPU 6 GB
+  gpu6:
+    chinh:
+      model: qwen3.5:4b-q4_K_M
+      num_ctx: 8192
+    nho:
+      model: qwen3.5:2b-q4_K_M
+      num_ctx: 4096
+    num_parallel: 1
+    so_model_nap_cung_luc: 1
+
+  # gpu8: laptop/máy trạm 8 GB, khoảng 6,5 GB cho bậc chinh, không nạp đồng thời bậc nho
+  gpu8:
+    chinh:
+      model: qwen3.5:4b-q8_0
+      num_ctx: 16384
+    nho:
+      model: qwen3.5:2b-q8_0
+      num_ctx: 8192
+    num_parallel: 1
+    so_model_nap_cung_luc: 1
+
+  # gpu12: VRAM ước tính ~9-11 GB, máy trạm/server GPU 12 GB, nạp đồng thời 2 model
+  gpu12:
+    chinh:
+      model: qwen3.5:9b-q4_K_M
+      num_ctx: 16384
+    nho:
+      model: qwen3.5:4b-q4_K_M
+      num_ctx: 8192
+    num_parallel: 1
+    so_model_nap_cung_luc: 2
+
+  # gpu16: VRAM ước tính ~12-14 GB, máy trạm/server GPU 16 GB, nạp đồng thời 2 model
+  gpu16:
+    chinh:
+      model: qwen3.5:9b-q4_K_M
+      num_ctx: 32768
+    nho:
+      model: qwen3.5:2b-q8_0
+      num_ctx: 8192
+    num_parallel: 2
+    so_model_nap_cung_luc: 2
+
+  # gpu24: VRAM ước tính ~18-22 GB, máy trạm/server GPU 24 GB (RTX 3090/4090), chỉ nạp bậc chinh
+  gpu24:
+    chinh:
+      model: qwen3.5:27b-q4_K_M
+      num_ctx: 16384
+    nho:
+      model: qwen3.5:9b-q4_K_M
+      num_ctx: 16384
+    num_parallel: 1
+    so_model_nap_cung_luc: 1
+
+# so_model_nap_cung_luc phải KHỚP OLLAMA_MAX_LOADED_MODELS. Bằng 1 nghĩa là bậc chinh và bậc nho không cùng nằm trong VRAM.
+
+local_chung:
+  keep_alive: 30m
+  nhiet_do: 0.3
+  nguong_hang_doi_ha_cap: 3
+
+chuoi_dam_may:                    # thứ tự này là thứ tự thử
+  - tang: 1
+    ten: gemini
+    model: gemini/gemini-3.5-flash-lite
+    api_key_env: GOOGLE_API_KEY
+    gia_vao_usd_moi_trieu: 0.30
+    gia_ra_usd_moi_trieu: 2.50
+    timeout_giay: 60
+    cua_so_ngu_canh: 1000000
+
+  - tang: 2
+    ten: openrouter_auto
+    model: openrouter/auto
+    api_key_env: OPENROUTER_API_KEY
+    tham_so_them:
+      cost_tier: low
+    gia_vao_usd_moi_trieu: 0.50
+    gia_ra_usd_moi_trieu: 3.00
+    timeout_giay: 90
+    ghi_chu: "Không tiền định - chỉ làm dự phòng"
+
+  - tang: 3
+    ten: claude
+    model: anthropic/claude-sonnet-5
+    api_key_env: ANTHROPIC_API_KEY
+    gia_vao_usd_moi_trieu: 3.00
+    gia_ra_usd_moi_trieu: 15.00
+    timeout_giay: 90
+
+  - tang: 4
+    ten: openai
+    model: openai/gpt-5.6-terra
+    api_key_env: OPENAI_API_KEY
+    gia_vao_usd_moi_trieu: 2.00
+    gia_ra_usd_moi_trieu: 12.00
+    timeout_giay: 90
+
+cai_dat_chung:
+  so_lan_thu_lai_moi_tang: 2
+  giay_gian_cach_dau: 0.5
+  gioi_han_token_ra: 1024
+  ngu_canh_du_phong_token: 512
