@@ -40,7 +40,11 @@ from app.chat.su_kien_sse import (
     tao_nhan_ai,
 )
 from app.config import CauHinhBacLocal, cau_hinh
-from app.core.bao_mat import kiem_duyet_dau_ra, kiem_duyet_dau_vao
+from app.core.bao_mat import (
+    kiem_duyet_dau_ra,
+    kiem_duyet_dau_vao,
+    kiem_tra_phoi_lo,
+)
 from app.core.csdl import (
     NguoiDungModel,
     NhatKyKiemToanModel,
@@ -146,6 +150,7 @@ def _ghi_loi_tac_vu_nen(tac_vu: asyncio.Task[None]) -> None:
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Kiểm tra an toàn, nạp người dùng dev và hâm nóng bộ chạy nền."""
     kiem_tra_an_toan_xac_thuc()
+    kiem_tra_phoi_lo()
     await khoi_tao_nguoi_dung_gia_dev()
     tac_vu = asyncio.create_task(kiem_tra_khi_khoi_dong())
     tac_vu.add_done_callback(_ghi_loi_tac_vu_nen)

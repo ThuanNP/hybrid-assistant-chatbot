@@ -100,11 +100,69 @@ Google Stitch "Trợ lý AI nội bộ · v2"
 trò chuyện mới, màn hình đang trò chuyện và Lịch sử hội thoại. Khi bản thiết kế khác `DESIGN.md`
 về màu, phông chữ hoặc khoảng cách thì theo `DESIGN.md`.
 
-## 5. Kiểm tra trước khi chạy
+## 5. Kết nối an toàn bộ chạy cục bộ và kiểm tra trước khi chạy
+
+### 5.1. Bối cảnh và vì sao điều này quan trọng
+
+Máy chủ Ollama mặc định **không có cơ chế xác thực danh tính**.
+API của Ollama không chỉ cung cấp tính năng sinh văn bản phục vụ suy luận
+mà còn cung cấp các quyền quản trị mô hình:
+tải model mới (`/api/pull`), tạo model (`/api/create`),
+sao chép (`/api/copy`), đẩy lên registry (`/api/push`),
+và xoá model (`/api/delete`).
+
+Mặc định Ollama chỉ lắng nghe ở giao diện vòng lặp `127.0.0.1` nên an toàn.
+Rủi ro phát sinh khi mở rộng để container hoặc máy trạm khác truy cập:
+
+- Kẻ tấn công hoặc người ngoài mạng có thể chiếm dụng GPU máy chủ miễn phí.
+- Tải các model tuỳ ý về máy chủ làm lấp đầy dung lượng ổ đĩa.
+- Xoá trực tiếp các model đang phục vụ cán bộ, công nhân viên ngành điện.
+- Tương tự đối với LM Studio khi bật tuỳ chọn "Serve on Local Network".
+
+### 5.2. Ba cách nối an toàn (xếp theo thứ tự ưu tiên)
+
+#### Cách A - GIỮ 127.0.0.1 (Ưu tiên số 1, mặc định của Ollama)
+
+- **Windows/macOS với Docker Desktop** (phần cứng thử nghiệm):
+  Không cần đổi biến `OLLAMA_HOST`. Container gọi qua `http://host.docker.internal:11434`,
+  Docker Desktop tự chuyển tiếp an toàn tới loopback của máy chủ mà không mở ra LAN.
+- **Linux (Docker Engine)**:
+  Backend dùng `network_mode: host` trong Docker Compose hoặc chạy backend trực tiếp ngoài container.
+
+#### Cách B - Chỉ dùng trên máy chủ Linux (Ưu tiên số 2)
+
+- Bind dịch vụ Ollama vào địa chỉ cầu nối Docker (thường là `172.17.0.1`,
+  xem bằng lệnh `ip addr show docker0`), tuyệt đối **không** bind vào `0.0.0.0`.
+- Thiết lập luật tường lửa `ufw` chỉ cho phép dải mạng Docker truy cập cổng 11434:
+
+```bash
+sudo ufw allow in on docker0 to 172.17.0.1 port 11434 proto tcp
+```
+
+- Trên Windows không cần cách này; nếu bắt buộc phải cho máy khác trong LAN gọi,
+  dùng PowerShell quản trị tạo luật hạn chế:
+
+```powershell
+New-NetFirewallRule -DisplayName "Ollama LAN han che" -Direction Inbound `
+  -Protocol TCP -LocalPort 11434 -RemoteAddress <dải IP được phép> -Action Allow
+New-NetFirewallRule -DisplayName "Ollama LAN chan tat ca" -Direction Inbound `
+  -Protocol TCP -LocalPort 11434 -Action Block
+```
+
+#### Cách C - Buộc phải mở rộng hơn (Ưu tiên số 3)
+
+- Đặt máy chủ Nginx phía trước làm lá chắn, bật xác thực cơ bản (Basic Auth) hoặc mTLS.
+- **CHẶN** triệt để các đường dẫn quản trị nguy hiểm:
+  `/api/pull`, `/api/create`, `/api/delete`, `/api/push`, `/api/copy`.
+- **CHỈ CHO PHÉP** các đường dẫn phục vụ suy luận và tra cứu trạng thái:
+  `/api/chat`, `/v1/chat/completions`, `/v1/embeddings`,
+  `/api/embed`, `/api/tags`, `/api/ps`, `/api/show`.
+- Tham khảo tệp cấu hình mẫu tại [`deploy/nginx-ollama.conf`](deploy/nginx-ollama.conf).
+
+### 5.3. Kiểm tra chẩn đoán trước khi khởi chạy
 
 Trước khi khởi động hệ thống, thực hiện kiểm tra chẩn đoán bộ chạy mô hình cục bộ
-và các nhà cung cấp đám mây (chạy từ thư mục `backend/`, lệnh giống nhau trên Git Bash
-và PowerShell):
+và các nhà cung cấp đám mây (chạy từ thư mục `backend/`):
 
 ```bash
 # Kiểm tra bộ chạy mô hình cục bộ (Ollama / LM Studio)
@@ -112,6 +170,26 @@ uv run --frozen python ../scripts/kiem_tra_bo_chay.py
 
 # Kiểm tra kết nối tới các nhà cung cấp đám mây qua LiteLLM
 uv run --frozen python ../scripts/kiem_tra_nha_cung_cap.py
+```
+
+Để kiểm tra nguy cơ phơi lộ cổng 11434 ra mạng ngoài:
+
+- **Trên máy chủ**: Chạy từ một máy tính khác trong mạng nội bộ:
+
+```bash
+python scripts/kiem_tra_phoi_lo.py --dia-chi http://<IP-LAN>:11434
+```
+
+- **Trên phần cứng thử nghiệm** (tự động phát hiện IP LAN):
+
+```bash
+cd backend && uv run --frozen python ../scripts/kiem_tra_phoi_lo.py --tu-dong-ip
+```
+
+- **Phép thử bổ sung từ container** (yêu cầu kết nối phải thất bại):
+
+```bash
+docker run --rm curlimages/curl -s -m 3 http://<IP-LAN>:11434/api/tags
 ```
 
 ## 6. Giao diện lập trình ứng dụng (API)

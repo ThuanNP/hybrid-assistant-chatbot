@@ -1,0 +1,44 @@
+[Unit]
+Description=Ollama Service (Cau hinh bao mat noi bo & toi uu GPU)
+After=network-online.target
+
+[Service]
+# ==============================================================================
+# BỐI CẢNH BẢO MẬT & TỐI ƯU HOÁ TÀI NGUYÊN CHO MÁY CHỦ LINUX
+# Máy chủ Ollama KHÔNG có xác thực; bắt buộc khoá ở 127.0.0.1:11434 theo AGENTS.md.
+# Các biến dưới đây được cấu hình theo hồ sơ GPU máy chủ và chính sách định tuyến.
+# ==============================================================================
+
+# OLLAMA_HOST: Địa chỉ và cổng lắng nghe của dịch vụ Ollama.
+# Bắt buộc đặt 127.0.0.1:11434 để chỉ nghe trên loopback, không phơi lộ ra mạng ngoài.
+Environment="OLLAMA_HOST=127.0.0.1:11434"
+
+# OLLAMA_KEEP_ALIVE: Thời gian giữ mô hình trong VRAM sau lượt gọi cuối cùng.
+# Đặt 30m (30 phút) theo khai báo local_chung.keep_alive trong config/models.yaml.
+Environment="OLLAMA_KEEP_ALIVE=30m"
+
+# OLLAMA_NUM_PARALLEL: Số lượt suy luận đồng thời trên mỗi mô hình nạp.
+# Hồ sơ gpu8 đặt là 1 để tránh tràn VRAM; hồ sơ lớn hơn có thể tăng theo models.yaml.
+Environment="OLLAMA_NUM_PARALLEL=1"
+
+# OLLAMA_MAX_LOADED_MODELS: Số lượng mô hình tối đa được nạp đồng thời vào GPU.
+# Khớp với so_model_nap_cung_luc trong hồ sơ gpu8 (1 mô hình tại một thời điểm).
+Environment="OLLAMA_MAX_LOADED_MODELS=1"
+
+# OLLAMA_FLASH_ATTENTION: Kích hoạt Flash Attention giúp giảm tiêu hao VRAM và tăng tốc độ.
+# Đặt 1 để bật tính năng này trên các dòng GPU NVIDIA hỗ trợ (Turing/Ampere/Ada Lovelace).
+Environment="OLLAMA_FLASH_ATTENTION=1"
+
+# OLLAMA_KV_CACHE_TYPE: Định dạng lượng tử hoá cho bộ nhớ đệm KV (Key-Value Cache).
+# Đặt q8_0 hoặc f16 để tối ưu dung lượng VRAM cho ngữ cảnh dài lên tới 16384 token.
+Environment="OLLAMA_KV_CACHE_TYPE=q8_0"
+
+# Đường dẫn thực thi Ollama và thư mục dữ liệu mô hình
+ExecStart=/usr/local/bin/ollama serve
+User=ollama
+Group=ollama
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
