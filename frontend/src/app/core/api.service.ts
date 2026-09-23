@@ -14,6 +14,7 @@ import { catchError, map, tap } from 'rxjs/operators';
 import { ENDPOINTS } from './cau-hinh';
 import {
   BaoCaoChiPhi,
+  BoLocHoiThoai,
   ChiTietHoiThoai,
   DanhSachHoiThoai,
   PhanHoiXoaHoiThoai,
@@ -51,15 +52,22 @@ export class ApiService {
   }
 
   /**
-   * Lay danh sach cac cuoc hoi thoai cua nguoi dung co phan trang.
+   * Lay danh sach hoi thoai cua nguoi dung co phan trang. May chu loc theo tu khoa tieu de,
+   * khoang ngay cap nhat (gio Viet Nam) va sap xep; `tong_so` dem theo bo loc.
    */
   public layDanhSachHoiThoai(
     trang: number = 1,
     kichThuoc: number = 20,
+    boLoc: BoLocHoiThoai = {},
   ): Observable<DanhSachHoiThoai> {
-    const params = new HttpParams()
+    let params = new HttpParams()
       .set('trang', trang.toString())
       .set('kich_thuoc', kichThuoc.toString());
+    const tuKhoa = boLoc.tuKhoa?.trim();
+    if (tuKhoa) params = params.set('tu_khoa', tuKhoa);
+    if (boLoc.tuNgay) params = params.set('tu_ngay', boLoc.tuNgay);
+    if (boLoc.denNgay) params = params.set('den_ngay', boLoc.denNgay);
+    if (boLoc.sapXep && boLoc.sapXep !== 'moi_nhat') params = params.set('sap_xep', boLoc.sapXep);
 
     return this.thucThiYeuCau(
       this.http.get<DanhSachHoiThoai>(ENDPOINTS.HOI_THOAI, {

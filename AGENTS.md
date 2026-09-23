@@ -36,25 +36,26 @@ muốn đổi rule phải hỏi trước.
    đi qua ứng dụng.
 4. Không ghi khoá API, mật khẩu, chuỗi kết nối vào mã; không ghi nội dung tin nhắn
    vào nhật ký; kiểm tra rò rỉ bí mật theo kỹ năng `.agents/skills/secrets-gitleaks/`.
+   Không tự đưa thông tin thực hiện dự án (ghi chú nội bộ, kết quả rà soát, công cụ và
+   tài khoản dùng khi phát triển), chi tiết lỗ hổng hay thông tin nhạy cảm vào tệp được
+   commit, thông điệp commit, mô tả PR hoặc kênh công khai. Lỗ hổng chỉ báo riêng cho người
+   phụ trách; bản sửa được mô tả bằng lời trung tính, không nêu điểm yếu cũ hay cách khai thác.
 
 ## Quy tắc kỹ thuật của dự án
 
-1. Tên model, thứ tự chuỗi, hồ sơ GPU, `num_ctx`, `keep_alive`, giá và ngưỡng chỉ khai báo
-   trong `config/*.yaml`.
-2. Ghim thẻ model đầy đủ kèm mức lượng tử hoá, ví dụ `qwen3.5:9b-q4_K_M`.
-3. Mọi lượt gọi model ghi: nguồn, tầng, bậc, model, token vào/ra, chi phí, độ trễ,
-   thời gian nạp, tok/s.
-4. Chat phát theo dòng (SSE); POST `/chat` không phát theo dòng chỉ cho tích hợp
-   máy với máy.
-5. Mọi lời gọi ra ngoài có timeout tường minh và số lần thử lại rõ ràng.
-6. `ma_yeu_cau` truyền xuyên suốt, có trong mọi dòng nhật ký và mọi phản hồi lỗi.
-7. Mọi phép đếm token dùng `dem_token()`; mọi con số nghiệp vụ do công cụ tính,
-    không do model.
-8. Trần tự chủ L2: chỉ tra cứu, diễn giải, soạn thảo; không có trường `hop_le`
-    hay `duoc_duyet`.
-9. Công cụ Python (pytest, pyright, ruff...) chỉ cài trong `backend/.venv`; luôn chạy
-   từ `backend/` bằng `uv run --frozen <công cụ>` (ví dụ `uv run --frozen pytest -q`),
-   không gọi tên công cụ trần và không dựa vào việc kích hoạt venv.
+Đánh số tiếp theo bốn quy tắc tuyệt đối; các prompt và tài liệu viện dẫn theo số này.
+
+| Số | Quy tắc |
+| :--- | :--- |
+| 5 | Tên model, thứ tự chuỗi, hồ sơ GPU, `num_ctx`, `keep_alive`, giá và ngưỡng chỉ khai báo trong `config/*.yaml`. |
+| 6 | Ghim thẻ model đầy đủ kèm mức lượng tử hoá, ví dụ `qwen3.5:9b-q4_K_M`. |
+| 7 | Mọi lượt gọi model ghi: nguồn, tầng, bậc, model, token vào/ra, chi phí, độ trễ, thời gian nạp, tok/s. |
+| 8 | Chat phát theo dòng (SSE); POST `/chat` không phát theo dòng chỉ cho tích hợp máy với máy. |
+| 9 | Mọi lời gọi ra ngoài có timeout tường minh và số lần thử lại rõ ràng. |
+| 10 | `ma_yeu_cau` truyền xuyên suốt, có trong mọi dòng nhật ký và mọi phản hồi lỗi. |
+| 11 | Mọi phép đếm token dùng `dem_token()`; mọi con số nghiệp vụ do công cụ tính, không do model. |
+| 12 | Trần tự chủ L2: chỉ tra cứu, diễn giải, soạn thảo; không có trường `hop_le` hay `duoc_duyet`. |
+| 13 | Công cụ Python (pytest, pyright, ruff...) chỉ cài trong `backend/.venv`; luôn chạy từ `backend/` bằng `uv run --frozen <công cụ>` (ví dụ `uv run --frozen pytest -q`), không gọi tên công cụ trần và không dựa vào việc kích hoạt venv. |
 
 ## Phạm vi làm việc
 
@@ -74,19 +75,23 @@ Bắt buộc phải hỏi người dùng và nhận được phê duyệt trư�
 - Đổi lược đồ cơ sở dữ liệu (CSDL).
 - Thêm dịch vụ vào `docker-compose.yml`.
 - Xoá bất kỳ tệp nào trong dự án.
-- Đổi thứ tự chuỗi định tuyến mô hình.
+- Đổi thứ tự chuỗi định tuyến model.
 - Sửa bất kỳ tệp nào trong `.agents/rules/`.
 
 ## Không làm ở giai đoạn hiện tại
 
-Các hạng mục sau được tạm hoãn có chủ đích trong giai đoạn hiện tại:
+Giai đoạn hiện hành: Giai đoạn 4 (giao diện Angular). Các hạng mục sau được tạm hoãn
+có chủ đích:
 
+- Đóng gói giao diện bằng nginx và kiểm thử đầu cuối Playwright (cuối Giai đoạn 4).
+- Đăng nhập thật, vai trò, hạn mức theo người dùng, nhật ký JSON đầy đủ, phần thân kiểm duyệt
+  và che dữ liệu cá nhân (Giai đoạn 5); tạm dùng `XAC_THUC_GIA`.
 - RAG và cơ sở dữ liệu vector (Giai đoạn 6).
 - Gọi công cụ / Function calling (Giai đoạn 7).
 - Đăng nhập một lần doanh nghiệp / SSO (Giai đoạn 8).
 - Redis và cổng AI riêng (Giai đoạn 9).
 - Kubernetes, vLLM, nhiều GPU (Giai đoạn 10).
-- Tinh chỉnh mô hình / Fine-tuning (Giai đoạn 11).
+- Tinh chỉnh model / Fine-tuning (Giai đoạn 11).
 
 Đây là quyết định phân định phạm vi có chủ đích; cập nhật lại vào cuối mỗi giai đoạn.
 

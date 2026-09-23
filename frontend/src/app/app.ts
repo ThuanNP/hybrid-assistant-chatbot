@@ -1,21 +1,79 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
+import { filter } from 'rxjs';
+import { BoCucTrang } from './core/bo-cuc-trang';
+import { CAU_HINH_APP } from './core/cau-hinh';
+import { KhoHoiThoai } from './core/kho-hoi-thoai';
+import { DichVuThongBao } from './core/thong-bao';
+import { BieuTuongComponent } from './shared/bieu-tuong/bieu-tuong';
+import { ThanhDauTrangComponent } from './shared/thanh-dau-trang/thanh-dau-trang';
 
+/**
+ * Khung ung dung (DESIGN.md muc 6): sidebar va thanh dau trang dung chung cho moi man hinh,
+ * vung noi dung chi hien thi dung mot man hinh theo tuyen duong.
+ */
 @Component({
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, BieuTuongComponent, ThanhDauTrangComponent],
   selector: 'app-root',
+  host: { '(window:resize)': 'capNhatKichThuoc()' },
   styleUrl: './app.scss',
   templateUrl: './app.html',
 })
-export class App {
-  public readonly tieuDe = signal('Trợ lý nội bộ');
-  public readonly tenNguoiDung = signal('Cán bộ Điện lực');
-  public readonly phongBan = signal('Kinh doanh Điện năng');
-  public readonly sidebarThuGon = signal(false);
+export class App implements OnInit {
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  protected readonly kho = inject(KhoHoiThoai);
+  protected readonly boCuc = inject(BoCucTrang);
+  protected readonly thongBao = inject(DichVuThongBao);
+
+  public readonly tieuDe = signal<string>(CAU_HINH_APP.TIEU_DE_HE_THONG);
+  public readonly tacGia = CAU_HINH_APP.TAC_GIA;
+  public readonly namHienTai = new Date().getFullYear();
+  /** Laptop man hinh nho (duoi 1100px) mac dinh thu gon sidebar de nhuong cho noi dung. */
+  public readonly sidebarThuGon = signal(
+    typeof window !== 'undefined' &&
+      window.innerWidth >= CAU_HINH_APP.NGUONG_MOBILE_PX &&
+      window.innerWidth < CAU_HINH_APP.NGUONG_THU_GON_SIDEBAR_PX,
+  );
   public readonly drawerMo = signal(false);
+  public readonly dangOTroChuyen = signal(false);
+  private readonly laDiDong = signal(this.laManHinhDiDong());
+
+  /** Sidebar dang hien: tren di dong la ngan keo, tren may tinh la trang thai khong thu gon. */
+  public readonly sidebarDangMo = computed(() =>
+    this.laDiDong() ? this.drawerMo() : !this.sidebarThuGon(),
+  );
+
+  public capNhatKichThuoc(): void {
+    this.laDiDong.set(this.laManHinhDiDong());
+  }
+
+  private laManHinhDiDong(): boolean {
+    return typeof window !== 'undefined' && window.innerWidth < CAU_HINH_APP.NGUONG_MOBILE_PX;
+  }
+
+  public ngOnInit(): void {
+    this.kho.taiLai();
+    this.router.events
+      .pipe(
+        filter((suKien): suKien is NavigationEnd => suKien instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((suKien) => {
+        this.dangOTroChuyen.set(suKien.urlAfterRedirects.startsWith('/tro-chuyen'));
+        this.drawerMo.set(false);
+      });
+  }
 
   public chuyenDoiSidebar(): void {
-    if (window.innerWidth < 768) {
+    if (this.laManHinhDiDong()) {
       this.drawerMo.update((hienTai) => !hienTai);
       return;
     }
@@ -24,5 +82,10 @@ export class App {
 
   public dongDrawer(): void {
     this.drawerMo.set(false);
+  }
+
+  public moHoiThoaiMoi(): void {
+    this.drawerMo.set(false);
+    this.kho.moHoiThoaiMoi();
   }
 }

@@ -1,6 +1,7 @@
 # Ứng dụng Frontend Trợ lý AI Nội bộ (hybrid-assistant-chatbot-frontend)
 
-Ứng dụng web Single Page Application (SPA) xây dựng trên nền tảng **Angular 22** phục vụ cán bộ, công nhân viên ngành Điện lực tương tác với hệ thống Trợ lý AI nội bộ.
+Ứng dụng web Single Page Application (SPA) xây dựng trên nền tảng **Angular 22** phục vụ cán bộ,
+công nhân viên ngành Điện lực tương tác với hệ thống Trợ lý AI nội bộ.
 
 ## 1. Thông số kỹ thuật
 
@@ -24,20 +25,24 @@ frontend/
 ├── src/
 │   ├── environments/            # Cấu hình apiGoc = "/api/v1"
 │   ├── styles/
-│   │   ├── _tokens.scss         # Khối :root chép nguyên văn Mục 9 của DESIGN.md
-│   │   ├── _typography.scss     # Thang chữ phân cấp theo Mục 4.2 DESIGN.md
+│   │   ├── _tokens.scss         # Khối :root chép từ mục 12 của DESIGN.md
+│   │   ├── _typography.scss     # Thang chữ phân cấp theo mục 4.2 DESIGN.md
 │   │   └── _base.scss           # Reset CSS và thiết lập toàn cục
 │   ├── styles.scss              # Điểm nhúng toàn bộ phông chữ cục bộ và styles
 │   └── app/
-│       ├── core/                # Dịch vụ nền tảng: api.service.ts, sse.service.ts, mo-hinh.ts, cau-hinh.ts
+│       ├── core/                # api.service, sse.service, mo-hinh, cau-hinh và trạng thái dùng chung
+│       │                        # (kho-hoi-thoai, bo-cuc-trang, thong-bao, dinh-dang, tac-vu-nhanh)
 │       ├── features/
-│       │   ├── chat/            # Giao diện khung chat và bong bóng tin nhắn
-│       │   └── hoi-thoai/       # Quản lý danh sách lịch sử hội thoại
+│       │   ├── trang-chu/       # Trang chủ: bốn thẻ KPI, tác vụ nhanh, ô hỏi, hội thoại gần đây
+│       │   ├── chat/            # Màn Trò chuyện (/tro-chuyen/moi, /tro-chuyen/:id)
+│       │   └── hoi-thoai/       # Màn Lịch sử hội thoại: tìm, lọc, sắp xếp ở máy chủ
 │       ├── shared/
-│       │   ├── huy-hieu-mo-hinh/# Component hiển thị huy hiệu đo lường mô hình AI
-│       │   └── dong-thong-bao/  # Component thanh thông báo / alert
+│       │   ├── thanh-dau-trang/ # Thanh đầu trang 60px: breadcrumb, trạng thái, thông báo
+│       │   ├── o-soan-cau-hoi/  # Ô soạn câu hỏi dùng chung
+│       │   ├── huy-hieu-mo-hinh/# Huy hiệu đo lường mô hình, cảnh báo theo cờ ha_cap
+│       │   └── bieu-tuong/      # Bộ biểu tượng SVG nội tuyến
 │       ├── app.ts               # App Shell component với Signals và Responsive Drawer
-│       ├── app.html             # Khung Header 64px, Sidebar 240px/72px, Main area
+│       ├── app.html             # Sidebar 214px/72px, thân trang, footer 32px
 │       ├── app.scss             # Định kiểu App Shell bằng Design Tokens
 │       └── app.spec.ts          # Bộ kiểm thử đơn vị cho App Shell
 ```
@@ -57,7 +62,8 @@ npm install
 npx ng serve
 ```
 
-Ứng dụng khởi chạy tại <http://localhost:4200>. Các yêu cầu tới `/api`, `/health`, `/ready` sẽ tự động chuyển tiếp tới `http://localhost:8000`.
+Ứng dụng khởi chạy tại <http://localhost:4200>. Các yêu cầu tới `/api`, `/health`, `/ready` sẽ tự
+động chuyển tiếp tới `http://localhost:8000`.
 
 ### Biên dịch dự án (Production Build)
 

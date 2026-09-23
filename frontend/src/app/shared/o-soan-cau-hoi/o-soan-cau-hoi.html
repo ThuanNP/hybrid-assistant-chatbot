@@ -1,0 +1,38 @@
+<div class="khung-soan" (click)="datTieuDiem()">
+  <textarea
+    #vungNhap
+    class="vung-nhap"
+    rows="1"
+    [value]="noiDung()"
+    [placeholder]="goiY()"
+    [attr.aria-label]="nhanTruyCap()"
+    (input)="nhapLieu($event)"
+    (keydown)="batPhim($event)"
+  ></textarea>
+
+  <div class="hang-duoi">
+    <span class="goi-y-phim">Enter để gửi · Shift + Enter để xuống dòng</span>
+    @if (dangGui()) {
+      <button
+        type="button"
+        class="nut-tron nut-dung"
+        (click)="dung.emit(); $event.stopPropagation()"
+        aria-label="Dừng tạo câu trả lời"
+        title="Dừng tạo câu trả lời"
+      >
+        <app-bieu-tuong ten="dung" />
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="nut-tron nut-gui"
+        [disabled]="!noiDung().trim()"
+        (click)="bamGui(); $event.stopPropagation()"
+        aria-label="Gửi câu hỏi"
+        title="Gửi câu hỏi"
+      >
+        <app-bieu-tuong ten="gui" />
+      </button>
+    }
+  </div>
+</div>

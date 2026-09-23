@@ -24,7 +24,7 @@ import app.main as main_mod
 from app.chat.su_kien_sse import ManhPhatRa
 from app.config import cau_hinh
 from app.core.bao_mat import KetQuaKiemDuyet
-from app.core.csdl import HoiThoaiModel, NguoiDungModel, lay_sessionmaker_async
+from app.core.csdl import HoiThoaiModel, LuotModel, NguoiDungModel, lay_sessionmaker_async
 from app.core.loi import (
     BANG_ANH_XA_LOI,
     LoiDauVao,
@@ -375,6 +375,31 @@ def test_danh_sach_hoi_thoai_phan_trang(client_api: TestClient) -> None:
     assert du_lieu["kich_thuoc"] == 5
 
 
+@pytest.mark.asyncio
+async def test_danh_sach_hoi_thoai_co_so_luot(
+    phien_csdl: AsyncSession,
+    nguoi_dung_test: NguoiDung,
+    client_api: TestClient,
+) -> None:
+    """Mỗi mục trong danh sách có so_luot bằng số câu hỏi của người dùng (không đếm lượt trợ lý)."""
+    ht = HoiThoaiModel(nguoi_id=nguoi_dung_test.id, tieu_de="Hội thoại đếm lượt", da_xoa=False)
+    phien_csdl.add(ht)
+    await phien_csdl.commit()
+    for vai_tro in ("nguoi_dung", "tro_ly", "nguoi_dung", "tro_ly"):
+        phien_csdl.add(
+            LuotModel(hoi_thoai_id=ht.id, vai_tro=vai_tro, noi_dung="x", ma_yeu_cau="test12345678")
+        )
+    await phien_csdl.commit()
+
+    phan_hoi = client_api.get("/api/v1/hoi-thoai?trang=1&kich_thuoc=100")
+    assert phan_hoi.status_code == 200
+    muc = next(m for m in phan_hoi.json()["danh_sach"] if m["id"] == ht.id)
+    assert muc["so_luot"] == 2
+
+    # Don dep: xoa mem de ban ghi thu khong con trong danh sach cua nguoi dung
+    assert client_api.delete(f"/api/v1/hoi-thoai/{ht.id}").status_code == 200
+
+
 def test_cac_endpoint_thong_tin(client_api: TestClient) -> None:
     """Kiểm tra các endpoint thông tin: chi-phi, models, hang-doi, ngu-canh."""
     # 1. /api/v1/models (tuyệt đối không trả khoá)
@@ -395,6 +420,7 @@ def test_cac_endpoint_thong_tin(client_api: TestClient) -> None:
     d_hd = res_hang_doi.json()
     assert "dang_chay" in d_hd
     assert "dang_cho" in d_hd
+    assert d_hd["do_dai_toi_da"] == cau_hinh.do_dai_hang_doi_toi_da
 
     # 3. /api/v1/ngu-canh/tinh-trang
     res_ngu_canh = client_api.get("/api/v1/ngu-canh/tinh-trang")
@@ -463,6 +489,6 @@ def test_http_503_chung_khong_gan_cho_bo_chay() -> None:
 def test_cors_prod_chan_dau_sao(monkeypatch: pytest.MonkeyPatch) -> None:
     """Khi MOI_TRUONG=prod, nếu CORS_ORIGINS có dấu sao '*' thì cấm khởi động."""
     monkeypatch.setattr(cau_hinh, "moi_truong", "prod")
-    monkeypatch.setattr(cau_hinh, "cors_origins", ["https://app.evn.com.vn", "*"])
+    monkeypatch.setattr(cau_hinh, "cors_origins", ["https://app.example.com", "*"])
     with pytest.raises(ValueError, match="Môi trường prod cấm sử dụng ký tự '\\*'"):
         _kiem_tra_cors_prod()

@@ -9,13 +9,15 @@ Chịu trách nhiệm:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from enum import StrEnum
 from pathlib import Path
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.csdl import HoiThoaiModel, LuotModel, lay_sessionmaker_async
+from app.core.csdl import HoiThoaiModel, LuotGoiModel, LuotModel, lay_sessionmaker_async
+from app.core.thoi_gian import hom_nay_vn, khoang_ngay_vn
 from app.core.xac_thuc import NguoiDung
 from app.llm.router import KetQuaGoi, goi_mo_hinh
 
@@ -195,14 +197,47 @@ async def xoa_mem_hoi_thoai(
     return True
 
 
+class SapXepHoiThoai(StrEnum):
+    """Cách sắp xếp danh sách hội thoại ở màn Lịch sử."""
+
+    MOI_NHAT = "moi_nhat"
+    CU_NHAT = "cu_nhat"
+    TEN_TANG = "ten_tang"
+    TEN_GIAM = "ten_giam"
+
+
+def _thoat_mau_like(tu_khoa: str) -> str:
+    """Thoát ký tự đại diện của LIKE để từ khoá được so khớp nguyên văn."""
+    return tu_khoa.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _thu_tu_sap_xep(sap_xep: SapXepHoiThoai) -> list:
+    """Biểu thức ORDER BY; luôn kèm id làm khoá phụ để phân trang ổn định."""
+    if sap_xep is SapXepHoiThoai.CU_NHAT:
+        return [HoiThoaiModel.cap_nhat_luc.asc(), HoiThoaiModel.id.asc()]
+    if sap_xep is SapXepHoiThoai.TEN_TANG:
+        return [func.lower(HoiThoaiModel.tieu_de).asc(), HoiThoaiModel.id.asc()]
+    if sap_xep is SapXepHoiThoai.TEN_GIAM:
+        return [func.lower(HoiThoaiModel.tieu_de).desc(), HoiThoaiModel.id.desc()]
+    return [HoiThoaiModel.cap_nhat_luc.desc(), HoiThoaiModel.id.desc()]
+
+
 async def lay_danh_sach_hoi_thoai(
     phien: AsyncSession,
     nguoi_id: int,
     *,
     trang: int = 1,
     kich_thuoc: int = 20,
+    tu_khoa: str | None = None,
+    tu_ngay: date | None = None,
+    den_ngay: date | None = None,
+    sap_xep: SapXepHoiThoai = SapXepHoiThoai.MOI_NHAT,
 ) -> tuple[list[HoiThoaiModel], int]:
-    """Lấy danh sách hội thoại của người dùng, phân trang và sắp theo cap_nhat_luc giảm dần."""
+    """Lấy danh sách hội thoại của người dùng theo bộ lọc, có phân trang.
+
+    tu_khoa so khớp không phân biệt hoa thường trên tieu_de; tu_ngay, den_ngay lọc
+    cap_nhat_luc theo ngày giờ Việt Nam, den_ngay lấy trọn cả ngày. tong_so đếm theo bộ lọc.
+    """
     so_trang = max(1, trang)
     gioi_han = max(1, min(100, kich_thuoc))
     vi_tri = (so_trang - 1) * gioi_han
@@ -211,6 +246,15 @@ async def lay_danh_sach_hoi_thoai(
         HoiThoaiModel.nguoi_id == nguoi_id,
         HoiThoaiModel.da_xoa.is_(False),
     ]
+    tu_khoa_sach = (tu_khoa or "").strip()
+    if tu_khoa_sach:
+        dieu_kien.append(
+            HoiThoaiModel.tieu_de.ilike(f"%{_thoat_mau_like(tu_khoa_sach)}%", escape="\\")
+        )
+    if tu_ngay is not None:
+        dieu_kien.append(HoiThoaiModel.cap_nhat_luc >= khoang_ngay_vn(tu_ngay)[0])
+    if den_ngay is not None:
+        dieu_kien.append(HoiThoaiModel.cap_nhat_luc < khoang_ngay_vn(den_ngay)[1])
 
     cau_lenh_dem = select(func.count(HoiThoaiModel.id)).where(*dieu_kien)
     tong_so = int((await phien.scalars(cau_lenh_dem)).first() or 0)
@@ -218,12 +262,69 @@ async def lay_danh_sach_hoi_thoai(
     cau_lenh = (
         select(HoiThoaiModel)
         .where(*dieu_kien)
-        .order_by(HoiThoaiModel.cap_nhat_luc.desc())
+        .order_by(*_thu_tu_sap_xep(sap_xep))
         .offset(vi_tri)
         .limit(gioi_han)
     )
     ket_qua = await phien.scalars(cau_lenh)
     return list(ket_qua.all()), tong_so
+
+
+async def dem_so_luot_hoi(
+    phien: AsyncSession,
+    cac_hoi_thoai_id: list[int],
+) -> dict[int, int]:
+    """Đếm số câu hỏi (lượt vai trò người dùng) của từng hội thoại trong một truy vấn gộp."""
+    if not cac_hoi_thoai_id:
+        return {}
+    cau_lenh = (
+        select(LuotModel.hoi_thoai_id, func.count(LuotModel.id))
+        .where(
+            LuotModel.hoi_thoai_id.in_(cac_hoi_thoai_id),
+            LuotModel.vai_tro == "nguoi_dung",
+        )
+        .group_by(LuotModel.hoi_thoai_id)
+    )
+    ket_qua = await phien.execute(cau_lenh)
+    return {int(ma): int(so) for ma, so in ket_qua.all()}
+
+
+async def lay_ma_yeu_cau_roi_tang(phien: AsyncSession, cac_ma_yeu_cau: list[str]) -> set[str]:
+    """Trả các ma_yeu_cau có lượt hỏi đã rơi tầng, đọc từ luot_goi trong một truy vấn."""
+    if not cac_ma_yeu_cau:
+        return set()
+    cau_lenh = select(LuotGoiModel.ma_yeu_cau).where(
+        LuotGoiModel.ma_yeu_cau.in_(cac_ma_yeu_cau),
+        LuotGoiModel.muc_dich == "chat",
+        LuotGoiModel.roi_tang.is_(True),
+    )
+    return set((await phien.scalars(cau_lenh)).all())
+
+
+async def dem_cau_hoi_hom_nay(phien: AsyncSession) -> dict[str, int]:
+    """Đếm câu hỏi của người dùng trong ngày (giờ Việt Nam) và số câu trả lời theo nguồn.
+
+    Đếm trên bảng luot nên không lẫn lời gọi nền đặt tiêu đề; số liệu của toàn hệ thống.
+    """
+    tu, den = khoang_ngay_vn(hom_nay_vn())
+    trong_ngay = [LuotModel.tao_luc >= tu, LuotModel.tao_luc < den]
+
+    cau_lenh_hoi = select(func.count(LuotModel.id)).where(
+        *trong_ngay, LuotModel.vai_tro == "nguoi_dung"
+    )
+    so_cau_hoi = int((await phien.scalars(cau_lenh_hoi)).first() or 0)
+
+    cau_lenh_nguon = (
+        select(LuotModel.nguon, func.count(LuotModel.id))
+        .where(*trong_ngay, LuotModel.vai_tro == "tro_ly")
+        .group_by(LuotModel.nguon)
+    )
+    theo_nguon = {str(n): int(so) for n, so in (await phien.execute(cau_lenh_nguon)).all()}
+    return {
+        "so_cau_hoi_hom_nay": so_cau_hoi,
+        "so_cau_hoi_noi_bo": theo_nguon.get("local", 0),
+        "so_cau_hoi_dam_may": theo_nguon.get("dam_may", 0),
+    }
 
 
 def _chuan_hoa_tieu_de(van_ban: str) -> str:
@@ -262,6 +363,7 @@ async def tu_dat_tieu_de(
             nguoi=nguoi,
             ma_yeu_cau=ma_yc,
             uu_tien_bac_nho=True,
+            muc_dich="tieu_de",
         )
         tieu_de_moi = _chuan_hoa_tieu_de(kq.noi_dung)
         if not tieu_de_moi:
@@ -273,11 +375,7 @@ async def tu_dat_tieu_de(
             if hoi_thoai:
                 hoi_thoai.tieu_de = tieu_de_moi
                 await phien.commit()
-                logger.info(
-                    "[%s] Tự đặt tiêu đề thành công cho hội thoại %d: '%s'",
-                    ma_yc,
-                    hoi_thoai_id,
-                    tieu_de_moi,
-                )
+                # Không ghi tiêu đề vào nhật ký: tiêu đề sinh từ nội dung tin nhắn
+                logger.info("[%s] Tự đặt tiêu đề thành công cho hội thoại %d", ma_yc, hoi_thoai_id)
     except Exception as err:  # noqa: BLE001
         logger.warning("[%s] Tự đặt tiêu đề thất bại cho hội thoại %d: %s", ma_yc, hoi_thoai_id, err)

@@ -47,3 +47,337 @@ pre,
 kbd {
   font-family: var(--font-mono);
 }
+
+/* Định dạng Markdown dùng chung */
+.khoi-ma-nguon {
+  margin: var(--space-8) 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background-color: var(--gray-dark-4);
+  color: var(--white);
+
+  .ten-ngon-ngu {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    background-color: var(--gray-dark-3);
+    color: var(--gray-base);
+  }
+
+  pre {
+    margin: 0;
+    padding: var(--space-12);
+    overflow-x: auto;
+
+    code {
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: var(--white);
+      font-size: 13px;
+    }
+  }
+}
+
+.khoi-bang-cuon {
+  margin: var(--space-8) 0;
+  overflow-x: auto;
+
+  .bang-du-lieu {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th,
+    td {
+      border: 1px solid var(--gray-light-2);
+      padding: 6px 12px;
+      text-align: left;
+    }
+
+    th {
+      background-color: var(--gray-light-3);
+      font-weight: 600;
+      color: var(--black);
+    }
+
+    tr:nth-child(even) {
+      background-color: var(--gray-light-3);
+    }
+  }
+}
+
+.danh-sach-so,
+.danh-sach-cham {
+  margin: var(--space-6) 0 var(--space-8) var(--space-20);
+  padding: 0;
+  li {
+    margin-bottom: var(--space-4);
+  }
+}
+
+/* Thẻ thông báo trạng thái dùng chung */
+.banner-canh-bao {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  padding: var(--space-10) var(--space-16);
+  background-color: var(--yellow-light-3);
+  border: 1px solid var(--yellow-light-2);
+  border-radius: var(--radius-sm);
+  color: var(--yellow-dark-2);
+  font-size: 12px;
+
+  .icon-canh-bao {
+    width: 16px;
+    height: 16px;
+    color: var(--yellow-base);
+    flex-shrink: 0;
+  }
+}
+
+.the-hang-doi,
+.the-nap-model {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-surface);
+
+  .vong-xoay-nho {
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: quay 0.8s linear infinite;
+  }
+}
+
+.the-hang-doi {
+  background-color: var(--blue-light-3);
+  border: 1px solid var(--blue-light-2);
+  color: var(--blue-dark-2);
+}
+
+.the-nap-model {
+  background-color: var(--yellow-light-3);
+  border: 1px solid var(--yellow-light-2);
+  color: var(--yellow-dark-2);
+}
+
+.avatar-tro-ly {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-navy);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  flex-shrink: 0;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.blinking-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  vertical-align: -0.15em;
+  background-color: var(--blue-base);
+  animation: nhap-nhay 0.9s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  margin-left: 2px;
+}
+
+@keyframes nhap-nhay {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes quay {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Nut dung chung (DESIGN.md muc 7.1) */
+.nut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  height: 36px;
+  padding: 0 var(--space-12);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-primary);
+  }
+
+  &:disabled {
+    background-color: var(--gray-light-2);
+    border-color: var(--gray-light-1);
+    color: var(--gray-base);
+    cursor: not-allowed;
+  }
+}
+
+.nut-chinh {
+  background-color: var(--blue-base);
+  border-color: var(--blue-dark-1);
+  color: var(--white);
+
+  &:hover:not(:disabled) {
+    border-color: var(--blue-dark-2);
+    background-color: var(--blue-dark-1);
+  }
+}
+
+.nut-vien {
+  background-color: var(--white);
+  border-color: var(--gray-light-1);
+  color: var(--black);
+
+  &:hover:not(:disabled) {
+    box-shadow: var(--shadow-focus-default);
+  }
+}
+
+.nut-nguy-hiem {
+  background-color: var(--red-base);
+  border-color: var(--red-dark-2);
+  color: var(--white);
+
+  &:hover:not(:disabled) {
+    background-color: #C82222;
+  }
+}
+
+/* Nut bieu tuong vuong 32px (DESIGN.md muc 6.2) */
+.nut-bieu-tuong {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--gray-light-2);
+  border-radius: var(--radius-sm);
+  background-color: var(--white);
+  color: var(--gray-dark-1);
+
+  &:hover {
+    background-color: var(--gray-light-2);
+  }
+
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-primary);
+  }
+}
+
+/* Tooltip dung chung: gan thuoc tinh data-goi-y="..." vao phan tu co position: relative.
+   Hien khi re chuot hoac focus ban phim; noi dung van phai co aria-label rieng. */
+[data-goi-y] {
+  position: relative;
+}
+
+[data-goi-y]::after {
+  content: attr(data-goi-y);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 60;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--gray-dark-3);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -2px);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+[data-goi-y]:hover::after,
+[data-goi-y]:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* Huy hieu (DESIGN.md muc 7.2) */
+.huy-hieu {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--space-6);
+  border: 1px solid;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.huy-hieu-xam {
+  background-color: var(--gray-light-3);
+  border-color: var(--gray-light-2);
+  color: var(--gray-dark-1);
+}
+
+.huy-hieu-xanh {
+  background-color: var(--blue-light-3);
+  border-color: var(--blue-light-2);
+  color: var(--blue-dark-1);
+}
+
+.huy-hieu-xanh-la {
+  background-color: var(--green-light-3);
+  border-color: var(--green-light-2);
+  color: var(--green-dark-2);
+}
+
+.huy-hieu-do {
+  background-color: var(--red-light-3);
+  border-color: var(--red-light-2);
+  color: var(--red-dark-2);
+}
+
+/* Cham nhap nhay (DESIGN.md muc 7.7) */
+.cham-nhap-nhay {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--red-base);
+  animation: lan-toa 1.6s ease-out infinite;
+}
+
+@keyframes lan-toa {
+  0% { box-shadow: 0 0 0 0 rgba(219, 48, 48, 0.45); }
+  100% { box-shadow: 0 0 0 12px rgba(219, 48, 48, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cham-nhap-nhay,
+  .blinking-cursor {
+    animation: none;
+  }
+}

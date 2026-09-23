@@ -147,7 +147,7 @@ thương hiệu của bất kỳ tổ chức thật nào:
 
 | Không được dùng | Thay thế bằng |
 | --- | --- |
-| Logo, biểu tượng, tên viết tắt của EVN, EVNHCMC hay đơn vị điện lực cụ thể | Khối nhận diện trung tính tại mục 2 |
+| Logo, biểu tượng, tên gọi hoặc tên viết tắt của tổ chức, doanh nghiệp có thật | Khối nhận diện trung tính tại mục 2 |
 | Khẩu hiệu, tên miền thư điện tử, ảnh chụp sản phẩm của tổ chức thật | Nội dung mô tả sản phẩm tự soạn |
 | Họ tên, chức danh cán bộ có thật | Dữ liệu giả lập rõ ràng (`Nguyễn Văn A`, `Chuyên viên`) |
 | Minh hoạ, biểu tượng của phần mềm bên thứ ba | Bộ biểu tượng nét mảnh mã nguồn mở, cùng một phong cách |
@@ -176,15 +176,21 @@ số liệu cỡ lớn dễ đọc lướt.
 
 Khối nhận diện thay cho logo, gồm hai thành phần đặt ngang, cao 36px trên web:
 
-1. **Biểu tượng:** ô vuông 28px, bo góc `radius-md` (8px), nền chuyển sắc `navy-start` sang
-   `navy-end`, bên trong là biểu tượng bong bóng trò chuyện nét mảnh màu trắng.
+1. **Biểu tượng "tia chớp hội thoại"** (tệp nguồn `frontend/public/logo.svg`, lưới 28 × 28):
+   - Nền: ô vuông 28px, bo góc `radius-md` (8px), chuyển sắc 135° từ `navy-start` sang `navy-end`.
+   - Bong bóng trò chuyện đặc màu trắng, rộng 16px, cao 11,5px, bo góc 4px, đuôi nhọn chếch
+     xuống bên trái.
+   - Tia chớp đặc màu `blue-base` nằm giữa bong bóng: năng lượng đi qua lời hỏi đáp.
 2. **Chữ nhận diện:** `Trợ lý nội bộ`, Lexend SemiBold 16px, màu `black` (`#001E2B`).
 
 | Tiêu chí | Quy định |
 | --- | --- |
 | Vùng an toàn | Tối thiểu 8px quanh khối |
 | Nền đặt | Trắng, `canvas` hoặc dải xanh thẫm (chữ chuyển sang trắng) |
-| Điều cấm | Không ghép thêm tên, logo hay màu nhận diện của tổ chức thật |
+| Cỡ tối thiểu | 16px (favicon); dưới cỡ này chỉ giữ nền và bong bóng |
+| Favicon | `frontend/public/favicon.ico` (16, 32, 48, 64px) dựng từ `logo.svg`, kèm `logo.svg` cho trình duyệt hỗ trợ SVG |
+| Dùng lại | Biểu tượng làm favicon, avatar trợ lý 28px (mục 8.1) và nút nổi di động |
+| Điều cấm | Không ghép thêm tên, logo hay màu nhận diện của tổ chức thật; không đổi hình dạng hay màu của biểu tượng |
 
 ---
 
@@ -353,65 +359,180 @@ Thẻ trên web chủ yếu dùng `--shadow-surface` kèm viền `gray-light-2`;
 +----------------+---------------------------------------------------------------+
 | SIDEBAR 214px  |  THÂN TRANG (thẻ trắng, bo 16px, viền #E8EDEB, lề 12px)       |
 | nền #F9FBFC    |  +---------------------------------------------------------+  |
-|                |  | Trò chuyện                        (Q) (Bell) (Apps) (A) |  |
-| [Khối nhận     |  +---------------------------------------------------------+  |
-|  diện]   [<>]  |  | Trang chủ > Trò chuyện          [09 - Tháng 9] [ ... ]  |  |
-| -------------  |  | [KPI 1]      [KPI 2]      [KPI 3 (o)]   [KPI 4 (o)]     |  |
-| DANH MỤC       |  | +-- Khối trò chuyện ---------+ +-- Lịch sử hội thoại -+ |  |
-| [Trò chuyện]   |  | | Bong bóng tin nhắn         | | [DOC] Tiêu đề  [Huy] | |  |
-|  Lịch sử       |  | | Huy hiệu đo lường mô hình  | | [DOC] Tiêu đề  [Huy] | |  |
-| -------------  |  | | [Ô nhập câu hỏi ......(>)] | | [DOC] Tiêu đề  [Huy] | |  |
-| VĂN PHÒNG      |  | +----------------------------+ +----------------------+ |  |
-|  Soạn thảo     |  +---------------------------------------------------------+  |
-|  Tra cứu       |                                                               |
-| -------------  |                                                               |
-| CÀI ĐẶT        |                                                               |
-|  Mô hình, chi phí                                                              |
+| [Khối nhận     |  | [<>] | Trang chủ / Lịch sử hội thoại    (Q) (Chuông) | (A) |  |
+|  diện]         |  +---------------------------------------------------------+  |
+| [+ Cuộc trò    |  | Tiêu đề trang (H1) [Huy hiệu]                           |  |
+|  chuyện mới]   |  | Dòng mô tả ngắn                                         |  |
+|  Trang chủ     |  |                                                         |  |
+|  Lịch sử       |  |  Nội dung của đúng MỘT màn hình theo tuyến đường:       |  |
+| -------------  |  |  Trang chủ | Trò chuyện | Lịch sử hội thoại             |  |
+| GẦN ĐÂY        |  |                                                         |  |
+|  Hội thoại 1   |  |                                                         |  |
+|  Hội thoại 2   |  |                                                         |  |
+|  Xem tất cả    |  +---------------------------------------------------------+  |
 +----------------+---------------------------------------------------------------+
 ```
+
+### 6.0. Luồng màn hình
+
+Mỗi màn hình có đúng một chức năng; không trộn bảng thông tin với khung trò chuyện.
+
+| Tuyến | Màn hình | Chức năng | Đi tiếp |
+| --- | --- | --- | --- |
+| `/` | Trang chủ | Chỉ số vận hành, tác vụ nhanh, ô hỏi, hội thoại gần đây | Gửi câu hỏi hoặc chọn tác vụ: sang `/tro-chuyen/moi` và gửi ngay |
+| `/tro-chuyen/moi` | Trò chuyện (trống) | Màn chào, ô hỏi ở giữa, chip gợi ý | Khi máy chủ cấp mã: đổi địa chỉ sang `/tro-chuyen/:id`, không tải lại |
+| `/tro-chuyen/:id` | Trò chuyện | Cột đọc 768px, ô hỏi cố định ở đáy | Sidebar: mở hội thoại khác hoặc tạo mới |
+| `/lich-su` | Lịch sử hội thoại | Tìm, nhóm theo thời gian, xoá có xác nhận | Bấm một mục: sang `/tro-chuyen/:id` |
+
+Nút `Cuộc trò chuyện mới` chỉ đặt ở sidebar (và nút nổi trên di động), không lặp lại ở thanh đầu
+trang hay trong từng màn hình; luôn đưa về `/tro-chuyen/moi`.
 
 ### 6.1. Sidebar
 
 - Rộng 214px (đệm 12px, nội dung 190px), nền `canvas`, **không** có viền phải: tách khỏi thân
   trang bằng khoảng trống và viền của thẻ thân trang.
-- Đầu sidebar: khối nhận diện cao 36px, bên phải là nút thu gọn (biểu tượng khung chia đôi).
+- Đầu sidebar: chỉ có khối nhận diện cao 36px; nút đóng mở sidebar đặt cố định ở thanh đầu trang.
+- Tiếp theo: nút `primary` `Cuộc trò chuyện mới` rộng 100%, hai mục `Trang chủ`, `Lịch sử hội thoại`,
+  rồi nhóm `GẦN ĐÂY` liệt kê tối đa 8 hội thoại (một dòng, cắt bằng dấu ba chấm) và liên kết
+  `Xem tất cả`.
 - Nhóm menu phân cách bằng đường kẻ 1px `gray-light-2`, tiêu đề nhóm dùng `Overline` viết hoa.
 - Mục menu: cao 40px, đệm `8px 6px`, khoảng cách biểu tượng và chữ 8px, biểu tượng 16px nét mảnh,
   chữ `Body 1` màu `gray-dark-1`.
 - **Mục đang chọn:** nền trắng, viền 1px `gray-light-2`, bo 6px, bóng `--shadow-surface`,
   chữ và biểu tượng `blue-base`. Không tô nền xanh đặc.
-- Hover: nền `gray-light-2`. Thu gọn còn 72px (chỉ biểu tượng); dưới 768px chuyển thành ngăn kéo.
+- Hover: nền `gray-light-2`. Thu gọn còn 72px (chỉ biểu tượng), mặc định thu gọn khi màn hình
+  rộng 768–1099px (laptop nhỏ); dưới 768px chuyển thành ngăn kéo.
 
 ### 6.2. Thanh đầu trang
 
-- Nằm trong thẻ thân trang, cao 68px, đệm ngang 15px, ngăn với nội dung bằng đường kẻ `gray-light-2`.
-- Trái: tiêu đề trang cỡ `H3`, màu `black`.
-- Phải: nhóm nút biểu tượng vuông 32px, viền 1px `gray-light-2`, bo 6px, cách nhau 10px
-  (tìm kiếm, thông báo, ứng dụng); nút đang kích hoạt có biểu tượng `blue-base`. Cuối nhóm là
-  avatar tròn 36px, ngăn bằng đường kẻ dọc.
-- Chấm thông báo: tròn 8px màu `danger`.
+- Nằm trong thẻ thân trang, cao 60px, ngăn với nội dung bằng đường kẻ `gray-light-2`; dùng chung
+  cho mọi màn hình. Mọi nút trên thanh là nút `ghost` 36px: không viền, nền `gray-light-2` khi rê
+  chuột, nền `blue-light-3` và biểu tượng `blue-base` khi bảng thả xuống đang mở.
+- Trái: nút đóng mở sidebar cố định (biểu tượng khung có mũi tên trái khi sidebar đang mở, mũi tên
+  phải khi đang thu gọn; `aria-expanded` theo trạng thái), vạch ngăn dọc, rồi breadcrumb (mục 6.3).
+- Phải: tìm kiếm (mở `Lịch sử hội thoại`), thông báo, nhãn trạng thái hệ thống, vạch ngăn, rồi
+  avatar 36px kèm họ tên và chức danh; dưới 1280px chỉ giữ avatar.
+- Nhãn trạng thái hệ thống: viên thuốc cao 28px, viền `gray-light-2`, chữ 12px, chấm 8px
+  (`success-dark-1` khi `Đang hoạt động`, `danger` khi `Mất kết nối`, `gray-base` khi `Đang kiểm tra`).
+  Bấm để mở bảng `Tình trạng hệ thống`: chế độ định tuyến, hồ sơ GPU, mô hình nội bộ theo bậc,
+  tỷ lệ rơi tầng 1 giờ; chỉ dùng nhãn tiếng Việt (`Ưu tiên mô hình nội bộ`, `GPU 6 GB`, `Bậc chính`),
+  không lộ mã cấu hình.
+- Chấm thông báo: tròn 8px màu `danger`, chỉ hiện khi có thông báo.
+- Bảng thông báo (rộng 320px, bóng `--shadow-modal`) chỉ suy ra từ số liệu thật: mất kết nối máy chủ
+  (`red`), chi phí đám mây đạt ngưỡng ngân sách ngày hoặc tỷ lệ rơi tầng vượt ngưỡng (`yellow`; hai
+  ngưỡng do `/api/v1/chi-phi` trả, mặc định 80% và 20%), yêu cầu đang chờ ở hàng đợi nội bộ
+  (`blue`). Không có thông báo thì ghi `Không có thông báo mới.`
+- Menu tài khoản: thẻ hồ sơ gồm avatar 44px và ba dòng: họ tên (13px, độ đậm 600),
+  `Chức danh · Phòng ban` (11px `gray-dark-3`), `Công ty/Đơn vị` (11px `gray-base`); tiếp theo là
+  liên kết `Trang chủ`, `Lịch sử hội thoại`. Đóng bảng khi bấm ra ngoài hoặc nhấn `Esc`.
+- **Hàng tiêu đề trang** nằm ngay dưới thanh đầu trang, tách riêng khỏi breadcrumb: `H1` 22px độ đậm
+  600 (kèm huy hiệu nếu có, ví dụ chế độ định tuyến ở màn Trò chuyện) và dòng mô tả 13px
+  `gray-dark-1` (lời chào kèm ngày ở Trang chủ, câu hướng dẫn hoặc số kết quả khi lọc ở Lịch sử).
 
-### 6.3. Dải định vị và bộ lọc kỳ
+### 6.3. Breadcrumb
 
-- Breadcrumb `Body 2`: mục đầu có biểu tượng trang chủ; mục trung gian màu `gray-dark-1`;
-  mục có liên kết màu `blue-base`; phân tách bằng mũi tên `>` màu `gray-base`.
-- Bên phải: nút chọn kỳ dạng viền (`09 - Tháng 9`) và nút ba chấm dọc, cùng kiểu nút biểu tượng.
+- Một hàng 14px trong thanh đầu trang: mục đầu `Trang chủ` có biểu tượng nhà; mục cha là liên kết
+  `gray-dark-1`, nền `gray-light-2` khi rê chuột; mục hiện tại màu `black` độ đậm 500, gắn
+  `aria-current="page"`, cắt bằng dấu ba chấm khi quá dài; phân tách bằng dấu `/` màu `gray-light-1`.
+- **Quá dài thì rút gọn ở giữa:** khi breadcrumb đầy đủ vượt bề ngang cho phép, các mục cha ở giữa
+  gộp thành một mục `…` (liên kết tới mục cha gần nhất, tooltip và `aria-label` ghi đủ tên các mục bị
+  ẩn); luôn ưu tiên giữ `Trang chủ` và mục hiện tại. Mục hiện tại vẫn quá dài thì cắt bằng dấu ba chấm.
+- Breadcrumb thay cho nút quay lại: không đặt thêm nút mũi tên quay lại.
+- **Dưới 768px (di động):** không hiển thị breadcrumb; thanh đầu trang chỉ hiện tiêu đề trang hiện
+  tại (16px độ đậm 600, cắt bằng dấu ba chấm). Tiêu đề `H1` ở hàng tiêu đề trang được ẩn khỏi mắt
+  nhìn nhưng vẫn giữ cho trình đọc màn hình, để không lặp tiêu đề hai lần.
 
-### 6.4. Hàng thẻ chỉ số (KPI)
+| Màn hình | Breadcrumb |
+| --- | --- |
+| Trang chủ | `Trang chủ` |
+| Lịch sử hội thoại | `Trang chủ / Lịch sử hội thoại` |
+| Trò chuyện mới | `Trang chủ / Cuộc trò chuyện mới` |
+| Trò chuyện đã có | `Trang chủ / Lịch sử hội thoại / Tiêu đề hội thoại` |
 
-- Bốn thẻ cùng cỡ, khoảng cách 15px, nền trắng, viền `gray-light-2`, bo 12px, đệm 20px.
-- Dòng nhãn: biểu tượng 16px `blue-base` + nhãn `Body 2` màu `gray-dark-1`.
-- Dòng giá trị: `H2` màu `black`, dạng `Nhãn: Giá trị`.
-- Góc phải trên: chấm đỏ nhấp nháy (pulsing dot) khi có mục mới, **hoặc** vòng tiến độ 72px
-  (nét 6px, cung `success`, nền cung `gray-light-2`, số phần trăm `Body 2` ở giữa).
-- Nội dung đề xuất cho trợ lý: số lượt hỏi trong ngày, số hội thoại đang mở, tỷ lệ phục vụ
-  bằng mô hình local (vòng tiến độ), độ trễ trung vị. Mọi con số do công cụ tính, không do model.
+### 6.4. Bố cục Trang chủ và hàng thẻ chỉ số (KPI)
+
+- Thứ tự từ trên xuống: hàng KPI; hai cột tỷ lệ 3:2 gồm khối `Hỏi trợ lý` (tác vụ nhanh ở trên,
+  ô hỏi ở đáy khối) và khối `Hội thoại gần đây` (7 mục, cao bằng cột trái). Trạng thái hệ thống
+  nằm ở thanh đầu trang, không đặt trong nội dung Trang chủ.
+- Ở khung 1280 × 680 (laptop nhỏ), hàng KPI, tác vụ nhanh và phần đầu ô hỏi thấy được ngay.
+- Bốn thẻ KPI cùng cỡ, khoảng cách 12px, nền trắng, viền `gray-light-2`, bo 12px, đệm `14px 16px`.
+- Mọi thẻ dùng chung một khung ba tầng để nhãn, giá trị và chú thích thẳng hàng giữa các thẻ:
+  1. Nhãn: biểu tượng 16px `blue-base` + nhãn 13px màu `gray-dark-1`, sát mép trên.
+  2. Giá trị: 26px màu `black`; chỉ báo phụ (vòng tiến độ 36px, cung `success`, nền cung
+     `gray-light-2`) đặt bên phải cùng hàng, không chứa chữ.
+  3. Chân thẻ đẩy xuống đáy: thanh tiến độ (nếu có) rồi chú thích 11px `gray-dark-1`.
+- Góc phải trên: chấm đỏ nhấp nháy (pulsing dot) khi có mục mới.
+- Nội dung bốn thẻ:
+  - `Lượt hỏi hôm nay`: giá trị `tổng/đám mây` (ví dụ `128/60`), biểu đồ tròn hai phần (nội bộ
+    `blue-base`, đám mây `purple-base`), chú giải có chấm màu `Nội bộ 68 · Đám mây 60` với số in
+    đậm màu `blue-dark-1` và `purple-dark-2`. Số liệu là `so_cau_hoi_hom_nay`,
+    `so_cau_hoi_noi_bo`, `so_cau_hoi_dam_may` của `/api/v1/chi-phi`: máy chủ đếm câu hỏi theo ngày
+    giờ Việt Nam, không tính lời gọi nền đặt tiêu đề.
+  - `Phục vụ nội bộ`: tỷ lệ phần trăm kèm vòng tiến độ `success` (máy chủ trả phân số 0–1).
+  - `Chi phí đám mây`: chi phí hôm nay, thanh tiến độ so với ngân sách ngày; chuyển `warning` khi
+    vượt `nguong_canh_bao_ngan_sach` do máy chủ trả.
+  - `Hàng đợi nội bộ`: giá trị `đang chờ/sức chứa tối đa` (ví dụ `2/20`), thanh ngang mức lấp đầy;
+    sức chứa lấy từ trường `do_dai_toi_da` của `/api/v1/hang-doi/tinh-trang`, không ghi cứng. Chú
+    thích ghi số đang chạy và `xử lý trung vị N giây`.
+- Thanh ngang dùng chung: `blue-base`, chuyển `warning` từ 80%, `danger` khi đầy 100%.
+- Mọi con số do máy chủ tính, không do model; số thập phân dùng dấu phẩy (`53,1%`).
+- Dưới 960px: KPI 2 cột, hai khối nội dung xếp dọc.
+
+### 6.4a. Màn Lịch sử hội thoại
+
+- **Thanh lọc** dính ở đầu vùng cuộn (nền trắng, viền dưới `gray-light-2`), gồm một ô tìm rộng
+  100%, cao 40px. Mọi nút là nút biểu tượng 32px **nằm trong ô**, bên phải, có tooltip
+  (`data-goi-y`) và `aria-label`: `Xoá từ khoá` (chỉ hiện khi có chữ), `Tìm` (tải lại dữ liệu mới
+  nhất; nhấn `Enter` tương đương), vạch ngăn, `Tìm kiếm nâng cao` (biểu tượng thanh trượt; nền
+  `blue-light-3` khi mở, chấm xanh 7px khi đang có điều kiện nâng cao).
+- Máy chủ lọc và sắp xếp (`tu_khoa`, `tu_ngay`, `den_ngay`, `sap_xep` của
+  `GET /api/v1/hoi-thoai`), nên kết quả đúng ngay từ trang đầu. Từ khoá được gửi sau khi ngừng gõ
+  300 ms (`Enter` gửi ngay); đổi ngày hoặc sắp xếp thì tải lại ngay; không cần bấm nút.
+- **Tìm kiếm nâng cao** ẩn mặc định, mở thành hàng dưới ô tìm: `Từ ngày` – `Đến ngày` (không cho
+  chọn ngược), `Sắp xếp` (`Mới nhất`, `Cũ nhất`, `Tên A → Z`, `Tên Z → A`; so sánh tên theo tiếng
+  Việt) căn phải, và nút `Xoá lọc` khi đang lọc.
+- `Từ ngày` và `Đến ngày` mặc định để trống (`null`): không giới hạn, hiển thị toàn bộ lịch sử. Mỗi
+  ô ngày khi có giá trị thì có nút `×` 24px `gray-base` nằm trong ô (`Xoá ngày bắt đầu`,
+  `Xoá ngày kết thúc`); bấm nút hoặc xoá trắng ô thì đầu đó trở lại `null`.
+- **Dòng hội thoại** (danh sách phẳng, không khung bao; mỗi dòng cao tối thiểu 52px, kẻ dưới
+  `gray-light-2`, rê chuột nền `gray-light-3`): biểu tượng trò chuyện 16px `gray-base`, tiêu đề 14px
+  một dòng cắt bằng dấu ba chấm, dòng phụ 11px `gray-dark-1` dạng `8 lượt · cập nhật 14:30` (số lượt
+  là số câu hỏi, trường `so_luot` của `GET /api/v1/hoi-thoai`; hôm nay, hôm qua ghi giờ `HH:mm`, cũ
+  hơn ghi `dd/mm`, khác năm ghi `dd/mm/yyyy`); cuối dòng là nút `Xoá hội thoại` dạng nút biểu tượng
+  thùng rác 28px, **luôn hiển thị** (không
+  chỉ hiện khi rê chuột, để dùng được trên màn hình cảm ứng), màu `gray-base`, rê chuột nền
+  `red-light-3` và biểu tượng `danger`. Bấm nút mở hộp thoại xác nhận của ứng dụng, không dùng
+  `window.confirm`.
+- Sắp theo ngày thì nhóm `HÔM NAY`, `HÔM QUA`, `CŨ HƠN` (đảo thứ tự khi `Cũ nhất`);
+  sắp theo tên thì một danh sách phẳng.
+- **Cuộn vô hạn:** tải 30 hội thoại mỗi trang; mốc cuối danh sách còn cách đáy khung nhìn 300px thì
+  tải trang kế, bỏ mục trùng theo `id`; trang đầu chưa lấp đầy khung nhìn thì tự tải tiếp. Đang tải
+  thêm thì hiện vòng xoay; hết danh sách thì ghi `Đã hiển thị toàn bộ`.
+- **Không hiển thị tổng số hội thoại** (dòng mô tả, sidebar, cuối danh sách): con số này không giúp
+  người dùng tìm lại hội thoại, lại dễ gây nhầm khi đang lọc. Dòng mô tả bình thường là câu cố định
+  `Tìm và mở lại các cuộc trò chuyện trước đây`; chỉ khi đang tìm hoặc lọc mới ghi
+  `Tìm thấy 12 cuộc trò chuyện` (lấy `tong_so` do máy chủ đếm theo bộ lọc). Liên kết sidebar chỉ ghi
+  `Xem tất cả`. Số liệu
+  tổng hợp phục vụ quản lý thuộc bảng quản trị (Giai đoạn 8).
+- **Không có kết quả:** minh hoạ SVG tự vẽ (trang tài liệu trống và kính lúp, màu `blue-light-2`,
+  `blue-base`), tiêu đề `Không tìm thấy hội thoại phù hợp`, gợi ý và nút `Xoá lọc`.
 
 ### 6.5. Khối nội dung
 
-- Thẻ trắng, viền `gray-light-2`, bo 12px, đệm 15px; tiêu đề `Subtitle`.
+- Thẻ trắng, viền `gray-light-2`, bo 12px, đệm `12px 14px 14px`; tiêu đề 16px độ đậm 600.
 - Góc phải tiêu đề: nút biểu tượng vuông 32px (lọc, sắp xếp, sửa, mở rộng).
 - Nội dung cuộn trong khối, không cuộn toàn trang; thanh cuộn mảnh 4px, bo `radius-xs`.
+
+### 6.6. Footer
+
+- Cố định ở chân thẻ thân trang, cao 32px, viền trên `gray-light-2`, chữ 11px `gray-dark-1`;
+  không cuộn theo nội dung, có mặt ở mọi màn hình.
+- Trái: `© <năm hiện tại> <tác giả>. Bảo lưu mọi quyền.` rồi `Trợ lý nội bộ · Phiên bản <x.y.z>`
+  (phiên bản lấy từ `/health`). Tên tác giả khai báo tại `CAU_HINH_APP.TAC_GIA` trong
+  `frontend/src/app/core/cau-hinh.ts`; đây là ghi nhận bản quyền của tác giả phần mềm, không phải
+  nhận diện tổ chức nên không trái mục 0. Không ghi tên tổ chức thật hay email.
+- Phải: `Trợ lý có thể sai. Hãy kiểm tra lại số liệu quan trọng.`; dưới 1100px lời nhắc này
+  chuyển xuống dưới ô hỏi của màn Trò chuyện. Ẩn footer dưới 768px.
 
 ---
 
@@ -497,39 +618,57 @@ Hover mọi ô tiện ích: viền `blue-light-2`, nền `blue-light-3`.
 
 ## 8. Thành phần riêng của trợ lý AI
 
-Phần này ánh xạ ngôn ngữ thiết kế ở trên vào giao diện trò chuyện.
+Phần này ánh xạ ngôn ngữ thiết kế ở trên vào màn Trò chuyện, theo kiểu khung trò chuyện toàn
+màn hình: một cột đọc rộng tối đa 768px ở giữa, ô hỏi cố định ở đáy, không có thẻ KPI hay danh sách
+phụ trong màn này.
 
-### 8.1. Bong bóng trò chuyện
+- **Cuộc trò chuyện trống** (`/tro-chuyen/moi`): biểu tượng 48px, tiêu đề 24px
+  `Anh/Chị cần hỗ trợ việc gì?`, ô hỏi và chip gợi ý cùng nằm giữa màn hình.
+- **Đã có tin nhắn:** tin nhắn cuộn trong cột đọc; ô hỏi dính đáy, phía trên có dải mờ trắng.
+
+### 8.1. Tin nhắn
 
 | Vai trò | Nền | Chữ | Căn | Bo góc |
 | --- | --- | --- | --- | --- |
-| Người dùng | `blue-base` | Trắng, `Body 2` | Phải, tối đa 70% chiều rộng | `12px 12px 3px 12px` |
-| Trợ lý | Trắng, viền `gray-light-2`, `--shadow-surface` | `black`, `Body 2` | Trái, tối đa 80% | `12px 12px 12px 3px` |
+| Người dùng | `gray-light-2` | `black`, 16px | Phải, tối đa 80% chiều rộng | `18px 18px 4px 18px` |
+| Trợ lý | Không có bong bóng, chữ trực tiếp trên nền trắng | `black`, 16px, dòng 28px | Trái, toàn cột | Không |
 | Thông báo hệ thống | Theo banner mục 8.4 | Theo banner | Giữa | 6px |
 
-- Avatar trợ lý 28px dùng biểu tượng của khối nhận diện trung tính; avatar người dùng
-  dùng chữ viết tắt.
-- Khoảng cách giữa hai tin nhắn 10px, giữa hai lượt hỏi đáp 20px.
+- Avatar trợ lý 28px dùng biểu tượng của khối nhận diện trung tính.
+- Câu hỏi dài hơn 6 dòng (hoặc 360 ký tự) được thu gọn còn 6 dòng, mờ dần ở đáy, kèm nút
+  `Xem thêm ▾` / `Thu gọn ▴` (12px, `blue-dark-1`, `aria-expanded`). Mở rộng bằng **bấm**, không dùng
+  rê chuột, để tránh bung ngoài ý muốn và dùng được trên màn hình cảm ứng.
+- Khoảng cách giữa hai lượt hỏi đáp 24px.
 - Đang phát theo dòng (SSE): con trỏ nhấp nháy màu `blue-base` ở cuối văn bản; trước khi có token
   đầu tiên hiển thị `spinner` kèm chữ `Đang soạn câu trả lời...`.
 
 ### 8.2. Huy hiệu đo lường mô hình
 
-Theo quy tắc kỹ thuật số 3 trong `AGENTS.md`, dưới mỗi câu trả lời hiển thị một hàng huy hiệu:
+Theo quy tắc kỹ thuật số 7 trong `AGENTS.md`, dưới mỗi câu trả lời hiển thị một hàng huy hiệu:
 
-- Tầng và bậc (`local · chính`, `đám mây`): huy hiệu `blue` nếu local, `lightgray` nếu đám mây.
-- Tên model, token vào/ra, chi phí, độ trễ, tok/s: chữ `Code 1` 11–13px màu `gray-dark-1`,
-  ngăn bằng dấu `·`.
-- Nút sao chép nội dung và sao chép `ma_yeu_cau` dạng nút biểu tượng `xsmall`.
+- Hiển thị là **một dòng chữ phụ** 11px màu `gray-dark-1`, không nền, không viền, để không cạnh tranh
+  với nội dung câu trả lời; các mục ngăn bằng dấu `·` màu `gray-light-1`.
+- Mục đầu là nguồn kèm chấm tròn 6px: `Nội bộ · chính` (chấm `success-dark-1`), `Đám mây · tầng 1`
+  (chấm `gray-base`). Khi máy chủ báo `ha_cap` (tầng phục vụ khác tầng đầu của chuỗi định tuyến
+  thực tế, hoặc bậc nhỏ trả lời) thì chấm `warning` và chữ `warning-dark-2`; tầng 1 ở chế độ ưu tiên
+  đám mây không bị coi là hạ cấp. Cờ này có cả khi mở lại hội thoại.
+- Tiếp theo: tên model (`Code 1` 11px), token vào/ra, chi phí (chỉ khi lớn hơn 0), tốc độ và độ trễ
+  (ẩn khi bằng 0). Rê chuột vào dòng để xem đủ mọi thông số (tooltip, đồng thời là `aria-label`).
+- Nút sao chép câu trả lời dạng nút biểu tượng 28px, đặt **cuối** hàng và căn mép phải cột đọc
+  (thứ tự đọc trái sang phải, trên xuống dưới: nội dung, thông số, thao tác); sau khi sao chép,
+  biểu tượng đổi thành dấu tích trong 2 giây.
 
 ### 8.3. Ô nhập câu hỏi
 
-- Thẻ trắng, viền 1px `gray-base`, bo 12px, đệm 12px; khi focus viền `blue-base` kèm
-  `--shadow-focus-primary`.
-- Vùng văn bản tự giãn tối đa 6 dòng, `Body 2`; placeholder `Nhập câu hỏi nghiệp vụ...` màu `gray-base`.
-- Nút gửi: `btn primary` cỡ `small`, hình tròn 32px, biểu tượng mũi tên; trong lúc phát chuyển thành
-  nút dừng `default`.
-- Dòng chú thích `Disclaimer` bên dưới: `Trợ lý có thể sai. Hãy kiểm tra lại số liệu quan trọng.`
+- Một thành phần dùng chung cho Trang chủ và Trò chuyện: thẻ trắng, viền 1px `gray-light-1`, bo 16px,
+  bóng nhẹ; khi focus viền `blue-base` kèm `--shadow-focus-primary`.
+- Vùng văn bản tự giãn tối đa khoảng 6 dòng, 16px; placeholder màu `gray-base`. `Enter` để gửi,
+  `Shift + Enter` để xuống dòng (có dòng gợi ý `Disclaimer` bên trái nút gửi).
+- Nút gửi: tròn 36px nền `blue-base`, biểu tượng mũi tên lên; vô hiệu khi ô trống; trong lúc phát
+  chuyển thành nút dừng viền `gray-base`.
+- Ở Trang chủ, gửi câu hỏi **không** trò chuyện tại chỗ mà mở `/tro-chuyen/moi` và gửi ngay.
+- Lời nhắc `Trợ lý có thể sai. Hãy kiểm tra lại số liệu quan trọng.` nằm ở footer (mục 6.6);
+  dưới 1100px hiển thị dạng `Disclaimer` ngay dưới ô hỏi của màn Trò chuyện.
 
 ### 8.4. Banner trạng thái
 
@@ -544,14 +683,19 @@ Banner bo 6px, viền 1px, biểu tượng trái 16px, có thể có nút đóng
 
 ### 8.5. Gợi ý tác vụ nhanh
 
-Màn chào hiển thị lưới 2–3 cột các ô `feature_apps`, mỗi ô là một câu hỏi mẫu:
+Bốn tác vụ mẫu dùng chung một danh mục, hiển thị ở hai nơi:
 
-- `Tra cứu quy trình cấp điện mới` (biểu tượng hồ sơ)
-- `Soạn công văn trả lời khách hàng` (biểu tượng bút)
-- `Diễn giải biểu giá bán lẻ điện` (biểu tượng biểu đồ)
-- `Tóm tắt văn bản quy định mới` (biểu tượng tài liệu)
+- **Trang chủ:** lưới 2 cột các ô `feature_apps` (biểu tượng 36px, tên, mô tả một dòng, mũi tên phải).
+- **Màn Trò chuyện trống:** hàng chip bo tròn cao 36px dưới ô hỏi.
 
-Tiêu đề màn chào dùng `H3`: `Xin chào Anh/Chị, cần hỗ trợ việc gì hôm nay?`.
+| Tác vụ | Biểu tượng | Mô tả |
+| --- | --- | --- |
+| `Tra cứu quy trình` | Hồ sơ | Quy trình cấp điện mới cho hộ gia đình |
+| `Soạn công văn` | Bút | Công văn trả lời kiến nghị của khách hàng |
+| `Diễn giải biểu giá` | Biểu đồ | Biểu giá bán lẻ điện sinh hoạt bậc thang |
+| `Tóm tắt văn bản` | Tài liệu | Điểm chính của văn bản quy định mới |
+
+Chọn một tác vụ sẽ mở cuộc trò chuyện mới và gửi ngay câu hỏi mẫu tương ứng.
 
 ---
 
@@ -580,8 +724,9 @@ Tiêu đề màn chào dùng `H3`: `Xin chào Anh/Chị, cần hỗ trợ việc
 - **Ô tìm kiếm**: bo 6px, viền `blue-base`, biểu tượng kính lúp màu `blue-base`.
 - **Lưới ứng dụng**: 4 cột, ô `feature` 51px, nhãn 13px căn giữa tối đa ba dòng.
 - **Thanh điều hướng đáy** cao 80px: nền trắng có khuyết cong ở giữa chứa nút nổi 56px tròn
-  `gradient-navy` biểu tượng trắng; bốn mục (biểu tượng 20px + nhãn 13px), mục chọn màu `blue-base`,
-  còn lại `gray-dark-1`. Với trợ lý: `Trò chuyện`, `Lịch sử`, nút nổi `Hỏi mới`, `Tiện ích`, `Cài đặt`.
+  `gradient-navy` biểu tượng trắng; các mục (biểu tượng 20px + nhãn 13px), mục chọn màu `blue-base`,
+  còn lại `gray-dark-1`. Với trợ lý: `Trang chủ`, nút nổi `Hỏi mới`, `Lịch sử` (mỗi mục đúng một
+  chức năng đã có; ẩn thanh trong màn Trò chuyện để ô soạn không bị che).
 
 ---
 

@@ -1,0 +1,519 @@
+:host {
+  display: block;
+  flex-shrink: 0;
+}
+
+.thanh-dau-trang {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  height: 60px;
+  padding: 0 var(--space-16) 0 var(--space-12);
+  border-bottom: 1px solid var(--gray-light-2);
+}
+
+.nhom-tieu-de {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  /* Cat ban do an khong tao thanh cuon ngang; khong tao vung cuon rieng */
+  overflow-x: clip;
+  overflow-clip-margin: 4px;
+}
+
+/* Nut ghost: khong vien, chi hien nen khi re chuot hoac dang mo */
+.nut-ghost {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  color: var(--gray-dark-1);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+
+  app-bieu-tuong {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background-color: var(--gray-light-2);
+    color: var(--black);
+  }
+
+  &.dang-mo {
+    background-color: var(--blue-light-3);
+    color: var(--blue-base);
+  }
+
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-primary);
+  }
+}
+
+.tieu-de-di-dong {
+  display: none;
+}
+
+/* Breadcrumb (DESIGN.md muc 6.3): muc cha la lien ket xam, muc hien tai dam hon, ngan bang "/".
+   Chiem het be ngang con lai de do duoc cho trong khi quyet dinh rut gon. */
+.duong-dan {
+  flex: 1;
+  min-width: 0;
+  margin-left: var(--space-4);
+}
+
+/* Ban do an cung co chu va dem voi breadcrumb that; chi dung de do do rong day du */
+.do-duong-dan {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: max-content;
+  visibility: hidden;
+  pointer-events: none;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+
+  > span:not(.dau-phan-cach) {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    padding: 4px var(--space-6);
+  }
+
+  app-bieu-tuong {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.muc-rut-gon {
+  letter-spacing: 1px;
+}
+
+.duong-dan ol {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+
+  li {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+
+    &:not(:last-child) {
+      flex-shrink: 0;
+    }
+  }
+
+  a,
+  .muc-hien-tai {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    min-width: 0;
+    padding: 4px var(--space-6);
+    border-radius: var(--radius-sm);
+  }
+
+  a {
+    color: var(--gray-dark-1);
+    transition: color var(--transition-fast), background-color var(--transition-fast);
+
+    &:hover {
+      background-color: var(--gray-light-2);
+      color: var(--black);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--blue-base);
+      outline-offset: 1px;
+    }
+  }
+
+  .muc-hien-tai {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--black);
+    font-weight: 500;
+  }
+
+  app-bieu-tuong {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.dau-phan-cach {
+  padding: 0 2px;
+  color: var(--gray-light-1);
+}
+
+.nhom-thao-tac {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+/* Nhan trang thai he thong: vien mong, cham mau theo trang thai */
+.nut-trang-thai {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: 28px;
+  margin-left: var(--space-6);
+  padding: 0 var(--space-10);
+  border: 1px solid var(--gray-light-2);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-dark-3);
+  white-space: nowrap;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+
+  &:hover,
+  &.dang-mo {
+    background-color: var(--gray-light-3);
+    border-color: var(--gray-light-1);
+  }
+
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-primary);
+  }
+
+  &.trang-thai-mat-ket-noi {
+    border-color: var(--red-light-2);
+    background-color: var(--red-light-3);
+    color: var(--red-dark-2);
+  }
+}
+
+.cham-trang-thai {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--gray-base);
+
+  .trang-thai-hoat-dong & {
+    background-color: var(--green-dark-1);
+    box-shadow: 0 0 0 3px var(--green-light-3);
+  }
+
+  .trang-thai-mat-ket-noi & {
+    background-color: var(--red-base);
+  }
+}
+
+.bang-he-thong {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-8) var(--space-4);
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-12);
+    padding: var(--space-8) 0;
+
+    & + div {
+      border-top: 1px solid var(--gray-light-2);
+    }
+  }
+
+  dt {
+    font-size: 12px;
+    color: var(--gray-dark-1);
+  }
+
+  dd {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--black);
+    text-align: right;
+  }
+
+  code {
+    font-size: 11px;
+    font-weight: 400;
+  }
+}
+
+.cham-thong-bao {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--white);
+  border-radius: var(--radius-full);
+  background-color: var(--red-base);
+}
+
+.vach-ngan {
+  width: 1px;
+  height: 24px;
+  margin: 0 var(--space-8);
+  background-color: var(--gray-light-2);
+
+  &.vach-thap {
+    height: 20px;
+    margin: 0 var(--space-4);
+  }
+}
+
+.nut-nguoi-dung {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-6) var(--space-4) var(--space-4);
+  border-radius: var(--radius-full);
+
+  &:hover {
+    background-color: var(--gray-light-3);
+  }
+
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-primary);
+  }
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: var(--blue-light-3);
+  color: var(--blue-dark-2);
+  font-size: 13px;
+  font-weight: 600;
+
+  &.avatar-lon {
+    width: 44px;
+    height: 44px;
+    font-size: 15px;
+  }
+}
+
+.thong-tin-nguoi-dung {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-align: left;
+}
+
+.ten-nguoi-dung {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--black);
+}
+
+.chuc-danh {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--gray-dark-1);
+}
+
+/* Dong cong ty / don vi duoi dong chuc danh va phong ban trong the ho so */
+.don-vi {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--gray-base);
+}
+
+.the-ho-so {
+  .chuc-danh {
+    color: var(--gray-dark-3);
+  }
+
+  .ten-nguoi-dung,
+  .chuc-danh,
+  .don-vi {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.mui-ten-menu {
+  color: var(--gray-dark-1);
+}
+
+/* ---------- Bang tha xuong ---------- */
+
+.khung-tha-xuong {
+  position: relative;
+}
+
+.bang-tha-xuong {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 320px;
+  padding: var(--space-8);
+  border: 1px solid var(--gray-light-2);
+  border-radius: var(--radius-md);
+  background-color: var(--white);
+  box-shadow: var(--shadow-modal);
+
+  /* Gian theo noi dung de ho ten, chuc danh, don vi moi dong nam tron mot hang */
+  &.bang-nguoi-dung {
+    width: max-content;
+    min-width: 280px;
+    max-width: min(420px, calc(100vw - 32px));
+  }
+}
+
+.tieu-de-bang {
+  padding: var(--space-4) var(--space-8);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--black);
+}
+
+.muc-thong-bao {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 20px;
+
+  app-bieu-tuong {
+    margin-top: 2px;
+  }
+
+  &.muc-loi {
+    background-color: var(--red-light-3);
+    color: var(--red-dark-2);
+  }
+
+  &.muc-canh-bao {
+    background-color: var(--yellow-light-3);
+    color: var(--yellow-dark-2);
+  }
+
+  &.muc-thong-tin {
+    background-color: var(--blue-light-3);
+    color: var(--blue-dark-2);
+  }
+}
+
+.dong-trong-bang {
+  padding: var(--space-12) var(--space-8);
+  font-size: 13px;
+  color: var(--gray-dark-1);
+}
+
+.the-ho-so {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  padding: var(--space-8) var(--space-8) var(--space-12);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--gray-light-2);
+}
+
+.muc-menu-tha {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--gray-dark-3);
+
+  &:hover {
+    background-color: var(--gray-light-2);
+  }
+
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-primary);
+  }
+}
+
+.ghi-chu-bang {
+  padding: var(--space-8);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--gray-light-2);
+  font-size: 11px;
+  color: var(--gray-dark-1);
+}
+
+/* Laptop man hinh nho: rut gon khoi tai khoan con avatar */
+@media (max-width: 1279px) {
+  .rut-gon {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .thanh-dau-trang {
+    height: 56px;
+    padding: 0 var(--space-12);
+    background-color: var(--white);
+  }
+
+  /* Di dong: bo breadcrumb, chi hien tieu de trang hien tai */
+  .tieu-de-di-dong {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    margin-left: var(--space-4);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--black);
+  }
+
+  .an-tren-di-dong,
+  .vach-thap,
+  .duong-dan,
+  .do-duong-dan {
+    display: none;
+  }
+
+  .nhom-thao-tac {
+    gap: var(--space-6);
+  }
+
+  .bang-tha-xuong {
+    position: fixed;
+    top: 60px;
+    left: var(--space-12);
+    right: var(--space-12);
+    width: auto;
+
+    &.bang-nguoi-dung {
+      width: auto;
+      min-width: 0;
+      max-width: none;
+    }
+  }
+}

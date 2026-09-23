@@ -4,7 +4,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -16,10 +16,14 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from app.chat.hoi_thoai import (
+    SapXepHoiThoai,
+    dem_cau_hoi_hom_nay,
+    dem_so_luot_hoi,
     doc_phien_ban_loi_nhac,
     lay_danh_sach_hoi_thoai,
     lay_danh_sach_luot,
     lay_hoi_thoai,
+    lay_ma_yeu_cau_roi_tang,
     luu_cap_luot_hoi_thoai,
     tao_hoi_thoai,
     tu_dat_tieu_de,
@@ -38,7 +42,6 @@ from app.chat.su_kien_sse import (
 from app.config import CauHinhBacLocal, cau_hinh
 from app.core.bao_mat import kiem_duyet_dau_ra, kiem_duyet_dau_vao
 from app.core.csdl import (
-    HoiThoaiModel,
     NguoiDungModel,
     lay_sessionmaker_async,
 )
@@ -143,6 +146,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Cho giao diện khác nguồn đọc được mã yêu cầu và thời gian chờ khi bị giới hạn
+    expose_headers=["X-Ma-Yeu-Cau", "Retry-After"],
 )
 
 
@@ -188,6 +193,8 @@ class PhanHoiChat(BaseModel):
     do_tre_ms: float
     toc_do_tok_s: float
     nhan_ai: str
+    ma_yeu_cau: str = ""
+    ha_cap: bool = False
 
 
 class ItemHoiThoai(BaseModel):
@@ -197,6 +204,7 @@ class ItemHoiThoai(BaseModel):
     tieu_de: str
     tao_luc: datetime
     cap_nhat_luc: datetime
+    so_luot: int = 0
 
 
 class DanhSachHoiThoai(BaseModel):
@@ -221,6 +229,14 @@ class ItemLuot(BaseModel):
     token_vao: int = 0
     token_ra: int = 0
     chi_phi_usd: float = 0.0
+    toc_do_tok_s: float = 0.0
+    do_tre_ms: float = 0.0
+    da_cat_ngu_canh: bool = False
+    so_luot_bi_cat: int = 0
+    ma_yeu_cau: str | None = None
+    # Chỉ có ở lượt trợ lý: nhãn AI dựng lại từ model và thời điểm, cờ hạ cấp đọc từ luot_goi
+    nhan_ai: str | None = None
+    ha_cap: bool = False
     tao_luc: datetime
 
 
@@ -384,26 +400,9 @@ async def _chuan_bi_hoi_thoai_dong_bo(
             await phien_doc.commit()
             return ht.id, [], True
 
-        ht = await lay_hoi_thoai(phien_doc, yeu_cau_id)
+        # Không tồn tại, đã xoá hoặc thuộc người khác đều trả cùng một lỗi
+        ht = await lay_hoi_thoai(phien_doc, yeu_cau_id, nguoi_id=nguoi.id)
         if ht is None:
-            if cau_hinh.xac_thuc_gia:
-                ht = HoiThoaiModel(
-                    id=yeu_cau_id,
-                    nguoi_id=nguoi.id,
-                    tieu_de="Cuộc trò chuyện mới",
-                    da_xoa=False,
-                )
-                phien_doc.add(ht)
-                await phien_doc.commit()
-                return ht.id, [], True
-            raise LoiUngDung(
-                ma="KHONG_TIM_THAY",
-                thong_diep="Không tìm thấy cuộc hội thoại.",
-                http=404,
-                ma_yeu_cau=ma_yeu_cau,
-            )
-
-        if ht.nguoi_id != nguoi.id:
             raise LoiUngDung(
                 ma="KHONG_TIM_THAY",
                 thong_diep="Không tìm thấy cuộc hội thoại.",
@@ -521,6 +520,8 @@ async def chat_dong_bo(
         do_tre_ms=kq_goi.do_tre_ms,
         toc_do_tok_s=kq_goi.toc_do_tok_s,
         nhan_ai=tao_nhan_ai(kq_goi.ten_model),
+        ma_yeu_cau=ma_yc,
+        ha_cap=kq_goi.ha_cap,
     )
 
 
@@ -534,19 +535,42 @@ async def danh_sach_hoi_thoai_nguoi_dung(
     nguoi: Annotated[NguoiDung, Depends(lay_nguoi_dung_hien_tai)],
     trang: Annotated[int, Query(ge=1)] = 1,
     kich_thuoc: Annotated[int, Query(ge=1, le=100)] = 20,
+    tu_khoa: Annotated[str | None, Query(max_length=200)] = None,
+    tu_ngay: date | None = None,
+    den_ngay: date | None = None,
+    sap_xep: SapXepHoiThoai = SapXepHoiThoai.MOI_NHAT,
 ) -> DanhSachHoiThoai:
-    """Lấy danh sách các cuộc hội thoại của người dùng hiện tại, có phân trang."""
+    """Lấy danh sách hội thoại của người dùng hiện tại theo bộ lọc, có phân trang.
+
+    tong_so là số hội thoại khớp bộ lọc; ngày tính theo giờ Việt Nam.
+    """
+    if tu_ngay is not None and den_ngay is not None and tu_ngay > den_ngay:
+        raise LoiUngDung(
+            ma="DAU_VAO_KHONG_HOP_LE",
+            thong_diep="Từ ngày phải trước hoặc bằng Đến ngày.",
+            http=422,
+            ma_yeu_cau=lay_ma_yeu_cau(),
+        )
     maker = lay_sessionmaker_async()
     async with maker() as phien:
         danh_sach, tong_so = await lay_danh_sach_hoi_thoai(
-            phien, nguoi.id, trang=trang, kich_thuoc=kich_thuoc
+            phien,
+            nguoi.id,
+            trang=trang,
+            kich_thuoc=kich_thuoc,
+            tu_khoa=tu_khoa,
+            tu_ngay=tu_ngay,
+            den_ngay=den_ngay,
+            sap_xep=sap_xep,
         )
+        so_luot = await dem_so_luot_hoi(phien, [ht.id for ht in danh_sach])
         items = [
             ItemHoiThoai(
                 id=ht.id,
                 tieu_de=ht.tieu_de,
                 tao_luc=ht.tao_luc,
                 cap_nhat_luc=ht.cap_nhat_luc,
+                so_luot=so_luot.get(ht.id, 0),
             )
             for ht in danh_sach
         ]
@@ -573,6 +597,9 @@ async def xem_chi_tiet_hoi_thoai(
             )
 
         cac_luot = await lay_danh_sach_luot(phien, ht.id)
+        roi_tang = await lay_ma_yeu_cau_roi_tang(
+            phien, [l.ma_yeu_cau for l in cac_luot if l.vai_tro == "tro_ly" and l.ma_yeu_cau]
+        )
         items = [
             ItemLuot(
                 id=l.id,
@@ -585,6 +612,18 @@ async def xem_chi_tiet_hoi_thoai(
                 token_vao=l.token_vao,
                 token_ra=l.token_ra,
                 chi_phi_usd=l.chi_phi_usd,
+                toc_do_tok_s=l.toc_do_tok_s,
+                do_tre_ms=l.do_tre_ms,
+                da_cat_ngu_canh=l.da_cat_ngu_canh,
+                so_luot_bi_cat=l.so_luot_bi_cat,
+                ma_yeu_cau=l.ma_yeu_cau,
+                nhan_ai=(
+                    tao_nhan_ai(l.model_da_dung, l.tao_luc)
+                    if l.vai_tro == "tro_ly" and l.model_da_dung
+                    else None
+                ),
+                ha_cap=l.vai_tro == "tro_ly"
+                and (l.bac_local == "nho" or l.ma_yeu_cau in roi_tang),
                 tao_luc=l.tao_luc,
             )
             for l in cac_luot
@@ -629,8 +668,12 @@ async def xoa_cuoc_hoi_thoai(
 async def lay_bao_cao_chi_phi(
     _: Annotated[NguoiDung, Depends(lay_nguoi_dung_hien_tai)],
 ) -> dict[str, Any]:
-    """Lấy báo cáo tổng hợp chi phí và tỷ lệ định tuyến sử dụng mô hình."""
-    return dict(bao_cao_chi_phi())
+    """Lấy báo cáo chi phí, tỷ lệ định tuyến và số câu hỏi trong ngày (giờ Việt Nam)."""
+    bao_cao = bao_cao_chi_phi()
+    maker = lay_sessionmaker_async()
+    async with maker() as phien:
+        bao_cao.update(await dem_cau_hoi_hom_nay(phien))
+    return bao_cao
 
 
 @app.get("/api/v1/models", response_model=ThongTinModels)

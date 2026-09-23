@@ -232,6 +232,13 @@ class LuotGoiModel(Base):
         Boolean, default=True, server_default=text("true"), nullable=False
     )
     ma_yeu_cau: Mapped[str] = mapped_column(String(50), nullable=False)
+    roi_tang: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+    ly_do_that_bai_tang_dau: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    muc_dich: Mapped[str] = mapped_column(
+        String(20), default="chat", server_default=text("'chat'"), nullable=False
+    )
 
     __table_args__ = (
         Index("ix_luot_goi_thoi_diem", "thoi_diem"),

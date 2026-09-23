@@ -43,6 +43,10 @@ export interface SuKienXong {
   bac_local?: string | null;
   model: string;
   nhan_ai: string;
+  /** Ma yeu cau cua luot tra loi, dung cho nut sao chep ma o huy hieu. */
+  ma_yeu_cau?: string;
+  /** May chu tinh: tang phuc vu khac tang dau cua chuoi hoac do bac nho tra loi. */
+  ha_cap?: boolean;
 }
 
 export interface SuKienLoi {
@@ -67,6 +71,8 @@ export interface HoiThoai {
   tieu_de: string;
   tao_luc: string;
   cap_nhat_luc: string;
+  /** So cau hoi cua nguoi dung; chi co trong danh sach GET /api/v1/hoi-thoai. */
+  so_luot?: number;
   da_xoa?: boolean;
 }
 
@@ -81,7 +87,26 @@ export interface Luot {
   token_vao?: number;
   token_ra?: number;
   chi_phi_usd?: number;
+  toc_do_tok_s?: number;
+  do_tre_ms?: number;
+  da_cat_ngu_canh?: boolean;
+  so_luot_bi_cat?: number;
+  ma_yeu_cau?: string | null;
+  /** Chi co o luot tro_ly. */
+  nhan_ai?: string | null;
+  ha_cap?: boolean;
   tao_luc: string;
+}
+
+/** Cach sap xep danh sach hoi thoai, khop tham so sap_xep cua may chu. */
+export type SapXepHoiThoai = 'moi_nhat' | 'cu_nhat' | 'ten_tang' | 'ten_giam';
+
+/** Bo loc Lich su gui len GET /api/v1/hoi-thoai; ngay dang YYYY-MM-DD. */
+export interface BoLocHoiThoai {
+  tuKhoa?: string;
+  tuNgay?: string | null;
+  denNgay?: string | null;
+  sapXep?: SapXepHoiThoai;
 }
 
 // Giu bi danh phu hop tuong thich nguoc
@@ -125,6 +150,7 @@ export interface PhanRaTheoTang {
   chi_phi: number;
 }
 
+/** Moi truong ty_le_* la phan so 0-1; rieng phan_tram_da_dung theo thang 0-100. */
 export interface BaoCaoChiPhi {
   chi_phi_hom_nay_usd: number;
   ngan_sach_ngay_usd: number;
@@ -132,13 +158,19 @@ export interface BaoCaoChiPhi {
   phan_ra_theo_tang: Record<string | number, PhanRaTheoTang>;
   ty_le_local: number;
   ty_le_roi_tang: number;
+  /** So cau hoi trong ngay (gio Viet Nam), khong tinh loi goi nen dat tieu de. */
+  so_cau_hoi_hom_nay: number;
+  so_cau_hoi_noi_bo: number;
+  so_cau_hoi_dam_may: number;
+  /** Nguong canh bao doc tu cau hinh may chu (phan so 0-1). */
+  nguong_canh_bao_ngan_sach: number;
+  nguong_ty_le_roi_tang: number;
 }
 
 export interface CauHinhBacLocal {
   bac: string;
   model: string;
   num_ctx: number;
-  keep_alive: string;
 }
 
 export interface ThongTinTangDamMay {
@@ -163,6 +195,8 @@ export interface TrangThaiHangDoi {
   dang_cho: number;
   thoi_gian_cho_trung_vi: number;
   so_bi_tu_choi_1_gio: number;
+  /** Suc chua toi da cua hang doi (cau hinh may chu); may chu ban cu co the chua tra ve. */
+  do_dai_toi_da?: number;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,78 @@
+/* Dong thong so mo hinh (DESIGN.md muc 8.2): chu phu nho, khong nen, khong vien */
+
+.huy-hieu-container {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: var(--space-8);
+  row-gap: 2px;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 18px;
+  letter-spacing: 0.2px;
+  color: var(--gray-dark-1);
+
+  /* Dau cham ngan cach giua cac muc, tru muc dau */
+  > span + span::before {
+    content: '·';
+    margin-right: var(--space-8);
+    color: var(--gray-light-1);
+  }
+
+  .nhan-tang {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    font-weight: 500;
+  }
+
+  .cham-nguon {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background-color: var(--green-dark-1);
+  }
+
+  &.dam-may .cham-nguon {
+    background-color: var(--gray-base);
+  }
+
+  &.canh-bao-roi-tang {
+    .cham-nguon {
+      background-color: var(--yellow-base);
+    }
+
+    .nhan-tang {
+      color: var(--yellow-dark-2);
+    }
+  }
+
+  .ten-model {
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .nut-sao-chep {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border-radius: var(--radius-xs);
+    color: var(--gray-base);
+    transition: color var(--transition-fast), background-color var(--transition-fast);
+
+    &:hover {
+      color: var(--blue-base);
+      background-color: var(--gray-light-2);
+    }
+
+    &:focus-visible {
+      box-shadow: var(--shadow-focus-primary);
+    }
+
+    .icon-copy {
+      width: 12px;
+      height: 12px;
+    }
+  }
+}

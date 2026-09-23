@@ -2,8 +2,8 @@
 
 import logging
 from abc import ABC, abstractmethod
-from datetime import date, datetime, time as time_obj, timedelta, timezone
-from typing import Any
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import CauHinhHeThong, cau_hinh
 from app.core.csdl import LuotGoiModel, lay_engine_dong_bo
+from app.core.thoi_gian import hom_nay_vn, khoang_ngay_vn
 
 logger = logging.getLogger(__name__)
 
@@ -28,47 +29,7 @@ __all__ = [
 ]
 
 
-class TyLeFloat(float):
-    """Lớp số thực hỗ trợ so sánh linh hoạt cả dạng tỷ lệ (0-1) lẫn phần trăm (0-100)."""
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, (int, float)):
-            return False
-        return (
-            super().__eq__(other)
-            or super().__eq__(other / 100.0)
-            or super().__eq__(other * 100.0)
-        )
-
-
-class KetQuaBaoCao(dict[str, Any]):
-    """Kết quả báo cáo chi phí hỗ trợ truy cập như dict và có thể await nếu cần."""
-
-    def __await__(self) -> Any:
-        async def _co() -> "KetQuaBaoCao":
-            return self
-
-        return _co().__await__()
-
-
-class KetQuaKiemTraNganSach(tuple[bool, bool, float]):
-    """Bộ 3 kết quả kiểm tra ngân sách hỗ trợ cả đồng bộ lẫn bất đồng bộ."""
-
-    def __await__(self) -> Any:
-        async def _co() -> "KetQuaKiemTraNganSach":
-            return self
-
-        return _co().__await__()
-
-
-class KetQuaTyLeRoiTang(tuple[float, str | None]):
-    """Bộ 2 kết quả tỷ lệ rơi tầng hỗ trợ cả đồng bộ lẫn bất đồng bộ."""
-
-    def __await__(self) -> Any:
-        async def _co() -> "KetQuaTyLeRoiTang":
-            return self
-
-        return _co().__await__()
+MucDichGoi = Literal["chat", "tieu_de"]
 
 
 class LuotGoi(BaseModel):
@@ -97,7 +58,12 @@ class LuotGoi(BaseModel):
     )
     ly_do_that_bai_tang_dau: str | None = Field(
         default=None,
-        description="Lý do lỗi khiến tầng đầu tiên thất bại",
+        max_length=100,
+        description="Loại lỗi khiến tầng đầu tiên thất bại, không chứa nội dung tin nhắn",
+    )
+    muc_dich: MucDichGoi = Field(
+        default="chat",
+        description="chat: lượt hỏi của người dùng; tieu_de: lời gọi nền đặt tiêu đề",
     )
 
 
@@ -144,9 +110,9 @@ class KhoLuotGoiBoNho(KhoLuotGoi):
         return list(self._danh_sach)
 
     def lay_trong_ngay(self, ngay: date | None = None) -> list[LuotGoi]:
-        """Lấy các lượt gọi trong ngày chỉ định (so sánh theo UTC)."""
-        ngay_chon = ngay or datetime.now(timezone.utc).date()
-        return [lg for lg in self._danh_sach if lg.thoi_diem.date() == ngay_chon]
+        """Lấy các lượt gọi trong ngày chỉ định theo giờ Việt Nam."""
+        tu, den = khoang_ngay_vn(ngay or hom_nay_vn())
+        return [lg for lg in self._danh_sach if tu <= lg.thoi_diem < den]
 
     def lay_trong_khoang(self, tu_thoi_diem: datetime, den_thoi_diem: datetime) -> list[LuotGoi]:
         """Lấy các lượt gọi nằm trong khoảng thời gian [tu_thoi_diem, den_thoi_diem]."""
@@ -186,6 +152,9 @@ class KhoLuotGoiPostgres(KhoLuotGoi):
             toc_do_tok_s=luot_goi.toc_do_tok_s,
             thanh_cong=luot_goi.thanh_cong,
             ma_yeu_cau=luot_goi.ma_yeu_cau,
+            roi_tang=luot_goi.roi_tang,
+            ly_do_that_bai_tang_dau=luot_goi.ly_do_that_bai_tang_dau,
+            muc_dich=luot_goi.muc_dich,
         )
         try:
             with Session(self._engine) as phien:
@@ -211,6 +180,9 @@ class KhoLuotGoiPostgres(KhoLuotGoi):
             toc_do_tok_s=row.toc_do_tok_s,
             thanh_cong=row.thanh_cong,
             ma_yeu_cau=row.ma_yeu_cau,
+            roi_tang=row.roi_tang,
+            ly_do_that_bai_tang_dau=row.ly_do_that_bai_tang_dau,
+            muc_dich="tieu_de" if row.muc_dich == "tieu_de" else "chat",
         )
 
     def lay_tat_ca(self) -> list[LuotGoi]:
@@ -237,32 +209,24 @@ class KhoLuotGoiPostgres(KhoLuotGoi):
             return [self._chuyen_doi_model_sang_schema(r) for r in ket_qua]
 
     def lay_trong_ngay(self, ngay: date | None = None) -> list[LuotGoi]:
-        """Lấy danh sách các lượt gọi trong ngày (UTC)."""
-        ngay_chon = ngay or datetime.now(timezone.utc).date()
-        tu_thoi_diem = datetime.combine(ngay_chon, time_obj.min).replace(
-            tzinfo=timezone.utc
-        )
-        den_thoi_diem = datetime.combine(ngay_chon, time_obj.max).replace(
-            tzinfo=timezone.utc
-        )
-        return self.lay_trong_khoang(tu_thoi_diem, den_thoi_diem)
+        """Lấy danh sách các lượt gọi trong ngày theo giờ Việt Nam."""
+        tu, den = khoang_ngay_vn(ngay or hom_nay_vn())
+        with Session(self._engine) as phien:
+            cau_lenh = (
+                select(LuotGoiModel)
+                .where(LuotGoiModel.thoi_diem >= tu, LuotGoiModel.thoi_diem < den)
+                .order_by(LuotGoiModel.thoi_diem.asc())
+            )
+            ket_qua = phien.scalars(cau_lenh).all()
+            return [self._chuyen_doi_model_sang_schema(r) for r in ket_qua]
 
     def tinh_tong_chi_phi_ngay(self, ngay: date | None = None) -> float:
-        """Tính tổng chi phí gọi mô hình trong ngày từ bảng luot_goi."""
-        ngay_chon = ngay or datetime.now(timezone.utc).date()
-        tu_thoi_diem = datetime.combine(ngay_chon, time_obj.min).replace(
-            tzinfo=timezone.utc
-        )
-        den_thoi_diem = datetime.combine(ngay_chon, time_obj.max).replace(
-            tzinfo=timezone.utc
-        )
+        """Tính tổng chi phí gọi mô hình trong ngày (giờ Việt Nam) từ bảng luot_goi."""
+        tu, den = khoang_ngay_vn(ngay or hom_nay_vn())
         with Session(self._engine) as phien:
             cau_lenh = select(
                 func.coalesce(func.sum(LuotGoiModel.chi_phi_usd), 0.0)
-            ).where(
-                LuotGoiModel.thoi_diem >= tu_thoi_diem,
-                LuotGoiModel.thoi_diem <= den_thoi_diem,
-            )
+            ).where(LuotGoiModel.thoi_diem >= tu, LuotGoiModel.thoi_diem < den)
             tong = phien.scalar(cau_lenh)
             return round(float(tong or 0.0), 6)
 
@@ -300,8 +264,11 @@ def kiem_tra_ngan_sach(
     nguong_canh_bao: float | None = None,
     kho: KhoLuotGoi | None = None,
     cfg: CauHinhHeThong | None = None,
-) -> KetQuaKiemTraNganSach:
-    """Kiểm tra tổng chi phí trong ngày so với ngân sách và ngưỡng cảnh báo."""
+) -> tuple[bool, bool, float]:
+    """Kiểm tra tổng chi phí trong ngày so với ngân sách và ngưỡng cảnh báo.
+
+    Trả (vuot_ngan_sach, vuot_canh_bao, tong_chi_phi).
+    """
     ch = cfg or cau_hinh
     ns = (
         ngan_sach_ngay_usd
@@ -318,24 +285,30 @@ def kiem_tra_ngan_sach(
 
     vuot_ngan_sach = tong_chi_phi >= ns
     vuot_canh_bao = tong_chi_phi >= (ns * nguong)
-    return KetQuaKiemTraNganSach((vuot_ngan_sach, vuot_canh_bao, tong_chi_phi))
+    return vuot_ngan_sach, vuot_canh_bao, tong_chi_phi
 
 
 def tinh_ty_le_roi_tang(
     kho: KhoLuotGoi | None = None,
     gio_gan_nhat: int = 1,
-) -> KetQuaTyLeRoiTang:
-    """Tính tỷ lệ các lượt gọi không được tầng đầu phục vụ trong khoảng thời gian qua."""
+) -> tuple[float, str | None]:
+    """Tính tỷ lệ (0-1) lượt hỏi không được tầng đầu của chuỗi phục vụ trong khoảng vừa qua.
+
+    Chỉ xét lượt hỏi của người dùng (muc_dich=chat), gồm cả lượt hết chuỗi (thanh_cong=False).
+    Trả (ty_le, loai_loi_tang_dau_gan_nhat).
+    """
     k = kho or kho_luot_goi_mac_dinh
     den_thoi_diem = datetime.now(timezone.utc)
     tu_thoi_diem = den_thoi_diem - timedelta(hours=gio_gan_nhat)
 
-    danh_sach = k.lay_trong_khoang(tu_thoi_diem, den_thoi_diem)
+    danh_sach = [
+        lg for lg in k.lay_trong_khoang(tu_thoi_diem, den_thoi_diem) if lg.muc_dich == "chat"
+    ]
     if not danh_sach:
-        return KetQuaTyLeRoiTang((TyLeFloat(0.0), None))
+        return 0.0, None
 
     danh_sach_roi = [lg for lg in danh_sach if lg.roi_tang]
-    ty_le = TyLeFloat(round(len(danh_sach_roi) / len(danh_sach), 4))
+    ty_le = round(len(danh_sach_roi) / len(danh_sach), 4)
 
     ly_do_gan_nhat: str | None = None
     for lg in reversed(danh_sach_roi):
@@ -343,7 +316,7 @@ def tinh_ty_le_roi_tang(
             ly_do_gan_nhat = lg.ly_do_that_bai_tang_dau
             break
 
-    return KetQuaTyLeRoiTang((ty_le, ly_do_gan_nhat))
+    return ty_le, ly_do_gan_nhat
 
 
 def kiem_tra_canh_bao_ty_le_roi_tang(
@@ -359,7 +332,7 @@ def kiem_tra_canh_bao_ty_le_roi_tang(
         logger.warning(
             "CẢNH BÁO TỶ LỆ RƠI TẦNG: Tỷ lệ rơi tầng 1 giờ qua là %.1f%% "
             "(vượt ngưỡng %.1f%%). Lý do hỏng tầng đầu gần nhất: %s",
-            float(ty_le) * 100.0,
+            ty_le * 100.0,
             nguong * 100.0,
             ly_do or "Không có thông tin",
         )
@@ -369,13 +342,19 @@ def bao_cao_chi_phi(
     kho: KhoLuotGoi | None = None,
     cfg: CauHinhHeThong | None = None,
     ngay: date | None = None,
-) -> KetQuaBaoCao:
-    """Tổng hợp báo cáo toàn diện về tình hình sử dụng chi phí và tỷ lệ định tuyến."""
+) -> dict[str, Any]:
+    """Tổng hợp báo cáo chi phí và tỷ lệ định tuyến trong ngày (giờ Việt Nam).
+
+    Mọi trường ty_le_* là phân số 0-1; riêng phan_tram_da_dung theo thang 0-100.
+    Phân rã theo tầng và ty_le_local chỉ tính lượt hỏi (muc_dich=chat) đã được phục vụ;
+    chi phí tính trên mọi lượt gọi.
+    """
     ch = cfg or cau_hinh
     k = kho or kho_luot_goi_mac_dinh
-    cac_luot = k.lay_trong_ngay(ngay)
+    tat_ca = k.lay_trong_ngay(ngay)
+    cac_luot = [lg for lg in tat_ca if lg.muc_dich == "chat" and lg.thanh_cong]
 
-    chi_phi_hom_nay = round(sum(lg.chi_phi_usd for lg in cac_luot), 6)
+    chi_phi_hom_nay = round(sum(lg.chi_phi_usd for lg in tat_ca), 6)
     ngan_sach_ngay = ch.ngan_sach_ngay_usd
     phan_tram_dung = (
         round((chi_phi_hom_nay / max(ngan_sach_ngay, 0.0001)) * 100.0, 2)
@@ -398,19 +377,17 @@ def bao_cao_chi_phi(
             phan_ra[lg.tang]["chi_phi"] + lg.chi_phi_usd, 6
         )
 
-    ty_le_local = (
-        TyLeFloat(round((so_luot_tang_0 / tong_luot) * 100.0, 2))
-        if tong_luot > 0
-        else TyLeFloat(0.0)
-    )
+    ty_le_local = round(so_luot_tang_0 / tong_luot, 4) if tong_luot > 0 else 0.0
 
     ty_le_roi, _ = tinh_ty_le_roi_tang(kho=k, gio_gan_nhat=1)
 
-    return KetQuaBaoCao({
+    return {
         "chi_phi_hom_nay_usd": chi_phi_hom_nay,
         "ngan_sach_ngay_usd": ngan_sach_ngay,
-        "phan_tram_da_dung": TyLeFloat(phan_tram_dung),
+        "phan_tram_da_dung": phan_tram_dung,
         "phan_ra_theo_tang": phan_ra,
         "ty_le_local": ty_le_local,
         "ty_le_roi_tang": ty_le_roi,
-    })
+        "nguong_canh_bao_ngan_sach": ch.cai_dat_chung.nguong_canh_bao_ngan_sach,
+        "nguong_ty_le_roi_tang": ch.cai_dat_chung.nguong_ty_le_roi_tang,
+    }

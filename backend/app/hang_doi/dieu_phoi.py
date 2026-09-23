@@ -43,6 +43,10 @@ class TrangThaiHangDoi(BaseModel):
         ge=0,
         description="Số lượng yêu cầu bị từ chối do hàng đợi đầy trong 1 giờ qua",
     )
+    do_dai_toi_da: int = Field(
+        ge=0,
+        description="Sức chứa tối đa của hàng đợi; vượt mức này yêu cầu mới bị từ chối",
+    )
 
     def __getitem__(self, item: str) -> Any:
         """Hỗ trợ truy cập dữ liệu theo cú pháp khóa từ điển."""
@@ -190,6 +194,7 @@ class DieuPhoi:
             dang_cho=self.dang_cho,
             thoi_gian_cho_trung_vi=self.thoi_gian_cho_trung_vi,
             so_bi_tu_choi_1_gio=self.so_bi_tu_choi_1_gio,
+            do_dai_toi_da=self.do_dai_hang_doi_toi_da,
         )
 
 

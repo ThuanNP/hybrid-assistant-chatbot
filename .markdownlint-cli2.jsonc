@@ -2,6 +2,7 @@
   "globs": [
     "**/*.md"
   ],
+  "gitignore": true,
   "ignores": [
     "node_modules/**",
     ".venv/**",
@@ -9,7 +10,6 @@
     "**/.venv/**",
     "frontend/dist/**",
     ".agents/skills/**",
-    "specs/**",
-    ".remember/**"
+    "specs/**"
   ]
 }

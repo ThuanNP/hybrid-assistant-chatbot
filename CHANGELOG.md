@@ -6,6 +6,61 @@ và tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Chưa phát hành]
 
+### Thêm
+
+- `GET /api/v1/hang-doi/tinh-trang` trả thêm trường `do_dai_toi_da` (sức chứa tối đa của hàng đợi,
+  lấy từ cấu hình); thay đổi bổ sung, tương thích ngược.
+- `GET /api/v1/hoi-thoai` trả thêm trường `so_luot` cho mỗi hội thoại (số câu hỏi của người dùng,
+  đếm gộp trong một truy vấn); thay đổi bổ sung, tương thích ngược.
+- Breadcrumb quá dài tự gộp các mục giữa thành `…`, luôn giữ `Trang chủ` và mục hiện tại; trên di
+  động thanh đầu trang chỉ hiện tiêu đề trang thay cho breadcrumb.
+- Workspace Angular 22 (standalone, signals, zoneless), app shell theo DESIGN.md, phông tự host;
+  `api.service`, `sse.service` đọc luồng SSE bằng `fetch` kèm kiểm thử đơn vị; ba màn Trang chủ,
+  Trò chuyện, Lịch sử hội thoại và tác vụ nhanh dùng chung.
+- `GET /api/v1/hoi-thoai` nhận tham số `tu_khoa`, `tu_ngay`, `den_ngay`, `sap_xep`; `tong_so` đếm
+  theo bộ lọc, ngày tính theo giờ Việt Nam.
+- Sự kiện SSE `xong` và phản hồi `POST /api/v1/chat` có thêm `ma_yeu_cau` và `ha_cap`.
+- Mỗi lượt trong `GET /api/v1/hoi-thoai/{id}` trả thêm `toc_do_tok_s`, `do_tre_ms`,
+  `da_cat_ngu_canh`, `so_luot_bi_cat`, `ma_yeu_cau`, `ha_cap`; lượt trợ lý có thêm `nhan_ai`.
+- `GET /api/v1/chi-phi` trả thêm `so_cau_hoi_hom_nay`, `so_cau_hoi_noi_bo`, `so_cau_hoi_dam_may`,
+  `nguong_canh_bao_ngan_sach`, `nguong_ty_le_roi_tang`.
+- Migration `002_luot_goi_roi_tang`: bảng `luot_goi` thêm `roi_tang`, `ly_do_that_bai_tang_dau`
+  (chỉ lưu loại lỗi) và `muc_dich` (`chat` hoặc `tieu_de`).
+- Mã lỗi `LOI_DONG` vào bảng mã lỗi; CORS mở header `X-Ma-Yeu-Cau`, `Retry-After`.
+
+### Thay đổi
+
+- Màn Lịch sử hội thoại tìm, lọc và sắp xếp qua máy chủ; kết quả đúng ngay từ trang đầu, không cần
+  tải hết các trang.
+- Huy hiệu mô hình chuyển màu cảnh báo theo cờ `ha_cap` của máy chủ (đúng cả với chế độ ưu tiên
+  đám mây); mở lại hội thoại vẫn giữ huy hiệu, nhãn AI và dòng lược bớt.
+- KPI `Lượt hỏi hôm nay` lấy số câu hỏi do máy chủ đếm; ngưỡng thông báo lấy từ máy chủ.
+- `GET /api/v1/chi-phi`: mọi trường `ty_le_*` là phân số 0–1; "hôm nay" và ngân sách ngày tính theo
+  giờ Việt Nam; lời gọi nền đặt tiêu đề không tính vào tỷ lệ định tuyến.
+- `AGENTS.md`: quy tắc kỹ thuật đánh số 5–13 nối tiếp bốn quy tắc tuyệt đối; bổ sung quy định về
+  thông tin được đưa vào tệp commit.
+
+- Màn Lịch sử hội thoại: nút xoá hội thoại (thùng rác 28px) luôn hiển thị ở cuối mỗi dòng thay vì
+  chỉ hiện khi rê chuột, dùng được trên màn hình cảm ứng; DESIGN.md mục 6.4a bổ sung quy định dòng
+  hội thoại.
+- Màn Lịch sử hội thoại: `Từ ngày`, `Đến ngày` mặc định `null` (không giới hạn, lấy toàn bộ lịch
+  sử); mỗi ô ngày có nút `×` riêng đưa ô về `null`.
+- Màn Lịch sử hội thoại: dòng hội thoại đổi sang danh sách phẳng theo bản thiết kế Stitch, dòng phụ
+  dạng `8 lượt · cập nhật 14:30`.
+- Bỏ hiển thị tổng số hội thoại: dòng mô tả màn Lịch sử là câu hướng dẫn cố định, chỉ ghi số kết quả
+  khi đang tìm hoặc lọc; sidebar ghi `Xem tất cả`; cuối danh sách ghi `Đã hiển thị toàn bộ`.
+- Màn Lịch sử hội thoại chỉ còn ba nhóm thời gian `Hôm nay`, `Hôm qua`, `Cũ hơn` (bỏ nhóm
+  `7 ngày qua`, gộp vào `Cũ hơn`).
+
+### Sửa lỗi
+
+- Tỷ lệ rơi tầng được tính và cảnh báo đúng khi dùng kho PostgreSQL; lượt hết chuỗi cũng được ghi.
+- Siết kiểm tra quyền truy cập hội thoại khi phát theo dòng; mã hội thoại không hợp lệ trả
+  `KHONG_TIM_THAY`, máy chủ tự cấp mã khi tạo hội thoại mới; `noi_dung` không được rỗng.
+- Không lưu nội dung bị móc kiểm duyệt từ chối; kiểm duyệt đầu vào chạy trước khi tạo hội thoại.
+- Tham số nội bộ của router không còn được chuyển sang lời gọi nhà cung cấp đám mây.
+- Nhãn AI ghi giờ Việt Nam; nhật ký không còn ghi tiêu đề hội thoại tự đặt.
+
 ## [0.3.0] - 2026-09-23
 
 ### Thêm

@@ -64,7 +64,7 @@ backend, frontend và API trong workspace.
 // backend/pyproject.toml và frontend/package.json đều có version = "0.1.0"
 // Endpoint GET /health trả về:
 {
-  "trang_thai": "ok",
+  "trang_thai": "song",
   "phien_ban": "0.1.0"
 }
 

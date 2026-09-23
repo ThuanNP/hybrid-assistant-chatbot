@@ -234,6 +234,8 @@ export class SseService {
             bac_local: typeof obj['bac_local'] === 'string' ? obj['bac_local'] : null,
             model: String(obj['model'] ?? ''),
             nhan_ai: String(obj['nhan_ai'] ?? ''),
+            ma_yeu_cau: typeof obj['ma_yeu_cau'] === 'string' ? obj['ma_yeu_cau'] : undefined,
+            ha_cap: typeof obj['ha_cap'] === 'boolean' ? obj['ha_cap'] : undefined,
           } satisfies SuKienXong;
         case 'loi':
           return {

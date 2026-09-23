@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.chat.hoi_thoai import (
     doc_phien_ban_loi_nhac,
@@ -27,9 +27,15 @@ from app.chat.hoi_thoai import (
 from app.chat.ngu_canh import dung_ngu_canh
 from app.config import cau_hinh
 from app.core.bao_mat import kiem_duyet_dau_ra, kiem_duyet_dau_vao
-from app.core.csdl import HoiThoaiModel, NguoiDungModel, lay_sessionmaker_async
-from app.core.loi import LoiUngDung, chuyen_doi_loi_sang_loi_ung_dung
+from app.core.csdl import NguoiDungModel, lay_sessionmaker_async
+from app.core.loi import (
+    LOI_DONG,
+    THONG_DIEP_LOI,
+    LoiUngDung,
+    chuyen_doi_loi_sang_loi_ung_dung,
+)
 from app.core.nhat_ky import lay_ma_yeu_cau
+from app.core.thoi_gian import MUI_GIO_VN
 from app.core.xac_thuc import NguoiDung
 from app.llm.chinh_sach import nhan_cua_hoi_thoai, xac_dinh_chuoi
 from app.llm.router import KetQuaGoi, ManhPhatRa, goi_mo_hinh_theo_dong
@@ -41,7 +47,7 @@ class YeuCauChatStream(BaseModel):
     """Dữ liệu yêu cầu gửi tới endpoint phát dòng chat SSE."""
 
     hoi_thoai_id: int | None = None
-    noi_dung: str
+    noi_dung: str = Field(min_length=1)
 
 
 class SuKienHangDoi(BaseModel):
@@ -81,6 +87,9 @@ class SuKienXong(BaseModel):
     bac_local: str | None = None
     model: str
     nhan_ai: str
+    ma_yeu_cau: str = ""
+    # True khi tầng phục vụ khác tầng đầu của chuỗi thực tế hoặc do bậc nho trả lời
+    ha_cap: bool = False
 
 
 class SuKienLoi(BaseModel):
@@ -100,10 +109,10 @@ def sinh_ma_yeu_cau() -> str:
 def tao_nhan_ai(model: str, thoi_diem: datetime | None = None) -> str:
     """Tạo nhãn nguồn gốc câu trả lời hiển thị trên giao diện người dùng.
 
-    Tuân thủ quy tắc kỹ thuật 8 trong AGENTS.md: Trần tự chủ L2,
+    Tuân thủ quy tắc kỹ thuật 12 trong AGENTS.md: Trần tự chủ L2,
     chỉ gắn nhãn nhận diện mô hình và thời điểm sinh, không có trường hợp lệ.
     """
-    moc_thoi_gian = thoi_diem or datetime.now(timezone.utc).astimezone()
+    moc_thoi_gian = (thoi_diem or datetime.now(timezone.utc)).astimezone(MUI_GIO_VN)
     chuoi_thoi_gian = moc_thoi_gian.strftime("%d/%m/%Y - %H:%M")
     return f"Nội dung do AI tạo - {model} - {chuoi_thoi_gian}"
 
@@ -164,6 +173,8 @@ def _tao_su_kien_tu_manh(
                 bac_local=kq.bac_local if kq else manh.bac_local,
                 model=ten_model,
                 nhan_ai=tao_nhan_ai(ten_model),
+                ma_yeu_cau=ma_yeu_cau,
+                ha_cap=kq.ha_cap if kq else False,
             ),
         )
 
@@ -171,8 +182,8 @@ def _tao_su_kien_tu_manh(
     return dong_goi_su_kien(
         "loi",
         SuKienLoi(
-            ma="LOI_DONG",
-            thong_diep="Phản hồi bị gián đoạn, vui lòng gửi lại.",
+            ma=LOI_DONG,
+            thong_diep=THONG_DIEP_LOI[LOI_DONG],
             ma_yeu_cau=ma_yeu_cau,
             phan_da_nhan=noi_dung_loi,
         ),
@@ -210,9 +221,25 @@ async def _tien_trinh_san_xuat(
     nhan_du_lieu_str: str | None = None
     kq_hoan_thanh: KetQuaGoi | None = None
     da_luu_db = False
+    # Nội dung đã bị móc kiểm duyệt từ chối thì không được lưu, kể cả ở nhánh lỗi
+    bi_chan = False
 
     try:
-        # 1. Truy vấn hoặc khởi tạo hội thoại và đọc lịch sử theo thứ tự thời gian
+        # 0. Móc kiểm duyệt đầu vào, gọi trước khi tạo hội thoại và dựng ngữ cảnh
+        kd_dau_vao = await kiem_duyet_dau_vao(yeu_cau.noi_dung, nguoi)
+        if not kd_dau_vao.cho_qua:
+            bi_chan = True
+            raise LoiUngDung(
+                ma="NOI_DUNG_BI_CHAN",
+                thong_diep=kd_dau_vao.ly_do
+                or "Nội dung vi phạm chính sách kiểm duyệt.",
+                http=422,
+                ma_yeu_cau=ma_yeu_cau,
+            )
+        if kd_dau_vao.noi_dung_thay_the is not None:
+            noi_dung_nguoi_dung = kd_dau_vao.noi_dung_thay_the
+
+        # 1. Mở hội thoại của chính người dùng (hoặc tạo mới) và đọc lịch sử theo thời gian
         async with maker() as phien_doc:
             if cau_hinh.xac_thuc_gia:
                 nd = await phien_doc.get(NguoiDungModel, nguoi.id)
@@ -238,57 +265,28 @@ async def _tien_trinh_san_xuat(
                 la_luot_dau = True
                 lich_su_tin_nhan: list[dict[str, str]] = []
             else:
-                ht = await lay_hoi_thoai(phien_doc, yeu_cau.hoi_thoai_id)
+                # Hội thoại không tồn tại, đã xoá hoặc thuộc người khác đều trả cùng một lỗi
+                ht = await lay_hoi_thoai(phien_doc, yeu_cau.hoi_thoai_id, nguoi_id=nguoi.id)
                 if ht is None:
-                    if cau_hinh.xac_thuc_gia:
-                        ht = HoiThoaiModel(
-                            id=yeu_cau.hoi_thoai_id,
-                            nguoi_id=nguoi.id,
-                            tieu_de="Cuộc trò chuyện mới",
-                            da_xoa=False,
-                        )
-                        phien_doc.add(ht)
-                        await phien_doc.commit()
-                        hoi_thoai_id = ht.id
-                        hoi_thoai_id_hop[0] = hoi_thoai_id
-                        la_luot_dau = True
-                        lich_su_tin_nhan = []
+                    raise LoiUngDung(
+                        ma="KHONG_TIM_THAY",
+                        thong_diep="Không tìm thấy cuộc hội thoại.",
+                        http=404,
+                        ma_yeu_cau=ma_yeu_cau,
+                    )
+                hoi_thoai_id = ht.id
+                hoi_thoai_id_hop[0] = hoi_thoai_id
+                cac_luot = await lay_danh_sach_luot(phien_doc, hoi_thoai_id)
+                la_luot_dau = len(cac_luot) == 0
+                lich_su_tin_nhan = []
+                for luot in cac_luot:
+                    if luot.vai_tro == "nguoi_dung":
+                        vai_tro_role = "user"
+                    elif luot.vai_tro == "tro_ly":
+                        vai_tro_role = "assistant"
                     else:
-                        raise LoiUngDung(
-                            ma="KHONG_TIM_THAY",
-                            thong_diep="Không tìm thấy cuộc hội thoại.",
-                            http=404,
-                            ma_yeu_cau=ma_yeu_cau,
-                        )
-                else:
-                    hoi_thoai_id = ht.id
-                    hoi_thoai_id_hop[0] = hoi_thoai_id
-                    cac_luot = await lay_danh_sach_luot(phien_doc, hoi_thoai_id)
-                    la_luot_dau = len(cac_luot) == 0
-                    lich_su_tin_nhan = []
-                    for luot in cac_luot:
-                        if luot.vai_tro == "nguoi_dung":
-                            vai_tro_role = "user"
-                        elif luot.vai_tro == "tro_ly":
-                            vai_tro_role = "assistant"
-                        else:
-                            vai_tro_role = "system"
-                        lich_su_tin_nhan.append(
-                            {"role": vai_tro_role, "content": luot.noi_dung}
-                        )
-
-        # 1b. Móc kiểm duyệt đầu vào (gọi trước khi dựng ngữ cảnh)
-        kd_dau_vao = await kiem_duyet_dau_vao(yeu_cau.noi_dung, nguoi)
-        if not kd_dau_vao.cho_qua:
-            raise LoiUngDung(
-                ma="NOI_DUNG_BI_CHAN",
-                thong_diep=kd_dau_vao.ly_do
-                or "Nội dung vi phạm chính sách kiểm duyệt.",
-                http=422,
-                ma_yeu_cau=ma_yeu_cau,
-            )
-        if kd_dau_vao.noi_dung_thay_the is not None:
-            noi_dung_nguoi_dung = kd_dau_vao.noi_dung_thay_the
+                        vai_tro_role = "system"
+                    lich_su_tin_nhan.append({"role": vai_tro_role, "content": luot.noi_dung})
 
         # 2. Xác định nhãn dữ liệu, chuỗi định tuyến và dựng ngữ cảnh
         nhan = nhan_cua_hoi_thoai(
@@ -325,6 +323,7 @@ async def _tien_trinh_san_xuat(
         # 3b. Móc kiểm duyệt đầu ra trên toàn văn trước khi lưu CSDL
         kd_dau_ra = await kiem_duyet_dau_ra(noi_dung_tro_ly, nguoi)
         if not kd_dau_ra.cho_qua:
+            bi_chan = True
             raise LoiUngDung(
                 ma="NOI_DUNG_BI_CHAN",
                 thong_diep=kd_dau_ra.ly_do or "Nội dung vi phạm chính sách kiểm duyệt.",
@@ -402,7 +401,7 @@ async def _tien_trinh_san_xuat(
             ma_yeu_cau,
             err,
         )
-        if hoi_thoai_id is not None and not da_luu_db:
+        if hoi_thoai_id is not None and not da_luu_db and not bi_chan:
             try:
                 pb_prompt = doc_phien_ban_loi_nhac()
                 async with maker() as phien_loi, phien_loi.begin():

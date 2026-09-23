@@ -169,13 +169,15 @@ def test_ty_le_roi_tang_tinh_dung_tren_du_lieu_gia() -> None:
         )
 
     ty_le, ly_do = tinh_ty_le_roi_tang(kho=kho, gio_gan_nhat=1)
-    # 3 / 10 = 0.30 (tương đương 30%)
-    assert ty_le == 0.30 or ty_le == 30.0
+    # 3 / 10 = 0.30; mọi trường ty_le_* đều là phân số 0-1
+    assert ty_le == 0.30
     assert ly_do == "Local timeout quá hạn 120s"
 
     bc = bao_cao_chi_phi(kho=kho)
-    assert bc["ty_le_roi_tang"] == 0.30 or bc["ty_le_roi_tang"] == 30.0
-    assert bc["ty_le_local"] == 0.70 or bc["ty_le_local"] == 70.0
+    assert bc["ty_le_roi_tang"] == 0.30
+    assert bc["ty_le_local"] == 0.70
+    assert bc["nguong_ty_le_roi_tang"] == 0.20
+    assert bc["nguong_canh_bao_ngan_sach"] == 0.80
     assert bc["chi_phi_hom_nay_usd"] == 0.003
     assert 0 in bc["phan_ra_theo_tang"]
     assert 1 in bc["phan_ra_theo_tang"]

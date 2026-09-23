@@ -1,0 +1,236 @@
+<ng-template #doanNoiTuyen let-cacPhan>
+  @for (p of cacPhan; track $index) {
+    @if (p.loai === 'in_dam') {
+      <strong>{{ p.noiDung }}</strong>
+    } @else if (p.loai === 'code_ngang') {
+      <code>{{ p.noiDung }}</code>
+    } @else {
+      {{ p.noiDung }}
+    }
+  }
+</ng-template>
+
+<div class="tro-chuyen" [class.dang-trong]="dangTrong()">
+  <div class="than-tro-chuyen">
+    <!-- Vung cuon tin nhan -->
+    <div #khungTinNhan class="vung-cuon" (scroll)="onScroll()">
+      <div class="cot-doc">
+        @if (dangTaiLichSu()) {
+          <div class="trang-thai-giua" role="status">
+            <span class="vong-xoay-nho" aria-hidden="true"></span>
+            <span>Đang mở hội thoại...</span>
+          </div>
+        } @else if (loiTaiLichSu()) {
+          <div class="banner-loi" role="alert">
+            <app-bieu-tuong ten="canh-bao" />
+            <span>{{ loiTaiLichSu() }}</span>
+          </div>
+        } @else if (dangTrong()) {
+          <!-- Man chao: chi hien khi cuoc tro chuyen chua co tin nhan -->
+          <div class="man-hinh-chao">
+            <img src="logo.svg" alt="" width="48" height="48" />
+            <h2 class="chao-tieu-de">Anh/Chị cần hỗ trợ việc gì?</h2>
+            <p class="chao-mo-ta">Trợ lý hỗ trợ tra cứu, diễn giải và soạn thảo văn bản nghiệp vụ.</p>
+          </div>
+        } @else {
+          <div class="danh-sach-tin-nhan" role="log" aria-live="polite" aria-label="Nội dung cuộc trò chuyện">
+            @for (tn of danhSachTinNhan(); track tn.id) {
+              @if (tn.daCatNguCanh) {
+                <p class="dong-cat-ngu-canh" role="status">
+                  Đã lược bớt {{ tn.soLuotBiCat }} lượt đầu để vừa cửa sổ ngữ cảnh.
+                </p>
+              }
+
+              @if (tn.vaiTro === 'nguoi_dung') {
+                <div class="hang-tin-nhan hang-nguoi-dung">
+                  <div class="bong-bong-nguoi-dung">
+                    <!-- Cau hoi dai: thu gon con 6 dong, bam de mo rong (khong dung hover) -->
+                    <p
+                      class="noi-dung-nguoi-dung"
+                      [id]="'cau-hoi-' + tn.id"
+                      [class.thu-gon]="laCauHoiDai(tn.noiDung) && !daMoRong(tn.id)"
+                    >{{ tn.noiDung }}</p>
+                    @if (laCauHoiDai(tn.noiDung)) {
+                      <button
+                        type="button"
+                        class="nut-mo-rong"
+                        (click)="chuyenMoRong(tn.id)"
+                        [attr.aria-expanded]="daMoRong(tn.id)"
+                        [attr.aria-controls]="'cau-hoi-' + tn.id"
+                      >
+                        {{ daMoRong(tn.id) ? 'Thu gọn' : 'Xem thêm' }}
+                        <app-bieu-tuong ten="mui-ten-xuong" [class.lat-nguoc]="daMoRong(tn.id)" />
+                      </button>
+                    }
+                  </div>
+                </div>
+              } @else {
+                <div class="hang-tin-nhan hang-tro-ly">
+                  <img class="avatar-logo" src="logo.svg" alt="" width="28" height="28" />
+
+                  <div class="than-tin-nhan-tro-ly">
+                    <div class="noi-dung-tro-ly">
+                      @if (tn.dangPhat && !tn.noiDung) {
+                        <div class="dang-soan-chi-bao">
+                          <span class="vong-xoay-nho" aria-hidden="true"></span>
+                          <span>Đang soạn câu trả lời...</span>
+                        </div>
+                      }
+
+                      @for (khoi of tn.khoiVanBan; track $index) {
+                        @switch (khoi.loai) {
+                          @case ('ma') {
+                            <div class="khoi-ma-nguon">
+                              @if (khoi.ngonNgu) {
+                                <div class="ten-ngon-ngu">{{ khoi.ngonNgu }}</div>
+                              }
+                              <pre><code>{{ khoi.noiDung }}</code></pre>
+                            </div>
+                          }
+                          @case ('bang') {
+                            <div class="khoi-bang-cuon">
+                              <table class="bang-du-lieu">
+                                @if (khoi.tieuDeCot.length > 0) {
+                                  <thead>
+                                    <tr>
+                                      @for (cot of khoi.tieuDeCot; track $index) {
+                                        <th><ng-container *ngTemplateOutlet="doanNoiTuyen; context: { $implicit: cot }" /></th>
+                                      }
+                                    </tr>
+                                  </thead>
+                                }
+                                <tbody>
+                                  @for (hang of khoi.cacHang; track $index) {
+                                    <tr>
+                                      @for (o of hang; track $index) {
+                                        <td><ng-container *ngTemplateOutlet="doanNoiTuyen; context: { $implicit: o }" /></td>
+                                      }
+                                    </tr>
+                                  }
+                                </tbody>
+                              </table>
+                            </div>
+                          }
+                          @case ('danh_sach') {
+                            @if (khoi.coThuTu) {
+                              <ol class="danh-sach-so">
+                                @for (muc of khoi.cacMuc; track $index) {
+                                  <li><ng-container *ngTemplateOutlet="doanNoiTuyen; context: { $implicit: muc }" /></li>
+                                }
+                              </ol>
+                            } @else {
+                              <ul class="danh-sach-cham">
+                                @for (muc of khoi.cacMuc; track $index) {
+                                  <li><ng-container *ngTemplateOutlet="doanNoiTuyen; context: { $implicit: muc }" /></li>
+                                }
+                              </ul>
+                            }
+                          }
+                          @case ('doan_van') {
+                            <p class="doan-van">
+                              <ng-container *ngTemplateOutlet="doanNoiTuyen; context: { $implicit: khoi.cacDoan }" />
+                            </p>
+                          }
+                        }
+                      }
+
+                      @if (tn.dangPhat && tn.noiDung) {
+                        <span class="blinking-cursor" aria-hidden="true"></span>
+                      }
+
+                      @if (tn.coLoi) {
+                        <div class="dong-loi-red" role="alert">
+                          <span>Lỗi: {{ tn.thongDiepLoi }}</span>
+                          @if (tn.maYeuCau) {
+                            <span class="ma-yc"> (Mã yêu cầu: {{ tn.maYeuCau }})</span>
+                          }
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Thong so roi thao tac, doc theo chieu trai sang phai (DESIGN.md muc 8.2) -->
+                    @if (!tn.dangPhat && tn.model) {
+                      <div class="thong-so-duoi-cau-tra-loi">
+                        <app-huy-hieu-mo-hinh
+                          [nguon]="tn.nguon || 'local'"
+                          [tang]="tn.tang ?? 0"
+                          [bacLocal]="tn.bacLocal ?? null"
+                          [model]="tn.model"
+                          [tokenVao]="tn.tokenVao || 0"
+                          [tokenRa]="tn.tokenRa || 0"
+                          [chiPhiUsd]="tn.chiPhiUsd || 0"
+                          [tocDoTokS]="tn.tocDoTokS || 0"
+                          [doTreMs]="tn.doTreMs || 0"
+                          [maYeuCau]="tn.maYeuCau || ''"
+                          [haCap]="tn.haCap ?? null"
+                        />
+                        @if (tn.nhanAi) {
+                          <span class="nhan-ai-tao">{{ tn.nhanAi }}</span>
+                        }
+                        <button
+                          type="button"
+                          class="nut-sao-chep"
+                          (click)="saoChepCauTraLoi(tn)"
+                          [attr.aria-label]="idDaSaoChep() === tn.id ? 'Đã sao chép' : 'Sao chép câu trả lời'"
+                          [title]="idDaSaoChep() === tn.id ? 'Đã sao chép' : 'Sao chép câu trả lời'"
+                        >
+                          <app-bieu-tuong [ten]="idDaSaoChep() === tn.id ? 'da-xong' : 'sao-chep'" />
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Vung soan: co dinh o day; o giua man hinh khi cuoc tro chuyen con trong -->
+    <div class="vung-soan">
+      <div class="cot-doc">
+        @if (thongTinHangDoi() || thongBaoNapModel()) {
+          <div class="hang-thong-bao-tre" role="status">
+            @if (thongTinHangDoi()) {
+              <div class="the-hang-doi">
+                <span class="vong-xoay-nho" aria-hidden="true"></span>
+                <span>{{ thongTinHangDoi() }}</span>
+              </div>
+            }
+            @if (thongBaoNapModel()) {
+              <div class="the-nap-model">
+                <span class="vong-xoay-nho" aria-hidden="true"></span>
+                <span>Đang nạp model, lần đầu mất lâu hơn...</span>
+              </div>
+            }
+          </div>
+        }
+
+        <app-o-soan-cau-hoi
+          [(noiDung)]="noiDungNhap"
+          [dangGui]="dangGui()"
+          (gui)="guiTinNhan($event)"
+          (dung)="dungPhat()"
+        />
+
+        @if (dangTrong()) {
+          <div class="luoi-goi-y" aria-label="Câu hỏi gợi ý">
+            @for (tacVu of cacTacVu; track tacVu.tieuDe) {
+              <button type="button" class="the-goi-y" (click)="bamGoiY(tacVu)">
+                <app-bieu-tuong [ten]="tacVu.bieuTuong" />
+                <span>{{ tacVu.tieuDe }}</span>
+              </button>
+            }
+          </div>
+          <p class="ghi-chu-bao-mat">
+            <app-bieu-tuong ten="khien" />
+            Dữ liệu nhạy cảm (mã khách hàng, số công tơ, CCCD) chỉ được xử lý bằng mô hình nội bộ.
+          </p>
+        } @else {
+          <p class="chu-thich-disclaimer">Trợ lý có thể sai. Hãy kiểm tra lại số liệu quan trọng.</p>
+        }
+      </div>
+    </div>
+  </div>
+</div>

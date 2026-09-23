@@ -46,7 +46,7 @@ describe('SseService', () => {
       'event: bat_dau\n' +
       'data: {"hoi_thoai_id": 1, "nguon": "local", "tang": 0, "model": "qwen", "da_cat_ngu_canh": false, "so_luot_bi_cat": 0}\n\n' +
       'event: manh\n' +
-      'data: {"noi_dung": "Xin chào EVN"}\n\n' +
+      'data: {"noi_dung": "Xin chào Trợ lý"}\n\n' +
       'event: xong\n' +
       'data: {"token_vao": 10, "token_ra": 5, "chi_phi_usd": 0.0, "toc_do_tok_s": 25.0, "do_tre_ms": 120.0, "nguon": "local", "tang": 0, "model": "qwen", "nhan_ai": "Nội dung do AI tạo"}\n\n';
 
@@ -71,7 +71,7 @@ describe('SseService', () => {
     expect(danhSachSuKien[0].loai).toBe('bat_dau');
     expect(danhSachSuKien[1].loai).toBe('manh');
     if (danhSachSuKien[1].loai === 'manh') {
-      expect(danhSachSuKien[1].noi_dung).toBe('Xin chào EVN');
+      expect(danhSachSuKien[1].noi_dung).toBe('Xin chào Trợ lý');
     }
     expect(danhSachSuKien[2].loai).toBe('xong');
   });

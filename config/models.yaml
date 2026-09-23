@@ -6,7 +6,7 @@ bo_chay:
   timeout_giay: 120
 
 ho_so_gpu:                        # chọn bằng biến HO_SO_GPU
-  # gpu6: VRAM ước tính ~4-5 GB khi chạy bậc chinh, phù hợp máy trạm/laptop GPU 6 GB
+  # gpu6: VRAM ước tính ~4-5 GB khi chạy bậc chinh, phù hợp máy trạm GPU 6 GB
   gpu6:
     chinh:
       model: qwen3.5:4b-q4_K_M
@@ -17,7 +17,7 @@ ho_so_gpu:                        # chọn bằng biến HO_SO_GPU
     num_parallel: 1
     so_model_nap_cung_luc: 1
 
-  # gpu8: laptop/máy trạm 8 GB, khoảng 6,5 GB cho bậc chinh, không nạp đồng thời bậc nho
+  # gpu8: máy trạm GPU 8 GB, khoảng 6,5 GB cho bậc chinh, không nạp đồng thời bậc nho
   gpu8:
     chinh:
       model: qwen3.5:4b-q8_0

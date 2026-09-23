@@ -1,0 +1,403 @@
+/* Trang chu theo DESIGN.md muc 6.4 - 6.5, toi uu cho laptop man hinh nho (1280 x 720) */
+
+.trang {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--space-12) var(--space-20) var(--space-24);
+}
+
+/* ---------- Hang KPI ---------- */
+
+.hang-kpi {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-12);
+}
+
+.the-kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 14px var(--space-16);
+  background-color: var(--white);
+  border: 1px solid var(--gray-light-2);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-surface);
+}
+
+/* Hang gia tri co chi bao phu (vong tien do) ben phai, cung chieu cao voi so lieu */
+.hang-gia-tri {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+/* Chan the: day xuong day de chu thich cua moi the nam tren cung mot duong */
+.chan-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin-top: auto;
+}
+
+.nhan-kpi {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: 13px;
+  color: var(--gray-dark-1);
+  white-space: nowrap;
+
+  app-bieu-tuong {
+    color: var(--blue-base);
+  }
+}
+
+.gia-tri-kpi {
+  font-size: 26px;
+  line-height: 36px;
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--black);
+  white-space: nowrap;
+
+  .don-vi {
+    font-size: 13px;
+    color: var(--gray-dark-1);
+  }
+}
+
+.chu-thich-kpi {
+  font-size: 11px;
+  line-height: 18px;
+  letter-spacing: 0.2px;
+  color: var(--gray-dark-1);
+}
+
+.vong-tien-do {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+
+  circle {
+    fill: none;
+    stroke-width: 10;
+  }
+
+  .vong-nen {
+    stroke: var(--gray-light-2);
+  }
+
+  .vong-gia-tri {
+    stroke: var(--green-dark-1);
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 36px 36px;
+    transition: stroke-dashoffset var(--transition-normal);
+  }
+}
+
+.thanh-ngan-sach {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--gray-light-2);
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background-color: var(--blue-base);
+  }
+
+  &.canh-bao span {
+    background-color: var(--yellow-base);
+  }
+
+  &.nguy-hiem span {
+    background-color: var(--red-base);
+  }
+}
+
+/* Bieu do tron luot hoi: cung noi bo blue-base tren nen dam may purple-base (tuong phan ro) */
+.vong-luot-hoi {
+  .vong-nen {
+    stroke: var(--purple-base);
+  }
+
+  .vong-gia-tri {
+    stroke: var(--blue-base);
+  }
+}
+
+.chu-giai {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-10);
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  strong {
+    font-weight: 600;
+  }
+
+  .noi-bo strong {
+    color: var(--blue-dark-1);
+  }
+
+  .dam-may strong {
+    color: var(--purple-dark-2);
+  }
+}
+
+.cham-chu-giai {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+
+  .noi-bo & {
+    background-color: var(--blue-base);
+  }
+
+  .dam-may & {
+    background-color: var(--purple-base);
+  }
+}
+
+.the-kpi .cham-nhap-nhay {
+  position: absolute;
+  top: var(--space-16);
+  right: var(--space-16);
+}
+
+/* ---------- Khoi noi dung ---------- */
+
+.luoi-hai-cot {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-12);
+}
+
+.khoi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  padding: var(--space-12) 14px 14px;
+  background-color: var(--white);
+  border: 1px solid var(--gray-light-2);
+  border-radius: var(--radius-lg);
+}
+
+.dau-khoi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.tieu-de-khoi {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 26px;
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--black);
+}
+
+.lien-ket {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue-base);
+}
+
+/* O hoi nam cuoi khoi, day xuong day de can voi cot Hoi thoai gan day */
+.vung-hoi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-top: auto;
+  padding-top: var(--space-12);
+  border-top: 1px dashed var(--gray-light-2);
+}
+
+.ghi-chu-bao-mat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--yellow-dark-2);
+
+  app-bieu-tuong {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.luoi-tac-vu {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8);
+}
+
+.o-tac-vu {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  min-height: 64px;
+  padding: var(--space-10);
+  text-align: left;
+  background-color: var(--white);
+  border: 1px solid var(--gray-light-2);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+
+  &:hover {
+    border-color: var(--blue-light-2);
+    background-color: var(--blue-light-3);
+
+    .mui-ten {
+      color: var(--blue-base);
+      transform: translateX(2px);
+    }
+  }
+
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-primary);
+  }
+}
+
+.bieu-tuong-tac-vu,
+.bieu-tuong-hoi-thoai {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background-color: var(--blue-light-3);
+  color: var(--blue-base);
+
+  app-bieu-tuong {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.noi-dung-tac-vu,
+.noi-dung-hoi-thoai {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.ten-tac-vu,
+.ten-hoi-thoai {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  color: var(--black);
+}
+
+.ten-hoi-thoai {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mo-ta-tac-vu,
+.thoi-gian {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--gray-dark-1);
+}
+
+.mui-ten {
+  color: var(--gray-base);
+  transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.danh-sach-gan-day {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dong-hoi-thoai {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  padding: var(--space-6);
+  border-radius: var(--radius-md);
+
+  &:hover {
+    background-color: var(--gray-light-3);
+  }
+
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-primary);
+  }
+
+  .bieu-tuong-hoi-thoai {
+    width: 32px;
+    height: 32px;
+    background-color: var(--gray-light-3);
+    border: 1px solid var(--gray-light-2);
+    color: var(--gray-dark-1);
+
+    app-bieu-tuong {
+      width: 16px;
+      height: 16px;
+    }
+  }
+}
+
+.trang-thai-trong {
+  padding: var(--space-24) var(--space-12);
+  text-align: center;
+  font-size: 13px;
+  color: var(--gray-dark-3);
+}
+
+/* ---------- Dap ung ---------- */
+
+@media (max-width: 959px) {
+  .hang-kpi {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .luoi-hai-cot {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .trang {
+    gap: var(--space-12);
+    padding: var(--space-12);
+  }
+
+  .the-kpi {
+    padding: var(--space-12);
+    border-radius: var(--radius-md);
+  }
+
+  .gia-tri-kpi {
+    font-size: 22px;
+    line-height: 30px;
+  }
+
+  .luoi-tac-vu {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

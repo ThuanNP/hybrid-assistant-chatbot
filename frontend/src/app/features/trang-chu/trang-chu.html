@@ -1,0 +1,170 @@
+<div class="trang">
+  <!-- 1. Hang the chi so (DESIGN.md muc 6.4): moi the cung khung nhan / gia tri / chu thich;
+       moi con so lay tu API, khong do model tinh -->
+  <section class="hang-kpi" aria-label="Chỉ số vận hành hôm nay">
+    <article class="the-kpi">
+      <p class="nhan-kpi"><app-bieu-tuong ten="tro-chuyen" /> Lượt hỏi hôm nay</p>
+      <div class="hang-gia-tri">
+        <p class="gia-tri-kpi" title="Tổng lượt hỏi / lượt qua đám mây">
+          {{ tongLuotHomNay() === null ? '—' : dinhDangSo(tongLuotHomNay()!) }}<span class="don-vi">/{{ dinhDangSo(luotDamMay()) }}</span>
+        </p>
+        <!-- Bieu do tron: nen la phan dam may, cung dam la phan noi bo -->
+        <svg class="vong-tien-do vong-luot-hoi" viewBox="0 0 72 72" aria-hidden="true">
+          <circle cx="36" cy="36" r="30" class="vong-nen" />
+          <circle
+            cx="36"
+            cy="36"
+            r="30"
+            class="vong-gia-tri"
+            [attr.stroke-dasharray]="chuViVong"
+            [attr.stroke-dashoffset]="doLechVong(phanTramLuotNoiBo())"
+          />
+        </svg>
+      </div>
+      <div class="chan-kpi">
+        <p class="chu-thich-kpi chu-giai">
+          <span class="noi-bo"><i class="cham-chu-giai"></i>Nội bộ <strong>{{ dinhDangSo(luotNoiBo()) }}</strong></span>
+          <span class="dam-may"><i class="cham-chu-giai"></i>Đám mây <strong>{{ dinhDangSo(luotDamMay()) }}</strong></span>
+        </p>
+      </div>
+    </article>
+
+    <article class="the-kpi">
+      <p class="nhan-kpi"><app-bieu-tuong ten="chip" /> Phục vụ nội bộ</p>
+      <div class="hang-gia-tri">
+        <p class="gia-tri-kpi">{{ tyLeLocal() === null ? '—' : dinhDangPhanTram(tyLeLocal()!) }}</p>
+        <svg class="vong-tien-do" viewBox="0 0 72 72" aria-hidden="true">
+          <circle cx="36" cy="36" r="30" class="vong-nen" />
+          <circle
+            cx="36"
+            cy="36"
+            r="30"
+            class="vong-gia-tri"
+            [attr.stroke-dasharray]="chuViVong"
+            [attr.stroke-dashoffset]="doLechVong(tyLeLocal() ?? 0)"
+          />
+        </svg>
+      </div>
+      <div class="chan-kpi">
+        <p class="chu-thich-kpi">Tỷ lệ lượt trả lời bằng mô hình nội bộ</p>
+      </div>
+    </article>
+
+    <article class="the-kpi">
+      <p class="nhan-kpi"><app-bieu-tuong ten="tien" /> Chi phí đám mây</p>
+      <p class="gia-tri-kpi">{{ chiPhi() ? dinhDangUsd(chiPhi()!.chi_phi_hom_nay_usd) : '—' }}</p>
+      <div class="chan-kpi">
+        <div
+          class="thanh-ngan-sach"
+          [class.canh-bao]="vuotNguongNganSach()"
+          role="progressbar"
+          aria-label="Mức sử dụng ngân sách ngày"
+          [attr.aria-valuenow]="phanTramNganSach()"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <span [style.width.%]="phanTramNganSach()"></span>
+        </div>
+        <p class="chu-thich-kpi">
+          {{ dinhDangPhanTram(phanTramNganSach()) }} ngân sách {{ chiPhi() ? dinhDangUsd(chiPhi()!.ngan_sach_ngay_usd) : '' }}
+        </p>
+      </div>
+    </article>
+
+    <article class="the-kpi">
+      <p class="nhan-kpi"><app-bieu-tuong ten="hang-doi" /> Hàng đợi nội bộ</p>
+      @if (hangDoi(); as hd) {
+        @if (hd.dang_cho > 0) {
+          <span class="cham-nhap-nhay" aria-hidden="true"></span>
+        }
+        <p class="gia-tri-kpi" title="Đang chờ / sức chứa tối đa">
+          {{ hd.dang_cho }}<span class="don-vi">/{{ hd.do_dai_toi_da ?? '—' }} đang chờ</span>
+        </p>
+        <div class="chan-kpi">
+          <div
+            class="thanh-ngan-sach"
+            [class.canh-bao]="phanTramHangDoi() >= nguongLapDayHangDoi"
+            [class.nguy-hiem]="phanTramHangDoi() >= 100"
+            role="progressbar"
+            aria-label="Mức lấp đầy hàng đợi nội bộ"
+            [attr.aria-valuenow]="hd.dang_cho"
+            aria-valuemin="0"
+            [attr.aria-valuemax]="hd.do_dai_toi_da ?? null"
+          >
+            <span [style.width.%]="phanTramHangDoi()"></span>
+          </div>
+          <p class="chu-thich-kpi">
+            {{ hd.dang_chay }} đang chạy · xử lý trung vị {{ dinhDangSoThapPhan(hd.thoi_gian_cho_trung_vi) }} giây
+          </p>
+        </div>
+      } @else {
+        <p class="gia-tri-kpi">—</p>
+        <div class="chan-kpi">
+          <p class="chu-thich-kpi">Chưa lấy được số liệu</p>
+        </div>
+      }
+    </article>
+  </section>
+
+  <div class="luoi-hai-cot">
+    <!-- 2. Hoi tro ly: tac vu nhanh o tren, o hoi o duoi; moi cau hoi deu chuyen sang man Tro chuyen -->
+    <section class="khoi khoi-hoi" aria-labelledby="tieu-de-tac-vu">
+      <div class="dau-khoi">
+        <h2 id="tieu-de-tac-vu" class="tieu-de-khoi">Hỏi trợ lý</h2>
+      </div>
+      <div class="luoi-tac-vu">
+        @for (tacVu of cacTacVu; track tacVu.tieuDe) {
+          <button type="button" class="o-tac-vu" (click)="chonTacVu(tacVu)">
+            <span class="bieu-tuong-tac-vu"><app-bieu-tuong [ten]="tacVu.bieuTuong" /></span>
+            <span class="noi-dung-tac-vu">
+              <span class="ten-tac-vu">{{ tacVu.tieuDe }}</span>
+              <span class="mo-ta-tac-vu">{{ tacVu.moTa }}</span>
+            </span>
+            <app-bieu-tuong ten="mui-ten-phai" class="mui-ten" />
+          </button>
+        }
+      </div>
+
+      <div class="vung-hoi">
+        <app-o-soan-cau-hoi
+          [(noiDung)]="cauHoiNhap"
+          goiY="Hỏi về quy trình, biểu giá, văn bản..."
+          nhanTruyCap="Nhập câu hỏi để bắt đầu cuộc trò chuyện mới"
+          (gui)="batDauHoi($event)"
+        />
+        <p class="ghi-chu-bao-mat">
+          <app-bieu-tuong ten="khien" />
+          <span>Dữ liệu nhạy cảm (mã khách hàng, số công tơ, CCCD) chỉ được xử lý bằng mô hình nội bộ.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- 3. Hoi thoai gan day -->
+    <section class="khoi" aria-labelledby="tieu-de-gan-day-trang-chu">
+      <div class="dau-khoi">
+        <h2 id="tieu-de-gan-day-trang-chu" class="tieu-de-khoi">Hội thoại gần đây</h2>
+        <a routerLink="/lich-su" class="lien-ket">Xem tất cả</a>
+      </div>
+      @if (hoiThoaiGanDay().length === 0) {
+        <div class="trang-thai-trong">
+          <p>Chưa có cuộc trò chuyện nào.</p>
+          <p class="chu-thich-kpi">Chọn một tác vụ nhanh hoặc nhập câu hỏi ở khối Hỏi trợ lý để bắt đầu.</p>
+        </div>
+      } @else {
+        <ul class="danh-sach-gan-day">
+          @for (ht of hoiThoaiGanDay(); track ht.id) {
+            <li>
+              <a [routerLink]="['/tro-chuyen', ht.id]" class="dong-hoi-thoai">
+                <span class="bieu-tuong-hoi-thoai"><app-bieu-tuong ten="tro-chuyen" /></span>
+                <span class="noi-dung-hoi-thoai">
+                  <span class="ten-hoi-thoai">{{ ht.tieu_de }}</span>
+                  <span class="thoi-gian">{{ dinhDangThoiGian(ht.cap_nhat_luc || ht.tao_luc) }}</span>
+                </span>
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+</div>

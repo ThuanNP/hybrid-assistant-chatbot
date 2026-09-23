@@ -1,0 +1,434 @@
+/* Man Lich su hoi thoai: danh sach doc theo nhom thoi gian (DESIGN.md muc 7.6) */
+
+.trang {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-12) var(--space-20) var(--space-32);
+}
+
+/* Thanh loc dinh o dau vung cuon; nen trang che danh sach cuon ben duoi */
+.thanh-loc {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-10);
+  margin: calc(var(--space-12) * -1) calc(var(--space-20) * -1) 0;
+  padding: var(--space-12) var(--space-20);
+  background-color: var(--white);
+  border-bottom: 1px solid var(--gray-light-2);
+}
+
+/* O tim: bieu tuong tim ben trai, nut xoa va nut tim nang cao nam trong o ben phai */
+.o-tim-kiem {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 40px;
+  padding: 0 var(--space-4) 0 var(--space-8);
+  border: 1px solid var(--gray-base);
+  border-radius: var(--radius-sm);
+  background-color: var(--white);
+  color: var(--gray-dark-1);
+
+  &:focus-within {
+    border-color: var(--blue-base);
+    box-shadow: var(--shadow-focus-primary);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    margin-left: var(--space-4);
+    border: none;
+    outline: none;
+    font-size: 15px;
+    color: var(--black);
+    background: transparent;
+
+    &::placeholder {
+      color: var(--gray-base);
+    }
+
+    /* An nut xoa mac dinh cua trinh duyet, dung nut xoa rieng co tooltip */
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+}
+
+.nut-trong-o {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  color: var(--gray-dark-1);
+
+  &:hover {
+    background-color: var(--gray-light-2);
+    color: var(--black);
+  }
+
+  &.dang-bat {
+    background-color: var(--blue-light-3);
+    color: var(--blue-base);
+  }
+
+  &:disabled {
+    cursor: progress;
+    color: var(--gray-base);
+  }
+
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-primary);
+  }
+}
+
+/* Nut cuoi o sat mep phai: tooltip can phai de khong tran khoi khung */
+.nut-trong-o:last-child::after {
+  left: auto;
+  right: 0;
+  transform: translateY(-2px);
+}
+
+.nut-trong-o:last-child:hover::after,
+.nut-trong-o:last-child:focus-visible::after {
+  transform: none;
+}
+
+.vach-trong-o {
+  width: 1px;
+  height: 20px;
+  background-color: var(--gray-light-2);
+}
+
+.cham-dang-loc {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--white);
+  border-radius: var(--radius-full);
+  background-color: var(--blue-base);
+}
+
+/* Bang tim kiem nang cao xuong dong rieng khi duoc mo */
+.nang-cao {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.o-sap-xep {
+  margin-left: auto;
+
+  select {
+    border: none;
+    outline: none;
+    font-size: 13px;
+    color: var(--black);
+    background: transparent;
+    cursor: pointer;
+  }
+}
+
+.o-ngay {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: 40px;
+  padding: 0 var(--space-10);
+  border: 1px solid var(--gray-base);
+  border-radius: var(--radius-sm);
+  background-color: var(--white);
+
+  &:focus-within {
+    border-color: var(--blue-base);
+    box-shadow: var(--shadow-focus-primary);
+  }
+
+  .nhan-ngay {
+    font-size: 12px;
+    color: var(--gray-dark-1);
+    white-space: nowrap;
+  }
+
+  input {
+    border: none;
+    outline: none;
+    font-size: 13px;
+    color: var(--black);
+    background: transparent;
+  }
+}
+
+/* Nut xoa trong o ngay: dua o ve null (khong gioi han); chi hien khi o co gia tri */
+.nut-xoa-ngay {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--gray-base);
+
+  &:hover {
+    background-color: var(--gray-light-2);
+    color: var(--gray-dark-3);
+  }
+
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-primary);
+  }
+}
+
+.gach-noi {
+  color: var(--gray-base);
+}
+
+.nut-xoa-loc {
+  height: 40px;
+}
+
+.minh-hoa-trong {
+  width: 160px;
+  height: 120px;
+  margin-bottom: var(--space-4);
+}
+
+.tieu-de-trong {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--black);
+}
+
+.moc-tai-them {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  min-height: 48px;
+  font-size: 12px;
+  color: var(--gray-dark-1);
+}
+
+.banner-loi {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-10) var(--space-12);
+  border: 1px solid var(--red-light-2);
+  border-radius: var(--radius-sm);
+  background-color: var(--red-light-3);
+  color: var(--red-dark-2);
+  font-size: 13px;
+}
+
+.nhom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.tieu-de-nhom {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--gray-dark-1);
+}
+
+/* Danh sach phang theo ban thiet ke Stitch: khong khung bao, moi dong ngan cach bang duong ke duoi */
+.danh-sach {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--gray-light-2);
+}
+
+.muc-hoi-thoai {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  border-bottom: 1px solid var(--gray-light-2);
+  background-color: var(--white);
+
+  &:hover {
+    background-color: var(--gray-light-3);
+  }
+}
+
+.lien-ket-muc {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-6) var(--space-8);
+  padding-right: 48px;
+
+  &:focus-visible {
+    outline: 2px solid var(--blue-base);
+    outline-offset: -2px;
+  }
+}
+
+.bieu-tuong-the {
+  display: flex;
+  flex-shrink: 0;
+  font-size: 16px;
+  color: var(--gray-base);
+}
+
+.thong-tin-the {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tieu-de-the {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  color: var(--black);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thoi-gian-the {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--gray-dark-1);
+}
+
+/* Nut xoa luon hien o cuoi dong (theo ban thiet ke Stitch), nut ghost 28px mau xam nhat */
+.nut-xoa-muc {
+  position: absolute;
+  right: var(--space-12);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--gray-base);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+
+  &:hover {
+    background-color: var(--red-light-3);
+    color: var(--red-base);
+  }
+
+  &:focus-visible {
+    box-shadow: var(--shadow-focus-danger);
+  }
+}
+
+.trang-thai-cho,
+.danh-sach-rong {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-48) var(--space-12);
+  text-align: center;
+  font-size: 14px;
+  color: var(--gray-dark-3);
+
+  .goi-y {
+    font-size: 13px;
+    color: var(--gray-dark-1);
+  }
+}
+
+.vong-xoay {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--blue-light-2);
+  border-top-color: var(--blue-base);
+  border-radius: 50%;
+  animation: quay 0.8s linear infinite;
+}
+
+/* ---------- Hop thoai xac nhan ---------- */
+
+.hop-thoai-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16);
+  background-color: rgba(0, 30, 43, 0.45);
+}
+
+.hop-thoai-the {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-20);
+  border-radius: var(--radius-lg);
+  background-color: var(--white);
+  box-shadow: var(--shadow-modal);
+  font-size: 14px;
+  color: var(--gray-dark-3);
+}
+
+.hop-thoai-tieu-de {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 30px;
+  color: var(--black);
+}
+
+.ghi-chu-phu {
+  font-size: 13px;
+  color: var(--gray-dark-1);
+}
+
+.hop-thoai-duoi {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-10);
+  margin-top: var(--space-8);
+}
+
+@media (max-width: 767px) {
+  .trang {
+    padding: var(--space-12);
+  }
+
+  .thanh-loc {
+    margin: calc(var(--space-12) * -1) calc(var(--space-12) * -1) 0;
+    padding: var(--space-10) var(--space-12);
+  }
+
+  .nang-cao .o-ngay {
+    flex: 1 1 140px;
+  }
+
+  .o-sap-xep {
+    margin-left: 0;
+  }
+}

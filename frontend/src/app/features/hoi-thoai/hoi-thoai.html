@@ -1,0 +1,219 @@
+<div class="trang">
+  <!-- Thanh loc co dinh: go xong hoac chon la loc ngay tren may chu, khong can bam nut tim -->
+  <div class="thanh-loc" role="search" aria-label="Lọc hội thoại">
+    <div class="o-tim-kiem">
+      <input
+        type="search"
+        placeholder="Tìm theo tiêu đề hội thoại..."
+        aria-label="Tìm hội thoại theo tiêu đề"
+        [value]="tuKhoa()"
+        (input)="nhapTuKhoa($event)"
+        (keydown.enter)="timLai()"
+      />
+      @if (tuKhoa()) {
+        <button
+          type="button"
+          class="nut-trong-o"
+          data-goi-y="Xoá từ khoá"
+          aria-label="Xoá từ khoá"
+          (click)="tuKhoa.set('')"
+        >
+          <app-bieu-tuong ten="dong" />
+        </button>
+      }
+      <!-- Ket qua tu loc sau khi go; nut nay gui tu khoa ngay va tai lai tu may chu -->
+      <button
+        type="button"
+        class="nut-trong-o"
+        [class.dang-quay]="ds.dangTai()"
+        data-goi-y="Tìm"
+        aria-label="Tìm"
+        [disabled]="ds.dangTai()"
+        (click)="timLai()"
+      >
+        <app-bieu-tuong ten="tim-kiem" />
+      </button>
+      <span class="vach-trong-o" aria-hidden="true"></span>
+      <button
+        type="button"
+        class="nut-trong-o"
+        [class.dang-bat]="hienNangCao() || coLocNangCao()"
+        data-goi-y="Tìm kiếm nâng cao"
+        aria-label="Tìm kiếm nâng cao"
+        [attr.aria-expanded]="hienNangCao()"
+        aria-controls="tim-kiem-nang-cao"
+        (click)="hienNangCao.set(!hienNangCao())"
+      >
+        <app-bieu-tuong ten="bo-loc" />
+        @if (coLocNangCao()) {
+          <span class="cham-dang-loc" aria-hidden="true"></span>
+        }
+      </button>
+    </div>
+
+    <!-- Tim kiem nang cao: khoang ngay va thu tu sap xep, ap dung ngay khi thay doi -->
+    @if (hienNangCao()) {
+      <div class="nang-cao" id="tim-kiem-nang-cao">
+        <!-- Moi o ngay co nut xoa rieng dua ve null (khong gioi han) -->
+        <div class="o-ngay">
+          <label class="nhan-ngay" for="loc-tu-ngay">Từ ngày</label>
+          <input
+            id="loc-tu-ngay"
+            type="date"
+            [value]="tuNgay() ?? ''"
+            [max]="denNgay()"
+            (change)="chonNgay(tuNgay, $event)"
+          />
+          @if (tuNgay() !== null) {
+            <button
+              type="button"
+              class="nut-xoa-ngay"
+              data-goi-y="Xoá ngày bắt đầu"
+              aria-label="Xoá ngày bắt đầu"
+              (click)="tuNgay.set(null)"
+            >
+              <app-bieu-tuong ten="dong" />
+            </button>
+          }
+        </div>
+        <span class="gach-noi" aria-hidden="true">–</span>
+        <div class="o-ngay">
+          <label class="nhan-ngay" for="loc-den-ngay">Đến ngày</label>
+          <input
+            id="loc-den-ngay"
+            type="date"
+            [value]="denNgay() ?? ''"
+            [min]="tuNgay()"
+            (change)="chonNgay(denNgay, $event)"
+          />
+          @if (denNgay() !== null) {
+            <button
+              type="button"
+              class="nut-xoa-ngay"
+              data-goi-y="Xoá ngày kết thúc"
+              aria-label="Xoá ngày kết thúc"
+              (click)="denNgay.set(null)"
+            >
+              <app-bieu-tuong ten="dong" />
+            </button>
+          }
+        </div>
+        <label class="o-ngay o-sap-xep">
+          <span class="nhan-ngay">Sắp xếp</span>
+          <select [value]="sapXep()" (change)="sapXep.set($any($event.target).value)" aria-label="Sắp xếp">
+            @for (tuyChon of cacTuyChonSapXep; track tuyChon.gia) {
+              <option [value]="tuyChon.gia">{{ tuyChon.nhan }}</option>
+            }
+          </select>
+        </label>
+        @if (dangLoc()) {
+          <button type="button" class="nut nut-vien nut-xoa-loc" (click)="xoaBoLoc()">Xoá lọc</button>
+        }
+      </div>
+    }
+  </div>
+
+  @if (ds.thongBaoLoi() || loiXoa()) {
+    <div class="banner-loi" role="alert">
+      <app-bieu-tuong ten="canh-bao" />
+      <span>{{ loiXoa() ?? ds.thongBaoLoi() }}</span>
+    </div>
+  }
+
+  @if (ds.dangTai() && ds.danhSach().length === 0) {
+    <div class="trang-thai-cho" role="status">
+      <span class="vong-xoay" aria-hidden="true"></span>
+      <span>Đang tải danh sách...</span>
+    </div>
+  } @else if (ds.danhSach().length === 0 && !dangLoc()) {
+    <div class="danh-sach-rong">
+      <p>Chưa có cuộc trò chuyện nào.</p>
+      <p class="goi-y">Bấm "Cuộc trò chuyện mới" để bắt đầu.</p>
+    </div>
+  } @else if (ds.danhSach().length === 0) {
+    <div class="danh-sach-rong">
+      <!-- Minh hoa tu ve: trang tai lieu trong va kinh lup, dung bang mau DESIGN.md -->
+      <svg class="minh-hoa-trong" viewBox="0 0 160 120" aria-hidden="true">
+        <ellipse cx="80" cy="108" rx="52" ry="6" fill="#E8EDEB" />
+        <rect x="38" y="14" width="64" height="82" rx="8" fill="#FFFFFF" stroke="#C3E7FE" stroke-width="2" />
+        <rect x="50" y="30" width="40" height="6" rx="3" fill="#E1F7FF" />
+        <rect x="50" y="44" width="30" height="6" rx="3" fill="#E1F7FF" />
+        <rect x="50" y="58" width="36" height="6" rx="3" fill="#E1F7FF" />
+        <circle cx="104" cy="70" r="20" fill="#FFFFFF" stroke="#016BF8" stroke-width="5" />
+        <path d="M118 84l16 16" stroke="#016BF8" stroke-width="7" stroke-linecap="round" />
+        <path d="M97 63l14 14M111 63l-14 14" stroke="#889397" stroke-width="3.5" stroke-linecap="round" />
+      </svg>
+      <p class="tieu-de-trong">Không tìm thấy hội thoại phù hợp</p>
+      <p class="goi-y">Thử từ khoá khác hoặc mở rộng khoảng ngày.</p>
+      <button type="button" class="nut nut-vien" (click)="xoaBoLoc()">Xoá lọc</button>
+    </div>
+  } @else {
+    @for (nhom of cacNhom(); track nhom.ten) {
+      <section class="nhom" [attr.aria-label]="nhom.ten">
+        <h2 class="tieu-de-nhom">{{ nhom.ten }}</h2>
+        <ul class="danh-sach">
+          @for (ht of nhom.cacMuc; track ht.id) {
+            <li class="muc-hoi-thoai">
+              <a [routerLink]="['/tro-chuyen', ht.id]" class="lien-ket-muc">
+                <span class="bieu-tuong-the"><app-bieu-tuong ten="tro-chuyen" /></span>
+                <span class="thong-tin-the">
+                  <span class="tieu-de-the">{{ ht.tieu_de }}</span>
+                  <span class="thoi-gian-the">{{ moTaMuc(ht) }}</span>
+                </span>
+              </a>
+              <button
+                type="button"
+                class="nut-xoa-muc"
+                (click)="moXacNhanXoa(ht, $event)"
+                [attr.aria-label]="'Xoá cuộc hội thoại: ' + ht.tieu_de"
+                title="Xoá cuộc hội thoại"
+              >
+                <app-bieu-tuong ten="xoa" />
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+
+  <!-- Moc cuon vo han: khi hien trong khung nhin thi tai trang ke tiep -->
+  @if (ds.danhSach().length > 0) {
+    <div #mocTaiThem class="moc-tai-them" aria-live="polite">
+      @if (ds.dangTaiThem()) {
+        <span class="vong-xoay" aria-hidden="true"></span>
+        <span>Đang tải thêm...</span>
+      } @else if (!ds.conThem()) {
+        <span>Đã hiển thị toàn bộ</span>
+      }
+    </div>
+  }
+</div>
+
+<!-- Hop thoai xac nhan xoa cua ung dung -->
+@if (hoiThoaiDangXoa(); as ht) {
+  <div class="hop-thoai-backdrop" (click)="dongXacNhanXoa()" role="presentation">
+    <div
+      class="hop-thoai-the"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tieu-de-hop-thoai"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="dongXacNhanXoa()"
+    >
+      <h3 id="tieu-de-hop-thoai" class="hop-thoai-tieu-de">Xác nhận xoá hội thoại</h3>
+      <p>
+        Anh/Chị có chắc chắn muốn xoá cuộc hội thoại <strong>"{{ ht.tieu_de }}"</strong> không?
+      </p>
+      <p class="ghi-chu-phu">Hội thoại sẽ bị ẩn khỏi danh sách của Anh/Chị.</p>
+      <div class="hop-thoai-duoi">
+        <button type="button" class="nut nut-vien" (click)="dongXacNhanXoa()" [disabled]="dangThucHienXoa()">
+          Huỷ
+        </button>
+        <button type="button" class="nut nut-nguy-hiem" (click)="thucHienXoa()" [disabled]="dangThucHienXoa()">
+          {{ dangThucHienXoa() ? 'Đang xoá...' : 'Xoá' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

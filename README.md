@@ -80,18 +80,22 @@ source backend/.venv/bin/activate
 pip install -r backend/requirements.txt
 ```
 
+Sau khi cài, chạy công cụ Python từ thư mục `backend/` bằng `uv run --frozen` (quy tắc kỹ thuật 13
+trong `AGENTS.md`), ví dụ `uv run --frozen pytest -q`, `uv run --frozen pyright app`,
+`uv run --frozen alembic upgrade head`; `uv` dùng lại `backend/.venv` đã cài ở trên.
+
 ## 5. Kiểm tra trước khi chạy
 
 Trước khi khởi động hệ thống, thực hiện kiểm tra chẩn đoán bộ chạy mô hình cục bộ
-và các nhà cung cấp đám mây (lệnh giống nhau trên Git Bash và PowerShell,
-sau khi đã kích hoạt môi trường ảo):
+và các nhà cung cấp đám mây (chạy từ thư mục `backend/`, lệnh giống nhau trên Git Bash
+và PowerShell):
 
 ```bash
 # Kiểm tra bộ chạy mô hình cục bộ (Ollama / LM Studio)
-python scripts/kiem_tra_bo_chay.py
+uv run --frozen python ../scripts/kiem_tra_bo_chay.py
 
 # Kiểm tra kết nối tới các nhà cung cấp đám mây qua LiteLLM
-python scripts/kiem_tra_nha_cung_cap.py
+uv run --frozen python ../scripts/kiem_tra_nha_cung_cap.py
 ```
 
 ## 6. Giao diện lập trình ứng dụng (API)
@@ -103,19 +107,42 @@ Hai endpoint giám sát sức khoẻ hệ thống (`/health` và `/ready`) đư�
 
 | Phương thức | Đường dẫn | Mô tả chức năng | Xác thực |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/health` | Tiến trình còn chạy, trả `healthy` và số phiên bản | Không |
-| `GET` | `/ready` | Sẵn sàng phục vụ: trả `ready` (200) hoặc `not_ready` (503) | Không |
+| `GET` | `/health` | Tiến trình còn chạy, trả `song` và số phiên bản | Không |
+| `GET` | `/ready` | Sẵn sàng phục vụ: trả `san_sang` (200) hoặc `chua_san_sang` (503) | Không |
 | `POST` | `/api/v1/chat/stream` | Trò chuyện hội thoại phát theo dòng (Server-Sent Events) | Bắt buộc |
 | `POST` | `/api/v1/chat` | Trò chuyện không phát theo dòng cho tích hợp máy với máy | Bắt buộc |
-| `GET` | `/api/v1/hoi-thoai` | Danh sách hội thoại của người dùng hiện tại (phân trang) | Bắt buộc |
+| `GET` | `/api/v1/hoi-thoai` | Danh sách hội thoại của người dùng hiện tại, lọc và phân trang (mục 6.2) | Bắt buộc |
 | `GET` | `/api/v1/hoi-thoai/{id}` | Chi tiết toàn bộ các lượt tin nhắn trong cuộc hội thoại | Bắt buộc |
 | `DELETE` | `/api/v1/hoi-thoai/{id}` | Xoá mềm cuộc hội thoại của người dùng hiện tại | Bắt buộc |
-| `GET` | `/api/v1/chi-phi` | Báo cáo chi phí tiêu thụ token và tỷ lệ định tuyến | Bắt buộc |
+| `GET` | `/api/v1/chi-phi` | Chi phí, tỷ lệ định tuyến, số câu hỏi hôm nay và ngưỡng cảnh báo | Bắt buộc |
 | `GET` | `/api/v1/models` | Cấu hình mô hình, hồ sơ GPU, bậc local và tầng đám mây | Bắt buộc |
 | `GET` | `/api/v1/hang-doi/tinh-trang` | Trạng thái tức thời của bộ điều phối hàng đợi local | Bắt buộc |
 | `GET` | `/api/v1/ngu-canh/tinh-trang` | Hiện trạng ngữ cảnh cấu hình, thực tế và ngân sách token | Bắt buộc |
 
-### 6.2. Cấu trúc phản hồi lỗi chuẩn
+### 6.2. Tham số và trường dữ liệu chính
+
+`GET /api/v1/hoi-thoai` nhận các tham số tuỳ chọn sau; `tong_so` là số hội thoại khớp bộ lọc,
+mỗi mục kèm `so_luot` (số câu hỏi):
+
+| Tham số | Kiểu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `trang`, `kich_thuoc` | số nguyên | Trang (từ 1) và số mục mỗi trang (1–100, mặc định 20) |
+| `tu_khoa` | chuỗi | Tìm trong tiêu đề, không phân biệt hoa thường |
+| `tu_ngay`, `den_ngay` | `YYYY-MM-DD` | Lọc theo ngày cập nhật (giờ Việt Nam), `den_ngay` lấy trọn cả ngày |
+| `sap_xep` | chuỗi | `moi_nhat` (mặc định), `cu_nhat`, `ten_tang`, `ten_giam` |
+
+- Sự kiện SSE `xong` và phản hồi `POST /api/v1/chat` có thêm `ma_yeu_cau` và `ha_cap`.
+  `ha_cap` bằng `true` khi tầng phục vụ khác tầng đầu của chuỗi định tuyến, hoặc khi câu trả lời
+  do bậc `nho` sinh ra.
+- Mỗi lượt trong `GET /api/v1/hoi-thoai/{id}` trả thêm `toc_do_tok_s`, `do_tre_ms`,
+  `da_cat_ngu_canh`, `so_luot_bi_cat`, `ma_yeu_cau`, `ha_cap`. Lượt trợ lý có thêm `nhan_ai`.
+- `GET /api/v1/chi-phi`:
+  - Mọi trường `ty_le_*` là phân số 0–1; riêng `phan_tram_da_dung` theo thang 0–100.
+  - `so_cau_hoi_hom_nay`, `so_cau_hoi_noi_bo`, `so_cau_hoi_dam_may` đếm câu hỏi và câu trả lời
+    trong ngày theo giờ Việt Nam, không tính lời gọi nền đặt tiêu đề.
+  - `nguong_canh_bao_ngan_sach`, `nguong_ty_le_roi_tang` lấy từ `config/models.yaml`.
+
+### 6.3. Cấu trúc phản hồi lỗi chuẩn
 
 Mọi phản hồi lỗi dùng chung một cấu trúc JSON với thông điệp chuẩn; chi tiết kỹ thuật
 (vết ngăn xếp, lỗi thô của bộ chạy, tên thành phần) chỉ ghi vào nhật ký:
@@ -133,7 +160,7 @@ Mọi phản hồi lỗi dùng chung một cấu trúc JSON với thông điệp
 Mã định danh `ma_yeu_cau` (12 ký tự) được đồng bộ giữa header phản hồi `X-Ma-Yeu-Cau`,
 nội dung lỗi JSON, nhật ký vận hành và bản ghi cơ sở dữ liệu.
 
-### 6.3. Bảng mã lỗi hệ thống
+### 6.4. Bảng mã lỗi hệ thống
 
 | Mã lỗi | HTTP | Ý nghĩa và mô tả |
 | :--- | :--- | :--- |
@@ -150,4 +177,8 @@ nội dung lỗi JSON, nhật ký vận hành và bản ghi cơ sở dữ liệu
 | `DAU_VAO_KHONG_HOP_LE` | 422 | Dữ liệu đầu vào không hợp lệ |
 | `NOI_DUNG_BI_CHAN` | 422 | Nội dung vi phạm chính sách kiểm duyệt |
 | `KHONG_TIM_THAY` | 404 | Không tìm thấy dữ liệu |
+| `LOI_DONG` | 200 | Chỉ có trong sự kiện SSE `loi`: luồng ngắt sau khi đã phát, kèm `phan_da_nhan` |
 | `LOI_HE_THONG` | 500 | Lỗi hệ thống không xác định |
+
+Lỗi xảy ra sau khi luồng SSE đã mở được trả bằng sự kiện `loi` với HTTP 200. CORS mở hai header
+`X-Ma-Yeu-Cau` và `Retry-After` để giao diện khác nguồn đọc được.

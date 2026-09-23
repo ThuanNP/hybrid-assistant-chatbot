@@ -1,0 +1,185 @@
+<header class="thanh-dau-trang">
+  <div class="nhom-tieu-de">
+    <button
+      type="button"
+      class="nut-ghost"
+      (click)="chuyenDoiSidebar.emit()"
+      [attr.aria-expanded]="sidebarMo()"
+      [attr.aria-label]="sidebarMo() ? 'Thu gọn thanh điều hướng' : 'Mở thanh điều hướng'"
+      [title]="sidebarMo() ? 'Thu gọn thanh điều hướng' : 'Mở thanh điều hướng'"
+    >
+      <app-bieu-tuong [ten]="sidebarMo() ? 'thu-gon' : 'mo-rong'" />
+    </button>
+    <span class="vach-ngan vach-thap" aria-hidden="true"></span>
+    <!-- Di dong: khong co breadcrumb, chi hien tieu de trang (h1 that nam o vung noi dung) -->
+    <span class="tieu-de-di-dong" aria-hidden="true">{{ boCuc.tieuDe() }}</span>
+
+    <!--
+      Breadcrumb (DESIGN.md muc 6.3). Qua dai thi cac muc giua gop thanh "…" (lien ket toi muc cha
+      gan nhat), uu tien giu Trang chu va muc hien tai.
+    -->
+    <nav #khungDuongDan class="duong-dan" aria-label="Đường dẫn">
+      <ol>
+        <li>
+          @if (boCuc.laTrangChu()) {
+            <span class="muc-hien-tai" aria-current="page"><app-bieu-tuong ten="trang-chu" /> {{ trangChu.nhan }}</span>
+          } @else {
+            <a [routerLink]="trangChu.lienKet"><app-bieu-tuong ten="trang-chu" /> {{ trangChu.nhan }}</a>
+          }
+        </li>
+        @if (rutGonDuongDan() && mucGiua().length > 0) {
+          <li>
+            <span class="dau-phan-cach" aria-hidden="true">/</span>
+            <a
+              class="muc-rut-gon"
+              [routerLink]="mucChaGanNhat()?.lienKet"
+              [attr.data-goi-y]="nhanMucAn()"
+              [attr.aria-label]="nhanMucAn()"
+              >…</a
+            >
+          </li>
+        } @else {
+          @for (muc of mucGiua(); track $index) {
+            <li>
+              <span class="dau-phan-cach" aria-hidden="true">/</span>
+              <a [routerLink]="muc.lienKet">{{ muc.nhan }}</a>
+            </li>
+          }
+        }
+        @if (mucCuoi(); as muc) {
+          <li>
+            <span class="dau-phan-cach" aria-hidden="true">/</span>
+            <span class="muc-hien-tai" aria-current="page" [title]="muc.nhan">{{ muc.nhan }}</span>
+          </li>
+        }
+      </ol>
+    </nav>
+
+    <!-- Ban do an: do do rong day du cua breadcrumb de quyet dinh co can rut gon hay khong -->
+    <div #doDuongDan class="do-duong-dan" aria-hidden="true">
+      <span><app-bieu-tuong ten="trang-chu" /> {{ trangChu.nhan }}</span>
+      @for (muc of boCuc.duongDan(); track $index) {
+        <span class="dau-phan-cach">/</span><span class="muc-do">{{ muc.nhan }}</span>
+      }
+    </div>
+  </div>
+
+  <div class="nhom-thao-tac">
+    <a routerLink="/lich-su" class="nut-ghost an-tren-di-dong" aria-label="Tìm hội thoại" title="Tìm hội thoại">
+      <app-bieu-tuong ten="tim-kiem" />
+    </a>
+
+    <!-- Chuong thong bao: so lieu van hanh that tu may chu -->
+    <div class="khung-tha-xuong">
+      <button
+        type="button"
+        class="nut-ghost"
+        [class.dang-mo]="bangMo() === 'thong-bao'"
+        (click)="chuyenBang('thong-bao', $event)"
+        [attr.aria-expanded]="bangMo() === 'thong-bao'"
+        aria-haspopup="true"
+        [attr.aria-label]="'Thông báo, ' + thongBao.soLuong() + ' mục'"
+        title="Thông báo"
+      >
+        <app-bieu-tuong ten="chuong" />
+        @if (thongBao.soLuong() > 0) {
+          <span class="cham-thong-bao" aria-hidden="true"></span>
+        }
+      </button>
+      @if (bangMo() === 'thong-bao') {
+        <div class="bang-tha-xuong" role="region" aria-label="Danh sách thông báo" (click)="$event.stopPropagation()">
+          <p class="tieu-de-bang">Thông báo</p>
+          @for (tb of thongBao.danhSach(); track tb.ma) {
+            <div [class]="'muc-thong-bao muc-' + tb.muc">
+              <app-bieu-tuong [ten]="tb.muc === 'thong-tin' ? 'hang-doi' : 'canh-bao'" />
+              <span>{{ tb.noiDung }}</span>
+            </div>
+          } @empty {
+            <p class="dong-trong-bang">Không có thông báo mới.</p>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Trang thai he thong: dat sat vach ngan truoc tai khoan; bam de xem chi tiet -->
+    <div class="khung-tha-xuong an-tren-di-dong">
+      <button
+        type="button"
+        [class]="'nut-trang-thai trang-thai-' + thongBao.trangThai()"
+        [class.dang-mo]="bangMo() === 'he-thong'"
+        (click)="chuyenBang('he-thong', $event)"
+        [attr.aria-expanded]="bangMo() === 'he-thong'"
+        aria-haspopup="true"
+        [attr.aria-label]="'Hệ thống: ' + thongBao.nhanTrangThai() + '. Xem chi tiết'"
+      >
+        <span class="cham-trang-thai" aria-hidden="true"></span>
+        {{ thongBao.nhanTrangThai() }}
+      </button>
+      @if (bangMo() === 'he-thong') {
+        <div class="bang-tha-xuong" role="region" aria-label="Tình trạng hệ thống" (click)="$event.stopPropagation()">
+          <p class="tieu-de-bang">Tình trạng hệ thống</p>
+          <dl class="bang-he-thong">
+            <div>
+              <dt>Chế độ định tuyến</dt>
+              <dd>{{ nhanCheDo(thongBao.moHinh()?.che_do_dinh_tuyen) }}</dd>
+            </div>
+            <div>
+              <dt>Hồ sơ GPU</dt>
+              <dd>{{ nhanGpu(thongBao.moHinh()?.ho_so_gpu) }}</dd>
+            </div>
+            @for (bac of thongBao.moHinh()?.bac_local ?? []; track bac.bac) {
+              <div>
+                <dt>Mô hình nội bộ, {{ nhanBac(bac.bac).toLowerCase() }}</dt>
+                <dd><code>{{ bac.model }}</code></dd>
+              </div>
+            }
+            <div>
+              <dt>Tỷ lệ rơi tầng (1 giờ)</dt>
+              <dd>{{ thongBao.tyLeRoiTang() }}</dd>
+            </div>
+          </dl>
+        </div>
+      }
+    </div>
+
+    <span class="vach-ngan an-tren-di-dong" aria-hidden="true"></span>
+
+    <!-- Menu tai khoan -->
+    <div class="khung-tha-xuong">
+      <button
+        type="button"
+        class="nut-nguoi-dung"
+        (click)="chuyenBang('nguoi-dung', $event)"
+        [attr.aria-expanded]="bangMo() === 'nguoi-dung'"
+        aria-haspopup="true"
+        [attr.aria-label]="'Tài khoản ' + tenNguoiDung()"
+      >
+        <span class="avatar" aria-hidden="true">NA</span>
+        <span class="thong-tin-nguoi-dung rut-gon">
+          <span class="ten-nguoi-dung">{{ tenNguoiDung() }}</span>
+          <span class="chuc-danh">{{ chucDanh() }}</span>
+        </span>
+        <app-bieu-tuong ten="mui-ten-xuong" class="mui-ten-menu rut-gon" />
+      </button>
+      @if (bangMo() === 'nguoi-dung') {
+        <div class="bang-tha-xuong bang-nguoi-dung" (click)="$event.stopPropagation()">
+          <div class="the-ho-so">
+            <span class="avatar avatar-lon" aria-hidden="true">NA</span>
+            <span class="thong-tin-nguoi-dung">
+              <span class="ten-nguoi-dung">{{ tenNguoiDung() }}</span>
+              <span class="chuc-danh">{{ chucDanh() }} · {{ phongBan() }}</span>
+              <span class="don-vi">{{ donVi }}</span>
+            </span>
+          </div>
+          <a routerLink="/" class="muc-menu-tha" (click)="dongBang()">
+            <app-bieu-tuong ten="trang-chu" /> Trang chủ
+          </a>
+          <a routerLink="/lich-su" class="muc-menu-tha" (click)="dongBang()">
+            <app-bieu-tuong ten="lich-su" /> Lịch sử hội thoại
+          </a>
+          <p class="ghi-chu-bang">Đăng nhập một lần (SSO) được bổ sung ở Giai đoạn 8.</p>
+        </div>
+      }
+    </div>
+  </div>
+</header>

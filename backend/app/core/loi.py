@@ -175,6 +175,10 @@ class LoiVuotNganSach(LoiHeThong):
 
 VUOT_NGAN_SACH = LoiVuotNganSach
 
+# Mã lỗi chỉ xuất hiện trong sự kiện SSE "loi" khi luồng bị ngắt sau khi đã phát mảnh;
+# HTTP vẫn là 200 vì luồng đã mở, nên không có mục ánh xạ HTTP, chỉ có thông điệp.
+LOI_DONG = "LOI_DONG"
+
 
 # Thông điệp ngắn gọn hiển thị cho người dùng theo từng mã lỗi chuẩn hóa
 THONG_DIEP_LOI: dict[str, str] = {
@@ -191,6 +195,7 @@ THONG_DIEP_LOI: dict[str, str] = {
     "DAU_VAO_KHONG_HOP_LE": "Dữ liệu không hợp lệ.",
     "NOI_DUNG_BI_CHAN": "Nội dung vi phạm chính sách kiểm duyệt.",
     "KHONG_TIM_THAY": "Không tìm thấy dữ liệu yêu cầu.",
+    "LOI_DONG": "Phản hồi bị gián đoạn, vui lòng gửi lại.",
     "LOI_HE_THONG": "Lỗi hệ thống, vui lòng thử lại sau.",
 }
 
