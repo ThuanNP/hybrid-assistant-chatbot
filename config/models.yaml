@@ -82,16 +82,16 @@ chuoi_dam_may:                    # thứ tự này là thứ tự thử
     cua_so_ngu_canh: 1000000
 
   - tang: 2
-    ten: openrouter_auto
-    model: openrouter/auto
+    ten: openrouter_free
+    # Free Models Router: mã model là "openrouter/free"; LiteLLM bỏ tiền tố nhà cung cấp
+    # "openrouter/" đầu tiên nên phải ghi lặp tiền tố
+    model: openrouter/openrouter/free
     api_key_env: OPENROUTER_API_KEY
-    tham_so_them:
-      cost_tier: low
-    gia_vao_usd_moi_trieu: 0.50
-    gia_ra_usd_moi_trieu: 3.00
+    gia_vao_usd_moi_trieu: 0.0
+    gia_ra_usd_moi_trieu: 0.0
     timeout_giay: 90
-    cua_so_ngu_canh: 128000           # model do openrouter/auto chọn thay đổi; lấy mức thấp an toàn
-    ghi_chu: "Không tiền định - chỉ làm dự phòng"
+    cua_so_ngu_canh: 32768            # model miễn phí do router chọn ngẫu nhiên; lấy mức thấp an toàn
+    ghi_chu: "Không tiền định, giới hạn tần suất thấp - chỉ làm dự phòng"
 
   - tang: 3
     ten: claude

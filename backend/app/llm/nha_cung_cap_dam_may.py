@@ -213,6 +213,18 @@ def _trich_xuat_noi_dung_va_usage(phan_hoi: Any) -> tuple[str, int, int, str | N
     return noi_dung, token_vao, token_ra, model_thuc
 
 
+def _lay_model_thuc_cua_chunk(chunk: Any) -> str | None:
+    """Lấy tên model thực của một mẩu phát dòng.
+
+    LiteLLM ghi đè chunk.model bằng tên model trong yêu cầu; tên model mà router
+    (như openrouter/free) thực sự chọn nằm trong _hidden_params.
+    """
+    an = getattr(chunk, "_hidden_params", None)
+    if isinstance(an, dict) and an.get("provider_response_model"):
+        return str(an["provider_response_model"])
+    return getattr(chunk, "model", None)
+
+
 async def _xu_ly_that_bai(
     err: Exception,
     *,
@@ -390,7 +402,9 @@ async def _goi_dam_may_theo_dong(
 
             van_ban_da_nhan = ""
             async for chunk in phan_hoi_stream:
-                chunk_model = getattr(chunk, "model", None)
+                # LiteLLM ghi đè chunk.model bằng tên model trong yêu cầu; tên model thực
+                # (router như openrouter/free tự chọn) nằm trong _hidden_params
+                chunk_model = _lay_model_thuc_cua_chunk(chunk)
                 if chunk_model:
                     model_thuc = chunk_model
 

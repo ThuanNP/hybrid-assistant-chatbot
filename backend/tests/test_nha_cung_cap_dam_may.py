@@ -238,6 +238,75 @@ async def test_openrouter_auto_ghi_model_thuc_va_uoc_tinh_chi_phi(
     assert kq.tang == 2
 
 
+TANG_OPENROUTER_FREE = CauHinhTangDamMay(
+    tang=2,
+    ten="openrouter_free",
+    model="openrouter/openrouter/free",
+    api_key_env="OPENROUTER_API_KEY",
+    gia_vao_usd_moi_trieu=0.0,
+    gia_ra_usd_moi_trieu=0.0,
+    timeout_giay=90,
+    cua_so_ngu_canh=32768,
+)
+
+
+class MockDelta:
+    """Đối tượng giả lập delta trong mẩu phát dòng của LiteLLM."""
+
+    def __init__(self, content: str) -> None:
+        self.content = content
+
+
+class MockStreamChoice:
+    """Đối tượng giả lập choice trong mẩu phát dòng của LiteLLM."""
+
+    def __init__(self, content: str) -> None:
+        self.delta = MockDelta(content)
+
+
+class MockChunk:
+    """Mẩu phát dòng giả lập: LiteLLM ghi đè model bằng tên model trong yêu cầu,
+    tên model thực nằm trong _hidden_params."""
+
+    def __init__(self, content: str, model_thuc: str) -> None:
+        self.choices = [MockStreamChoice(content)]
+        self.model = "openrouter/free"
+        self.usage = None
+        self._hidden_params = {"provider_response_model": model_thuc}
+
+
+async def test_openrouter_free_phat_dong_ghi_model_thuc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """openrouter/free phát dòng: lấy tên model thực từ _hidden_params, chi phí không ước tính."""
+    model_thuc_te = "nex-agi/nex-n2.5-mini:free"
+
+    async def gia_lap_stream() -> Any:
+        for manh in ("Xin ", "chào"):
+            yield MockChunk(manh, model_thuc_te)
+
+    async def gia_lap_acompletion(**kwargs: Any) -> Any:
+        assert kwargs["model"] == "openrouter/openrouter/free"
+        assert "extra_body" not in kwargs
+        return gia_lap_stream()
+
+    monkeypatch.setattr(litellm, "acompletion", gia_lap_acompletion)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "khoa-openrouter-hop-le")
+
+    dong = await goi_dam_may(
+        TANG_OPENROUTER_FREE,
+        [{"role": "user", "content": "Chào"}],
+        ma_yeu_cau="req-openrouter-free-stream",
+        phat_theo_dong=True,
+    )
+    cac_mau = [m async for m in dong]
+
+    assert "".join(m.noi_dung for m in cac_mau) == "Xin chào"
+    assert all(m.model == model_thuc_te for m in cac_mau)
+    assert cac_mau[-1].da_xong is True
+    assert cac_mau[-1].chi_phi_la_uoc_tinh_tho is False
+
+
 async def test_khoa_api_khong_xuat_hien_trong_nhat_ky(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,

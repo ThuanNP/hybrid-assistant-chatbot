@@ -4,7 +4,7 @@
 
 Trợ lý AI NỘI BỘ cho cán bộ, công nhân viên của Doanh nghiệp kinh doanh điện năng;
 backend FastAPI (`backend/`), frontend Angular (`frontend/`); chuỗi lai tầng 0 local
-(Ollama/LM Studio, bậc 1 "chinh", bậc 2 "nho") rồi Gemini -> OpenRouter/auto -> Claude
+(Ollama/LM Studio, bậc 1 "chinh", bậc 2 "nho") rồi Gemini -> OpenRouter/free -> Claude
 -> OpenAI theo chính sách định tuyến.
 
 ## Rule bắt buộc - đọc trước mọi việc
