@@ -30,6 +30,11 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Chan yeu cau nhay cam truoc khi goi cloud
         env:
           DUONG_DAN_SU_KIEN: ${{ github.event_path }}
