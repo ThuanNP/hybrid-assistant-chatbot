@@ -8,6 +8,7 @@ bo_chay:
 ho_so_gpu:                        # chọn bằng biến HO_SO_GPU
   # gpu6: VRAM ước tính ~4-5 GB khi chạy bậc chinh, phù hợp máy trạm GPU 6 GB
   gpu6:
+    dung_luong_vram_gb: 6
     chinh:
       model: qwen3.5:4b-q4_K_M
       num_ctx: 8192
@@ -19,6 +20,7 @@ ho_so_gpu:                        # chọn bằng biến HO_SO_GPU
 
   # gpu8: máy trạm GPU 8 GB, khoảng 6,5 GB cho bậc chinh, không nạp đồng thời bậc nho
   gpu8:
+    dung_luong_vram_gb: 8
     chinh:
       model: qwen3.5:4b-q8_0
       num_ctx: 16384
@@ -30,6 +32,7 @@ ho_so_gpu:                        # chọn bằng biến HO_SO_GPU
 
   # gpu12: VRAM ước tính ~9-11 GB, máy trạm/server GPU 12 GB, nạp đồng thời 2 model
   gpu12:
+    dung_luong_vram_gb: 12
     chinh:
       model: qwen3.5:9b-q4_K_M
       num_ctx: 16384
@@ -41,6 +44,7 @@ ho_so_gpu:                        # chọn bằng biến HO_SO_GPU
 
   # gpu16: VRAM ước tính ~12-14 GB, máy trạm/server GPU 16 GB, nạp đồng thời 2 model
   gpu16:
+    dung_luong_vram_gb: 16
     chinh:
       model: qwen3.5:9b-q4_K_M
       num_ctx: 32768
@@ -52,6 +56,7 @@ ho_so_gpu:                        # chọn bằng biến HO_SO_GPU
 
   # gpu24: VRAM ước tính ~18-22 GB, máy trạm/server GPU 24 GB (RTX 3090/4090), chỉ nạp bậc chinh
   gpu24:
+    dung_luong_vram_gb: 24
     chinh:
       model: qwen3.5:27b-q4_K_M
       num_ctx: 16384

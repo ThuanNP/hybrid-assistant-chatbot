@@ -135,6 +135,7 @@ class CauHinhHeThong(BaseModel):
     bo_chay: CauHinhBoChay
     ho_so_gpu: dict[str, Any]
     ho_so_gpu_dang_chon: str
+    dung_luong_vram_gb: int = 8
     local_chung: CauHinhLocalChung
     database_url: str | None
     moi_truong: str
@@ -229,6 +230,14 @@ def _kiem_tra_mot_ho_so(ten_hs: str, hs: dict[str, Any]) -> None:
 
     if hs.get("so_model_nap_cung_luc", 0) not in (1, 2):
         raise ValueError(f"so_model_nap_cung_luc của hồ sơ '{ten_hs}' phải là 1 hoặc 2")
+
+    if "dung_luong_vram_gb" in hs:
+        try:
+            vram_gb = int(hs["dung_luong_vram_gb"])
+            if vram_gb <= 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise ValueError(f"dung_luong_vram_gb của hồ sơ '{ten_hs}' phải là số nguyên dương")
 
 
 def _kiem_tra_tinh_hop_le_ho_so_gpu(
@@ -368,6 +377,7 @@ def nap_cau_hinh(
         bo_chay=CauHinhBoChay(**bo_chay_dict),
         ho_so_gpu=ho_so_dict,
         ho_so_gpu_dang_chon=cai_dat_env.ho_so_gpu,
+        dung_luong_vram_gb=int(ho_so_chon.get("dung_luong_vram_gb", 8)),
         local_chung=CauHinhLocalChung(**du_lieu_yaml.get("local_chung", {})),
         database_url=database_url,
         moi_truong=cai_dat_env.moi_truong,

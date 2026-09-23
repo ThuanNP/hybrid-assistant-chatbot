@@ -200,6 +200,43 @@ export interface TrangThaiHangDoi {
   do_dai_toi_da?: number;
 }
 
+export interface ModelDangNap {
+  ten: string;
+  kich_thuoc_byte?: number | null;
+  kich_thuoc_vram_byte?: number | null;
+  dung_luong_vram_gb?: number | null;
+  het_han_luc?: string | null;
+  so_giay_con_lai?: number | null;
+}
+
+export interface NguCanhModel {
+  bac: string;
+  model: string;
+  num_ctx_cau_hinh: number;
+  num_ctx_thuc_te?: number | null;
+  co_lech: boolean;
+}
+
+export interface ThongTinVram {
+  dung_luong_vram_gb?: number | null;
+  tong_vram_da_dung_byte?: number | null;
+  tong_vram_da_dung_gb?: number | null;
+  vram_con_trong_gb?: number | null;
+  ghi_chu: string;
+  ly_do?: string | null;
+}
+
+export interface TrangThaiBoChay {
+  ho_so_gpu: string;
+  dung_luong_vram_gb: number;
+  bac_1: { model: string; num_ctx: number };
+  bac_2: { model: string; num_ctx: number };
+  model_dang_nap: ModelDangNap[];
+  ngu_canh: NguCanhModel[];
+  co_lech: boolean;
+  vram: ThongTinVram;
+}
+
 // ---------------------------------------------------------------------------
 // 4. Cac kieu du lieu he thong bo tro
 // ---------------------------------------------------------------------------

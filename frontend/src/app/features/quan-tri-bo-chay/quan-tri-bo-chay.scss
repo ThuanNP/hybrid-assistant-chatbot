@@ -1,0 +1,261 @@
+.trang-quan-tri {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+.thanh-cong-cu {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nut-lam-moi,
+.nut-thu-lai,
+.nut-ve-trang-chu {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  background-color: var(--mau-chinh, #0284c7);
+  color: #ffffff;
+  border: none;
+  text-decoration: none;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.khung-tai {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  gap: 1rem;
+  color: var(--chu-phu, #64748b);
+}
+
+.vong-xoay {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid rgba(2, 132, 199, 0.2);
+  border-top-color: var(--mau-chinh, #0284c7);
+  border-radius: 50%;
+  animation: xoay 0.8s linear infinite;
+}
+
+@keyframes xoay {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.the-canh-bao,
+.the-loi {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: 8px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+
+  h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+  }
+
+  p {
+    margin: 0 0 0.75rem;
+    color: #b91c1c;
+  }
+}
+
+.the-chinh {
+  background-color: var(--nen-the, #ffffff);
+  border: 1px solid var(--vien, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dau-the {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--vien, #e2e8f0);
+  padding-bottom: 1rem;
+}
+
+.tieu-de-the {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--chu-chinh, #0f172a);
+}
+
+.nhom-huy-hieu {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.huy-hieu {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+}
+
+.huy-hieu-gpu {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+.huy-hieu-xanh {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.huy-hieu-canh-bao {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.hang-chi-so {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.hop-chi-so {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem;
+  background-color: var(--nen-phu, #f8fafc);
+  border: 1px solid var(--vien, #e2e8f0);
+  border-radius: 8px;
+
+  .nhan-chi-so {
+    font-size: 0.8125rem;
+    color: var(--chu-phu, #64748b);
+  }
+
+  .gia-tri-chi-so {
+    font-size: 1.375rem;
+    font-weight: 600;
+    color: var(--chu-chinh, #0f172a);
+
+    &.noi-bat {
+      color: #059669;
+    }
+  }
+}
+
+.thong-bao-phu {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #b45309;
+  font-size: 0.875rem;
+}
+
+.ghi-chu-container {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--chu-phu, #64748b);
+}
+
+.khoi-danh-sach {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  .tieu-de-nhom {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--chu-chinh, #0f172a);
+  }
+
+  .dong-trong {
+    margin: 0;
+    font-style: italic;
+    color: var(--chu-phu, #64748b);
+    font-size: 0.875rem;
+  }
+}
+
+.bang-cuon {
+  overflow-x: auto;
+}
+
+.bang-du-lieu {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th,
+  td {
+    padding: 0.625rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--vien, #e2e8f0);
+  }
+
+  th {
+    background-color: var(--nen-phu, #f8fafc);
+    color: var(--chu-phu, #64748b);
+    font-weight: 600;
+  }
+
+  code {
+    background-color: #f1f5f9;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+  }
+
+  .dong-lech {
+    background-color: #fffbeb;
+  }
+
+  .the-lech {
+    color: #b45309;
+    font-weight: 600;
+  }
+
+  .the-khop {
+    color: #166534;
+    font-weight: 500;
+  }
+
+  .het-han {
+    color: #dc2626;
+  }
+}

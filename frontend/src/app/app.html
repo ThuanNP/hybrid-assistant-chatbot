@@ -42,6 +42,18 @@
           <app-bieu-tuong ten="lich-su" />
           <span class="an-khi-thu-gon">Lịch sử hội thoại</span>
         </a>
+        @if (authService.laQuanTri()) {
+          <a
+            routerLink="/quan-tri/bo-chay"
+            routerLinkActive="dang-chon"
+            ariaCurrentWhenActive="page"
+            class="muc-menu"
+            title="Tình trạng bộ chạy"
+          >
+            <app-bieu-tuong ten="hang-doi" />
+            <span class="an-khi-thu-gon">Bộ chạy</span>
+          </a>
+        }
       </nav>
 
       <section class="nhom-gan-day an-khi-thu-gon" aria-labelledby="tieu-de-gan-day">

@@ -37,5 +37,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/hoi-thoai/hoi-thoai').then((m) => m.HoiThoaiComponent),
   },
+  {
+    path: 'quan-tri/bo-chay',
+    title: 'Tình trạng bộ chạy · Trợ lý nội bộ',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/quan-tri-bo-chay/quan-tri-bo-chay').then((m) => m.QuanTriBoChayComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

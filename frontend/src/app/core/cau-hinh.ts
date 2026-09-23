@@ -18,6 +18,7 @@ export const ENDPOINTS = {
   LAM_MOI_TOKEN: `${API_GOC}/lam-moi-token`,
   DANG_XUAT: `${API_GOC}/dang-xuat`,
   TOI: `${API_GOC}/toi`,
+  GIAM_SAT_BO_CHAY: `${API_GOC}/giam-sat/bo-chay`,
 } as const;
 
 export const CAU_HINH_APP = {

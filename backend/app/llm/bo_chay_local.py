@@ -4,7 +4,8 @@ import json
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator, Literal, overload
+from collections.abc import AsyncIterator
+from typing import Any, Literal, overload
 
 import httpx
 from pydantic import BaseModel
@@ -63,10 +64,18 @@ class MauTho(BaseModel):
     ket_thuc: bool = False
 
 
+class ThongTinModelDangNap(BaseModel):
+    """Thông tin mô hình đang nạp trong VRAM/RAM của bộ chạy."""
+
+    ten: str
+    kich_thuoc_byte: int | None = None
+    kich_thuoc_vram_byte: int | None = None
+    het_han_luc: str | None = None
+
+
 def _chuan_hoa_url_goc(dia_chi: str) -> str:
     """Lấy địa chỉ gốc của dịch vụ (bỏ hậu tố /v1) để gọi các API riêng như /api/chat."""
-    duong_dan = dia_chi.rstrip("/")
-    return duong_dan[:-3] if duong_dan.endswith("/v1") else duong_dan
+    return dia_chi.rstrip("/").removesuffix("/v1")
 
 
 def _tinh_toc_do(so_token: int, thoi_gian_giay: float) -> float:
@@ -143,6 +152,10 @@ class BoChay(ABC):
     @abstractmethod
     async def model_dang_nap(self) -> list[str]:
         """Liệt kê danh sách các mô hình đang được nạp vào VRAM/RAM."""
+
+    @abstractmethod
+    async def doc_trang_thai_bo_chay(self) -> list[ThongTinModelDangNap]:
+        """Đọc danh sách các mô hình đang nạp kèm kích thước, VRAM và thời điểm hết hạn."""
 
     @abstractmethod
     async def doc_ngu_canh_thuc_te(self, model: str) -> int | None:
@@ -371,9 +384,30 @@ class BoChayOllama(BoChay):
         """Lấy danh sách các mô hình đã tải về thông qua GET /api/tags."""
         return [m["name"] for m in await self._doc_danh_sach("/api/tags") if m.get("name")]
 
+    async def doc_trang_thai_bo_chay(self) -> list[ThongTinModelDangNap]:
+        """Đọc danh sách model đang nạp từ GET /api/ps kèm kích thước, VRAM và hết hạn."""
+        models = await self._doc_danh_sach("/api/ps")
+        ket_qua: list[ThongTinModelDangNap] = []
+        for m in models:
+            ten = str(m.get("name") or m.get("model") or "")
+            if not ten:
+                continue
+            kich_thuoc = int(m["size"]) if m.get("size") is not None else None
+            kich_thuoc_vram = int(m["size_vram"]) if m.get("size_vram") is not None else None
+            het_han = m.get("expires_at")
+            ket_qua.append(
+                ThongTinModelDangNap(
+                    ten=ten,
+                    kich_thuoc_byte=kich_thuoc,
+                    kich_thuoc_vram_byte=kich_thuoc_vram,
+                    het_han_luc=str(het_han) if het_han else None,
+                )
+            )
+        return ket_qua
+
     async def model_dang_nap(self) -> list[str]:
-        """Lấy danh sách mô hình đang nạp trong VRAM thông qua GET /api/ps."""
-        return [m["name"] for m in await self._doc_danh_sach("/api/ps") if m.get("name")]
+        """Lấy danh sách mô hình đang nạp trong VRAM thông qua doc_trang_thai_bo_chay()."""
+        return [m.ten for m in await self.doc_trang_thai_bo_chay()]
 
     async def _ngu_canh_tu_ps(self, model: str) -> int | None:
         """Đọc context_length của model đang nạp từ /api/ps."""
@@ -472,9 +506,39 @@ class BoChayLMStudio(BoChay):
         """Lấy danh sách các mô hình qua endpoint /models chuẩn OpenAI."""
         return [m["id"] for m in await self._doc_models() if m.get("id")]
 
+    async def _doc_models_v0(self) -> list[dict[str, Any]]:
+        """Đọc danh sách model từ REST API /api/v0/models của LM Studio."""
+        phan_hoi = await self._gui("GET", f"{_chuan_hoa_url_goc(self.dia_chi)}/api/v0/models")
+        phan_hoi.raise_for_status()
+        return list(phan_hoi.json().get("data", []))
+
+    async def doc_trang_thai_bo_chay(self) -> list[ThongTinModelDangNap]:
+        """Đọc danh sách model đang nạp từ REST API /api/v0/models của LM Studio."""
+        try:
+            danh_sach = await self._doc_models_v0()
+        except LOI_KICH_HOAT_HA_CAP:
+            danh_sach = await self._doc_models()
+        ket_qua: list[ThongTinModelDangNap] = []
+        for m in danh_sach:
+            trang_thai = m.get("state")
+            if trang_thai is None or trang_thai == "loaded":
+                ten = str(m.get("id") or m.get("name") or "")
+                if not ten:
+                    continue
+                kich_thuoc = int(m["size_bytes"]) if m.get("size_bytes") is not None else None
+                ket_qua.append(
+                    ThongTinModelDangNap(
+                        ten=ten,
+                        kich_thuoc_byte=kich_thuoc,
+                        kich_thuoc_vram_byte=None,
+                        het_han_luc=None,
+                    )
+                )
+        return ket_qua
+
     async def model_dang_nap(self) -> list[str]:
-        """LM Studio trả qua /models các model khả dụng, coi như đang nạp."""
-        return await self.liet_ke_model()
+        """LM Studio trả danh sách model đang nạp thông qua doc_trang_thai_bo_chay()."""
+        return [m.ten for m in await self.doc_trang_thai_bo_chay()]
 
     async def doc_ngu_canh_thuc_te(self, model: str) -> int | None:
         """Đọc ngữ cảnh từ trường context_length trong danh sách /models nếu có."""

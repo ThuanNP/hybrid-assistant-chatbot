@@ -78,6 +78,7 @@ from app.core.xac_thuc import (
     xac_minh_mat_khau,
 )
 from app.giam_sat.chi_so import tong_hop_chi_so_van_hanh
+from app.giam_sat.suc_khoe import router as router_giam_sat, vong_lap_giam_sat_bo_chay
 from app.hang_doi.dieu_phoi import TrangThaiHangDoi, dieu_phoi_mac_dinh
 from app.llm.bo_chay_local import kiem_tra_khi_khoi_dong, lay_bo_chay
 from app.llm.chi_phi import bao_cao_chi_phi
@@ -148,8 +149,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await khoi_tao_nguoi_dung_gia_dev()
     tac_vu = asyncio.create_task(kiem_tra_khi_khoi_dong())
     tac_vu.add_done_callback(_ghi_loi_tac_vu_nen)
+    tac_vu_giam_sat = asyncio.create_task(vong_lap_giam_sat_bo_chay())
     yield
     tac_vu.cancel()
+    tac_vu_giam_sat.cancel()
 
 
 # Môi trường prod tắt /docs, /redoc, /openapi.json để không công khai lược đồ API
@@ -162,6 +165,9 @@ app = FastAPI(
     redoc_url=None if _LA_PROD else "/redoc",
     openapi_url=None if _LA_PROD else "/openapi.json",
 )
+
+# Đăng ký router giám sát bộ chạy
+app.include_router(router_giam_sat)
 
 # Đăng ký bộ bắt lỗi toàn cục chuẩn hóa định dạng lỗi
 dang_ky_bo_bat_loi(app)

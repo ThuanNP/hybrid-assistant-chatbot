@@ -1,0 +1,152 @@
+<div class="trang-quan-tri">
+  @if (!auth.laQuanTri()) {
+    <div class="the-canh-bao">
+      <app-bieu-tuong ten="canh-bao" />
+      <div>
+        <h3>Từ chối quyền truy cập</h3>
+        <p>Trang này chỉ dành cho người dùng có vai trò Quản trị viên (quan_tri).</p>
+        <a routerLink="/" class="nut-ve-trang-chu">Về trang chủ</a>
+      </div>
+    </div>
+  } @else {
+    <div class="thanh-cong-cu">
+      <button type="button" class="nut-lam-moi" (click)="taiDuLieu()" [disabled]="dangTai()">
+        <app-bieu-tuong ten="dong-ho" /> Làm mới
+      </button>
+    </div>
+
+    @if (dangTai()) {
+      <div class="khung-tai">
+        <span class="vong-xoay" aria-hidden="true"></span>
+        <p>Đang đọc trạng thái bộ chạy...</p>
+      </div>
+    } @else if (loi()) {
+      <div class="the-loi">
+        <app-bieu-tuong ten="canh-bao" />
+        <div>
+          <h3>Lỗi kết nối bộ chạy</h3>
+          <p>{{ loi() }}</p>
+          <button type="button" class="nut-thu-lai" (click)="taiDuLieu()">Thử lại</button>
+        </div>
+      </div>
+    } @else if (trangThai(); as tt) {
+      <div class="luoi-quan-tri">
+        <!-- Thẻ chính: Tình trạng bộ chạy -->
+        <section class="the-chinh" aria-labelledby="tieu-de-bo-chay">
+          <div class="dau-the">
+            <h2 id="tieu-de-bo-chay" class="tieu-de-the">
+              <app-bieu-tuong ten="hang-doi" /> Tình trạng bộ chạy
+            </h2>
+            <div class="nhom-huy-hieu">
+              <span class="huy-hieu huy-hieu-gpu">Hồ sơ: {{ tt.ho_so_gpu }} ({{ tt.dung_luong_vram_gb }} GB)</span>
+              @if (tt.co_lech) {
+                <span class="huy-hieu huy-hieu-canh-bao">
+                  <app-bieu-tuong ten="canh-bao" /> Lệch ngữ cảnh
+                </span>
+              } @else {
+                <span class="huy-hieu huy-hieu-xanh">Ngữ cảnh chuẩn</span>
+              }
+            </div>
+          </div>
+
+          <!-- Số liệu VRAM -->
+          <div class="hang-chi-so">
+            <div class="hop-chi-so">
+              <span class="nhan-chi-so">VRAM tổng (Hồ sơ)</span>
+              <span class="gia-tri-chi-so">{{ tt.dung_luong_vram_gb }} GB</span>
+            </div>
+            <div class="hop-chi-so">
+              <span class="nhan-chi-so">VRAM đã dùng (Mô hình)</span>
+              <span class="gia-tri-chi-so">{{ dinhDangVram(tt.vram.tong_vram_da_dung_gb) }}</span>
+            </div>
+            <div class="hop-chi-so">
+              <span class="nhan-chi-so">VRAM còn trống ước tính</span>
+              <span class="gia-tri-chi-so noi-bat">{{ dinhDangVram(tt.vram.vram_con_trong_gb) }}</span>
+            </div>
+          </div>
+
+          @if (tt.vram.ly_do) {
+            <div class="thong-bao-phu">
+              <app-bieu-tuong ten="canh-bao" />
+              <span>{{ tt.vram.ly_do }}</span>
+            </div>
+          }
+
+          <p class="ghi-chu-container">
+            <em>Ghi chú:</em> {{ tt.vram.ghi_chu }}
+          </p>
+
+          <!-- Danh sách mô hình đang nạp -->
+          <div class="khoi-danh-sach">
+            <h3 class="tieu-de-nhom">Mô hình đang nạp trong VRAM ({{ tt.model_dang_nap.length }})</h3>
+            @if (tt.model_dang_nap.length === 0) {
+              <p class="dong-trong">Hiện không có mô hình nào nạp trong bộ nhớ.</p>
+            } @else {
+              <div class="bang-cuon">
+                <table class="bang-du-lieu">
+                  <thead>
+                    <tr>
+                      <th scope="col">Tên mô hình</th>
+                      <th scope="col">VRAM chiếm</th>
+                      <th scope="col">Keep-Alive còn lại</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (m of tt.model_dang_nap; track m.ten) {
+                      <tr>
+                        <td><code>{{ m.ten }}</code></td>
+                        <td>{{ dinhDangVram(m.dung_luong_vram_gb) }}</td>
+                        <td>
+                          <span [class.het-han]="(m.so_giay_con_lai ?? 0) <= 0">
+                            {{ dinhDangThoiGian(m.so_giay_con_lai) }}
+                          </span>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+
+          <!-- So sánh kích thước ngữ cảnh -->
+          <div class="khoi-danh-sach">
+            <h3 class="tieu-de-nhom">Kiểm tra cửa sổ ngữ cảnh (num_ctx)</h3>
+            <div class="bang-cuon">
+              <table class="bang-du-lieu">
+                <thead>
+                  <tr>
+                    <th scope="col">Bậc</th>
+                    <th scope="col">Mô hình</th>
+                    <th scope="col">Cấu hình</th>
+                    <th scope="col">Thực tế</th>
+                    <th scope="col">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (nc of tt.ngu_canh; track nc.model) {
+                    <tr [class.dong-lech]="nc.co_lech">
+                      <td><strong>{{ nc.bac === 'chinh' ? 'Bậc 1 (chính)' : 'Bậc 2 (nhỏ)' }}</strong></td>
+                      <td><code>{{ nc.model }}</code></td>
+                      <td>{{ nc.num_ctx_cau_hinh.toLocaleString('vi-VN') }} tokens</td>
+                      <td>
+                        {{ nc.num_ctx_thuc_te ? nc.num_ctx_thuc_te.toLocaleString('vi-VN') + ' tokens' : 'Chưa đọc được' }}
+                      </td>
+                      <td>
+                        @if (nc.co_lech) {
+                          <span class="the-lech">Lệch ngữ cảnh</span>
+                        } @else {
+                          <span class="the-khop">Khớp</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+  }
+</div>

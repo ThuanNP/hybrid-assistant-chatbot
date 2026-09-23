@@ -177,6 +177,11 @@
           <a routerLink="/lich-su" class="muc-menu-tha" (click)="dongBang()">
             <app-bieu-tuong ten="lich-su" /> Lịch sử hội thoại
           </a>
+          @if (authService.laQuanTri()) {
+            <a routerLink="/quan-tri/bo-chay" class="muc-menu-tha" (click)="dongBang()">
+              <app-bieu-tuong ten="hang-doi" /> Tình trạng bộ chạy
+            </a>
+          }
           <button type="button" class="muc-menu-tha nut-dang-xuat" (click)="dangXuat()">
             <app-bieu-tuong ten="dong" /> Đăng xuất
           </button>

@@ -21,6 +21,7 @@ import {
   TrangThaiHangDoi,
   TrangThaiModels,
   TrangThaiSucKhoe,
+  TrangThaiBoChay,
 } from './mo-hinh';
 
 export interface LoiApiTuyBien extends Error {
@@ -131,6 +132,17 @@ export class ApiService {
   public layTrangThaiHangDoi(): Observable<TrangThaiHangDoi> {
     return this.thucThiYeuCau(
       this.http.get<TrangThaiHangDoi>(ENDPOINTS.HANG_DOI_TINH_TRANG, {
+        observe: 'response',
+      }),
+    );
+  }
+
+  /**
+   * Lay tinh trang hoat dong va chi so tai nguyen cua bo chay local (/giam-sat/bo-chay).
+   */
+  public layTrangThaiBoChay(): Observable<TrangThaiBoChay> {
+    return this.thucThiYeuCau(
+      this.http.get<TrangThaiBoChay>(ENDPOINTS.GIAM_SAT_BO_CHAY, {
         observe: 'response',
       }),
     );
