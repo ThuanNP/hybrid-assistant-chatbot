@@ -48,7 +48,7 @@ def lay_muc_quyen_nguoi_dung(
         duong_dan,
         headers={
             "Accept": "application/vnd.github+json",
-            "Authorization": f"******",
+            "Authorization": "Bearer " + github_token,
             "X-GitHub-Api-Version": "2022-11-28",
             "User-Agent": "hybrid-assistant-chatbot-claude-workflow",
         },

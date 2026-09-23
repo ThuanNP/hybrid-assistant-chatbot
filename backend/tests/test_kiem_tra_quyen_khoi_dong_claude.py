@@ -56,7 +56,8 @@ def test_lay_muc_quyen_nguoi_dung_gui_bearer_token(
             return b'{\"permission\": \"write\"}'
 
     def gia_lap_urlopen(yeu_cau: object, **_kwargs: object) -> PhanHoiGia:
-        assert yeu_cau.headers["Authorization"] == "******"
+        assert yeu_cau.headers["Authorization"].startswith("Bearer ")
+        assert yeu_cau.headers["Authorization"].endswith("token-gia")
         return PhanHoiGia()
 
     monkeypatch.setattr(MODULE, "urlopen", gia_lap_urlopen)
