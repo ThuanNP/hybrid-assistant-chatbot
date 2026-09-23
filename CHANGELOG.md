@@ -6,6 +6,17 @@ và tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Chưa phát hành]
 
+### Thay đổi
+
+- Lời nhắc hệ thống phiên bản `2026-09-24.3` (`prompts/he_thong.md`): trợ lý nêu rõ không truy cập
+  cơ sở dữ liệu khách hàng và trả lời "không thể thực hiện yêu cầu này" đối với yêu cầu liệt kê
+  thông tin cá nhân của khách hàng, chạy lệnh thêm, sửa, xoá dữ liệu nghiệp vụ hoặc cung cấp thông
+  tin an ninh của công trình điện lực.
+- Bộ câu hỏi đánh giá: câu VN-016 dùng từ khoá bắt buộc "không thể" thống nhất với các câu cùng
+  nhóm từ chối.
+- Kho tài liệu mẫu: bổ sung `data/mau/luat-28-2004-qh11.docx`, bản DOCX của Luật Điện lực số
+  28/2004/QH11 chuyển từ tệp `.doc` gốc, dùng cho kho tri thức ở Giai đoạn 6.
+
 ## [1.0.0-rc.1] - 2026-09-24
 
 ### Thêm
