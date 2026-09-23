@@ -1,12 +1,13 @@
 {
   "name": "hybrid-assistant-chatbot-frontend",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "e2e": "playwright test"
   },
   "private": true,
   "packageManager": "npm@11.17.0",
@@ -26,6 +27,7 @@
     "@angular/build": "^22.1.8",
     "@angular/cli": "^22.1.8",
     "@angular/compiler-cli": "^22.1.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "jsdom": "^28.0.0",
     "postcss": "^8.5.28",

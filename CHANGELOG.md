@@ -6,8 +6,19 @@ và tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Chưa phát hành]
 
+## [0.4.0] - 2026-09-23
+
 ### Thêm
 
+- Đóng gói frontend bằng Dockerfile hai tầng: tầng dựng Node.js 22 LTS và tầng chạy Nginx
+  không đặc quyền (`nginxinc/nginx-unprivileged:alpine`) lắng nghe cổng 8080.
+- Cấu hình Nginx (`frontend/nginx.conf`): định tuyến client-side cho SPA, reverse proxy API
+  FastAPI với `proxy_buffering off` cho SSE, thiết lập đầy đủ tiêu đề bảo mật CSP,
+  X-Content-Type-Options, Referrer-Policy, X-Frame-Options và nén gzip cho tài nguyên tĩnh.
+- Bộ kiểm thử đầu cuối Playwright trong `frontend/e2e/chat.e2e.ts` với 6 kịch bản toàn diện:
+  truyền phát dòng, dừng giữa chừng, lưu và phục hồi lịch sử, xoá hội thoại qua hộp thoại
+  xác nhận, phản hồi giao diện di động 375x812 và kiểm tra an toàn mạng/CSP; kịch bản lịch sử và
+  kịch bản xoá tự tạo dữ liệu kiểm thử riêng.
 - `GET /api/v1/hang-doi/tinh-trang` trả thêm trường `do_dai_toi_da` (sức chứa tối đa của hàng đợi,
   lấy từ cấu hình); thay đổi bổ sung, tương thích ngược.
 - `GET /api/v1/hoi-thoai` trả thêm trường `so_luot` cho mỗi hội thoại (số câu hỏi của người dùng,
@@ -30,6 +41,12 @@ và tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
 ### Thay đổi
 
+- Dịch vụ frontend trong `docker-compose.yml` chuyển sang build từ `./frontend/Dockerfile`,
+  lắng nghe cổng 8080:8080 và phụ thuộc backend ở trạng thái healthy.
+- Tắt `optimization.styles.inlineCritical` trong `frontend/angular.json` để loại bỏ thuộc tính
+  `onload` nội tuyến trên thẻ style link, tuân thủ chặt chẽ chính sách bảo mật CSP `script-src 'self'`.
+- Bổ sung hướng dẫn chạy kiểm thử đơn vị frontend và kiểm thử đầu cuối Playwright, cùng bản thiết
+  kế tham chiếu trên Google Stitch, vào `README.md`.
 - Màn Lịch sử hội thoại tìm, lọc và sắp xếp qua máy chủ; kết quả đúng ngay từ trang đầu, không cần
   tải hết các trang.
 - Huy hiệu mô hình chuyển màu cảnh báo theo cờ `ha_cap` của máy chủ (đúng cả với chế độ ưu tiên
@@ -54,12 +71,15 @@ và tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
 ### Sửa lỗi
 
+- Bản build production không chứa thuộc tính `onload` nội tuyến, tương thích CSP
+  `script-src 'self'`.
 - Tỷ lệ rơi tầng được tính và cảnh báo đúng khi dùng kho PostgreSQL; lượt hết chuỗi cũng được ghi.
 - Siết kiểm tra quyền truy cập hội thoại khi phát theo dòng; mã hội thoại không hợp lệ trả
   `KHONG_TIM_THAY`, máy chủ tự cấp mã khi tạo hội thoại mới; `noi_dung` không được rỗng.
 - Không lưu nội dung bị móc kiểm duyệt từ chối; kiểm duyệt đầu vào chạy trước khi tạo hội thoại.
-- Tham số nội bộ của router không còn được chuyển sang lời gọi nhà cung cấp đám mây.
-- Nhãn AI ghi giờ Việt Nam; nhật ký không còn ghi tiêu đề hội thoại tự đặt.
+- Lời gọi nhà cung cấp đám mây chỉ nhận tham số sinh văn bản; tham số nội bộ của router được giữ
+  lại trong router.
+- Nhãn AI ghi giờ Việt Nam; nhật ký không ghi tiêu đề hội thoại tự đặt.
 
 ## [0.3.0] - 2026-09-23
 
@@ -111,8 +131,7 @@ và tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
   `dang_ky_bo_bat_loi`.
 - Đảm bảo kiểm tra sẵn sàng `/ready` không bao giờ gọi hàm sinh văn bản của mô hình và bọc
   `asyncio.wait_for` 2 giây ngăn chặn treo tiến trình kiểm tra.
-- Khắc phục lỗi kiểm tra quyền sở hữu cuộc hội thoại (trả 404 khi truy cập hoặc thao tác trên
-  hội thoại của người khác).
+- Truy cập hoặc thao tác trên hội thoại của người khác trả 404.
 
 ## [0.2.0] - 2026-09-23
 
@@ -148,8 +167,8 @@ và tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 - `config/models.yaml` và `backend/app/config.py`: bổ sung cấu hình `nguong_canh_bao_ngan_sach`
   (0.80) và `nguong_ty_le_roi_tang` (0.20) vào `cai_dat_chung`.
 - Nâng phiên bản `backend/pyproject.toml` lên `0.2.0` đồng bộ toàn hệ thống.
-- `config.py` kiểm tra `HO_SO_GPU` theo các khoá khai báo trong `config/models.yaml`,
-  không còn danh sách ghi cứng; kiểm tra thêm `LOAI_BO_CHAY` (`ollama` hoặc `lmstudio`).
+- `config.py` kiểm tra `HO_SO_GPU` theo các khoá khai báo trong `config/models.yaml`; kiểm tra
+  thêm `LOAI_BO_CHAY` (`ollama` hoặc `lmstudio`).
 - Thông báo lỗi thẻ model nêu rõ hồ sơ, bậc và thẻ sai, không chứa tên model mẫu.
 - Bộ chạy Ollama gọi `/api/chat` (NDJSON) thay cho `/v1/chat/completions`: giao diện tương
   thích OpenAI của Ollama bỏ qua `keep_alive` và `options.num_ctx`, model bị nạp với ngữ cảnh

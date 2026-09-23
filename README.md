@@ -84,6 +84,22 @@ Sau khi cài, chạy công cụ Python từ thư mục `backend/` bằng `uv run
 trong `AGENTS.md`), ví dụ `uv run --frozen pytest -q`, `uv run --frozen pyright app`,
 `uv run --frozen alembic upgrade head`; `uv` dùng lại `backend/.venv` đã cài ở trên.
 
+Để chuẩn bị môi trường frontend và chạy kiểm thử:
+
+```bash
+cd frontend
+npm ci
+npm test                            # Chạy kiểm thử đơn vị frontend (Vitest)
+npx playwright install chromium     # Tải trình duyệt cho kiểm thử E2E (chỉ cần chạy một lần)
+npx playwright test                 # Chạy kiểm thử đầu cuối E2E trên hệ thống compose đang chạy
+```
+
+Giao diện theo chuẩn thiết kế `DESIGN.md`. Bản thiết kế tham chiếu bố cục đã duyệt là dự án
+Google Stitch "Trợ lý AI nội bộ · v2"
+(<https://stitch.withgoogle.com/projects/13299602320821438075>), gồm bốn màn hình Trang chủ, Cuộc
+trò chuyện mới, màn hình đang trò chuyện và Lịch sử hội thoại. Khi bản thiết kế khác `DESIGN.md`
+về màu, phông chữ hoặc khoảng cách thì theo `DESIGN.md`.
+
 ## 5. Kiểm tra trước khi chạy
 
 Trước khi khởi động hệ thống, thực hiện kiểm tra chẩn đoán bộ chạy mô hình cục bộ

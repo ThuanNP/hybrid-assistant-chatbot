@@ -80,12 +80,9 @@ Bắt buộc phải hỏi người dùng và nhận được phê duyệt trư�
 
 ## Không làm ở giai đoạn hiện tại
 
-Giai đoạn hiện hành: Giai đoạn 4 (giao diện Angular). Các hạng mục sau được tạm hoãn
-có chủ đích:
+Giai đoạn hiện hành: Giai đoạn 5 (xác thực, vai trò, bảo mật và hạn mức). Các hạng mục
+sau được tạm hoãn có chủ đích:
 
-- Đóng gói giao diện bằng nginx và kiểm thử đầu cuối Playwright (cuối Giai đoạn 4).
-- Đăng nhập thật, vai trò, hạn mức theo người dùng, nhật ký JSON đầy đủ, phần thân kiểm duyệt
-  và che dữ liệu cá nhân (Giai đoạn 5); tạm dùng `XAC_THUC_GIA`.
 - RAG và cơ sở dữ liệu vector (Giai đoạn 6).
 - Gọi công cụ / Function calling (Giai đoạn 7).
 - Đăng nhập một lần doanh nghiệp / SSO (Giai đoạn 8).
@@ -97,6 +94,8 @@ có chủ đích:
 
 ## Cách làm việc
 
+- Tên phiên làm việc (conversation/session) của AI Agent trong dự án luôn đặt bằng tiếng Anh
+  (ví dụ: "Setup frontend Docker packaging and Playwright E2E tests").
 - Trước khi viết mã: nêu rõ tệp sẽ tạo hoặc sửa và rule nào được áp dụng.
 - Kiểm tra tài liệu thiết kế: chỉ kiểm tra bằng lệnh
   `npx -p @google/design.md designmd lint DESIGN.md` khi và chỉ khi tập tin `DESIGN.md`
