@@ -6,6 +6,78 @@ và tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Chưa phát hành]
 
+## [1.0.0-rc.1] - 2026-09-24
+
+### Thêm
+
+- Bộ câu hỏi đánh giá chất lượng mô hình 40 câu tiếng Việt nghiệp vụ điện lực (`eval/bo_cau_hoi.yaml`)
+  bao gồm 7 loại câu hỏi, hỗ trợ tiêu chí chấm, từ khóa bắt buộc/cấm và cờ bảo mật dữ liệu nhạy cảm.
+- Bộ chấm điểm hai lớp: lớp tất định kiểm tra từ khóa, định dạng bảng/JSON/danh sách, tỷ lệ tiếng Việt
+  và lớp mô hình cục bộ bậc 1 (`prompts/cham.md`, `backend/app/eval/cham_diem.py`).
+- Bộ chạy đánh giá các tầng (`backend/app/eval/runner.py`): dựng ngữ cảnh giống luồng chat thật,
+  chạy tuần tự từng tầng, tính tỷ lệ đạt trên N lần chạy, in bảng theo loại câu hỏi, so với lần chạy
+  trước, ghi `GIỚI HẠN` khi bị giới hạn tần suất và `BỎ QUA` cho câu nhạy cảm ở tầng đám mây, phát
+  hiện bất đồng giữa các tầng, lưu `ket_qua_eval/<ngày>_<tầng>.json`. Lời gọi đánh giá ghi
+  `muc_dich=danh_gia`, không tính vào chỉ số vận hành.
+- Ngưỡng đạt của bộ đánh giá `cai_dat_chung.nguong_dat_danh_gia` trong `config/models.yaml`.
+- Che dữ liệu cá nhân bằng thẻ có đánh số (`<SO_DIEN_THOAI_1>`, `<MA_KHACH_HANG_1>`...) trước khi
+  gọi model ở mọi tầng, lưu CSDL và ghi nhật ký; khôi phục giá trị thật khi phát cho chính người
+  hỏi, kể cả thẻ bị cắt giữa hai mảnh phát theo dòng (`backend/app/core/bao_mat.py`).
+- Khối ranh giới `<<<DU_LIEU_NGUOI_DUNG ... DU_LIEU_NGUOI_DUNG>>>` cho nội dung người dùng, ghi
+  nhật ký `nghi_tiem_loi_nhac` khi đầu vào khớp mẫu tiêm lời nhắc, thay câu trả lời chứa đoạn lời
+  nhắc hệ thống bằng thông điệp từ chối có kiểm soát.
+- Biến `GIOI_HAN_DO_DAI_TIN_NHAN`: tin nhắn quá dài trả `422 DAU_VAO_KHONG_HOP_LE`.
+- Cấu hình câu hỏi thường gặp (`config/cau_hoi_thuong_gap.yaml`) gồm 20 mục trong 5 nhóm.
+- Tài liệu hướng dẫn sử dụng (`config/huong_dan_su_dung.md`), hiển thị bằng thẻ, bước, khung ví
+  dụ, khung cảnh báo và huy hiệu tầng.
+- Mô-đun nạp câu hỏi thường gặp liên quan vào ngữ cảnh hội thoại (`backend/app/chat/thuong_gap.py`).
+- Hai API mới: `GET /api/v1/huong-dan` và `GET /api/v1/cau-hoi-thuong-gap`.
+- Màn hình Hướng dẫn sử dụng (`/huong-dan`) theo thiết kế Stitch đã duyệt: mục lục cố định, năm
+  nhóm câu hỏi thường gặp dạng accordion kèm nút "Hỏi trợ lý", chỉ thẻ nội dung cuộn.
+- Biểu tượng cuốn sách mở trên thanh đầu trang và trong menu thả người dùng.
+- Danh mục kiểm tra trước khi mở theo đúng số dòng của Phụ lục 4 (`scripts/kiem_tra_truoc_khi_mo.py`):
+  dòng Máy 1-16, 19, 25 dùng lại kiểm thử hoặc kịch bản chẩn đoán đã có, dòng Người chờ xác nhận.
+- Màn Tình trạng bộ chạy: chọn chu kỳ tự làm mới (tắt, 15, 30, 60 giây), dòng thời điểm cập nhật,
+  đếm ngược keep_alive theo thời gian thực.
+- Nút trạng thái "Đang hoạt động" tự kiểm tra lại `/health` mỗi 30 giây.
+- Bộ kiểm thử tự động: `test_eval.py`, `test_thuong_gap.py`, `test_bao_mat.py` (che dữ liệu cá
+  nhân), `huong-dan.spec.ts` và E2E `huong-dan.spec.ts`.
+
+### Thay đổi
+
+- Trang chủ: cán bộ thấy hạn mức lượt hỏi của chính mình trong giờ; quản trị viên thấy bốn chỉ số
+  toàn hệ thống với nhãn rõ nghĩa.
+- Màn Lịch sử hội thoại: ô tìm kèm chip sắp xếp theo bản thiết kế, bỏ lọc theo khoảng ngày.
+- Huy hiệu mô hình: chip "Mã yêu cầu" có chữ, bỏ tên model trùng với nhãn AI, định dạng số kiểu
+  Việt Nam.
+- Cổng 8000 của backend chỉ mở ở `127.0.0.1`; người dùng truy cập qua nginx cổng 8080.
+- `config/chinh_sach_du_lieu.yaml`: thêm mẫu số thẻ, số công tơ và mã khách hàng 2 chữ cái + 11
+  chữ số.
+- Kiểm thử đầu cuối đọc tài khoản từ biến môi trường `E2E_EMAIL`, `E2E_MAT_KHAU`.
+- `backend/app/llm/router.py`: bổ sung tham số `ep_tang` và `bac_ep` hỗ trợ bộ chạy đánh giá ép
+  tầng an toàn.
+- `docker-compose.yml`: loại bỏ ánh xạ cổng CSDL ra host, đưa vào mạng nội bộ `mang_tro_ly`,
+  giới hạn tài nguyên backend 4GB RAM / 2 CPU và cấu hình xoay vòng nhật ký json-file.
+- `docker-compose.override.yml`: dành riêng cho môi trường phát triển với cổng CSDL loopback
+  `127.0.0.1:5432`.
+- `config.py` và `xac_thuc.py`: tăng cường kiểm tra bảo mật môi trường sản xuất (`MOI_TRUONG=prod`),
+  bắt buộc `APP_SECRET` tối thiểu 32 ký tự, cấm giá trị mẫu và tắt hoàn toàn xác thực giả lập.
+- `README.md`: cập nhật bảng endpoint, bổ sung hướng dẫn chạy bộ đánh giá và kiểm tra trước khi mở
+  vận hành.
+
+### Sửa lỗi
+
+- Xử lý xung đột từ đồng âm không dấu trong thuật toán so khớp từ khóa câu hỏi thường gặp.
+- Chuẩn hóa assertion kiểm tra lời nhắc hệ thống khi gắn kèm ngữ cảnh câu hỏi thường gặp.
+- Đăng nhập xong không chuyển trang khi tab được mở từ trước lần triển khai mới: nginx trả 404 cho
+  tệp tĩnh không còn tồn tại, không lưu đệm `index.html`, ứng dụng tự tải lại khi không nạp được
+  màn.
+- Chuẩn hoá cách xác định địa chỉ IP phía sau proxy cho hạn mức lớp a.
+- Mã yêu cầu nhận từ phía gọi được kiểm tra định dạng; giao diện sinh mã 12 ký tự.
+- Giám sát bộ chạy không còn báo lệch ngữ cảnh cho model chưa nạp.
+- Giao diện không gọi API cần đăng nhập khi chưa có phiên.
+- Trang đăng nhập hiển thị phiên bản đọc từ máy chủ, không điền sẵn email.
+
 ## [0.4.0] - 2026-09-23
 
 ### Thêm

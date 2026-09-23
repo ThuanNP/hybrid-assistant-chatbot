@@ -20,6 +20,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom, Observable } from 'rxjs';
 import { AuthService } from './auth/auth.service';
 import { ENDPOINTS } from './cau-hinh';
+import { taoMaYeuCau } from './ma-yeu-cau';
 import { SuKien, SuKienBatDau, SuKienHangDoi, SuKienLoi, SuKienManh, SuKienXong } from './mo-hinh';
 
 @Injectable({
@@ -32,10 +33,7 @@ export class SseService {
    * Tao headers gui len SSE stream kem tieu de xac thuc va ma yeu cau.
    */
   private taoHeaders(token?: string | null): Record<string, string> {
-    const maYeuCau =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `yc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const maYeuCau = taoMaYeuCau();
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -278,6 +276,8 @@ export class SseService {
             nhan_ai: String(obj['nhan_ai'] ?? ''),
             ma_yeu_cau: typeof obj['ma_yeu_cau'] === 'string' ? obj['ma_yeu_cau'] : undefined,
             ha_cap: typeof obj['ha_cap'] === 'boolean' ? obj['ha_cap'] : undefined,
+            noi_dung_thay_the:
+              typeof obj['noi_dung_thay_the'] === 'string' ? obj['noi_dung_thay_the'] : null,
           } satisfies SuKienXong;
         case 'loi':
           return {

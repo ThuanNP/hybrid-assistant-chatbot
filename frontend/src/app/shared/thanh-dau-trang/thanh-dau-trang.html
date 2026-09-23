@@ -68,6 +68,15 @@
     <a routerLink="/lich-su" class="nut-ghost an-tren-di-dong" aria-label="Tìm hội thoại" title="Tìm hội thoại">
       <app-bieu-tuong ten="tim-kiem" />
     </a>
+    <a
+      routerLink="/huong-dan"
+      routerLinkActive="active"
+      class="nut-ghost an-tren-di-dong"
+      aria-label="Hướng dẫn sử dụng"
+      title="Hướng dẫn sử dụng"
+    >
+      <app-bieu-tuong ten="huong-dan" />
+    </a>
 
     <!-- Chuong thong bao: so lieu van hanh that tu may chu -->
     <div class="khung-tha-xuong">
@@ -176,6 +185,9 @@
           </a>
           <a routerLink="/lich-su" class="muc-menu-tha" (click)="dongBang()">
             <app-bieu-tuong ten="lich-su" /> Lịch sử hội thoại
+          </a>
+          <a routerLink="/huong-dan" class="muc-menu-tha" (click)="dongBang()">
+            <app-bieu-tuong ten="huong-dan" /> Hướng dẫn sử dụng
           </a>
           @if (authService.laQuanTri()) {
             <a routerLink="/quan-tri/bo-chay" class="muc-menu-tha" (click)="dongBang()">

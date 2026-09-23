@@ -11,6 +11,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DichVuThongBao } from '../../core/thong-bao';
 import { AuthService } from '../../core/auth/auth.service';
 import { DangNhapComponent } from './dang-nhap';
 
@@ -38,6 +39,7 @@ describe('DangNhapComponent', () => {
         provideZonelessChangeDetection(),
         { provide: AuthService, useValue: mockAuthService },
         { provide: Router, useValue: mockRouter },
+        { provide: DichVuThongBao, useValue: { phienBan: signal('1.0.0-rc.1'), taiLai: vi.fn() } },
       ],
     }).compileComponents();
 
@@ -46,9 +48,9 @@ describe('DangNhapComponent', () => {
     fixture.detectChanges();
   });
 
-  it('khởi tạo thành công với email mẫu và form ở trạng thái sẵn sàng', () => {
+  it('khởi tạo thành công với form trống ở trạng thái sẵn sàng', () => {
     expect(component).toBeTruthy();
-    expect(component.email()).toBe('nv01@vidu.com');
+    expect(component.email()).toBe('');
     expect(component.matKhau()).toBe('');
     expect(component.hienMatKhau()).toBe(false);
     expect(component.thongBaoLoi()).toBeNull();

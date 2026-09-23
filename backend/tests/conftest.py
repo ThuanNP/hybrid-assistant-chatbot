@@ -3,7 +3,6 @@
 import asyncio
 import sys
 from collections.abc import AsyncIterator
-
 from typing import Any
 
 import pytest

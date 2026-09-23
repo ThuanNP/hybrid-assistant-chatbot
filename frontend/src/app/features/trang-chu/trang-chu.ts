@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { BoCucTrang } from '../../core/bo-cuc-trang';
 import { dinhDangNgayDai, dinhDangNgayGio } from '../../core/dinh-dang';
 import { KhoHoiThoai } from '../../core/kho-hoi-thoai';
@@ -34,6 +35,7 @@ const DINH_DANG_USD = new Intl.NumberFormat('vi-VN', {
 export class TrangChuComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly boCuc = inject(BoCucTrang);
+  private readonly auth = inject(AuthService);
   protected readonly kho = inject(KhoHoiThoai);
 
   public readonly ngayHomNay = dinhDangNgayDai(new Date());
@@ -47,6 +49,23 @@ export class TrangChuComponent implements OnInit {
   public readonly hoiThoaiGanDay = computed(() =>
     this.kho.danhSach().slice(0, SO_HOI_THOAI_TREN_TRANG_CHU),
   );
+
+  /** Chi so toan he thong chi danh cho quan tri; can bo xem han muc cua chinh minh. */
+  public readonly laQuanTri = this.auth.laQuanTri;
+  public readonly luotDaDungTrongGio = computed(
+    () => this.auth.nguoiDung()?.da_dung_trong_gio ?? null,
+  );
+  public readonly luotConLai = computed(() => this.auth.nguoiDung()?.han_muc_con_lai ?? null);
+  /** Han muc moi gio = da dung + con lai, do may chu tinh theo bac cua nguoi dung. */
+  public readonly hanMucGio = computed(() => {
+    const daDung = this.luotDaDungTrongGio();
+    const conLai = this.luotConLai();
+    return daDung === null || conLai === null ? null : daDung + conLai;
+  });
+  public readonly phanTramHanMucDaDung = computed(() => {
+    const hanMuc = this.hanMucGio();
+    return hanMuc ? ((this.luotDaDungTrongGio() ?? 0) / hanMuc) * 100 : 0;
+  });
 
   /** So cau hoi trong ngay do may chu dem tren bang luot (gio Viet Nam). */
   public readonly tongLuotHomNay = computed(() => this.chiPhi()?.so_cau_hoi_hom_nay ?? null);
@@ -84,6 +103,8 @@ export class TrangChuComponent implements OnInit {
   public ngOnInit(): void {
     this.boCuc.datTieuDe('Trang chủ', [], null, `Xin chào Anh/Chị · ${this.ngayHomNay}`);
     this.kho.taiLai();
+    // Lam moi so lieu han muc cua nguoi dung (GET /toi) moi lan mo trang chu
+    this.auth.layThongTinToi().subscribe();
     this.api.layChiPhi().subscribe({ next: (kq) => this.chiPhi.set(kq), error: () => {} });
     this.api.layTrangThaiHangDoi().subscribe({ next: (kq) => this.hangDoi.set(kq), error: () => {} });
   }

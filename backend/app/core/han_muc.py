@@ -14,6 +14,7 @@ Tuân thủ nghiêm ngặt các quy định:
 """
 
 import asyncio
+import ipaddress
 import logging
 import math
 from collections.abc import AsyncIterator
@@ -45,17 +46,31 @@ _KHOA_TIEN_TRINH = asyncio.Lock()
 _CAC_YEU_CAU_DANG_CHAY: set[int] = set()
 
 
+def _la_proxy_tin_cay(dia_chi: str) -> bool:
+    """Kết nối trực tiếp đến từ loopback hoặc mạng nội bộ Docker (nginx của frontend)."""
+    try:
+        ip = ipaddress.ip_address(dia_chi)
+    except ValueError:
+        return False
+    return ip.is_loopback or ip.is_private
+
+
 def lay_ip_yeu_cau(request: Request) -> str:
-    """Trích xuất địa chỉ IP của client từ headers proxy hoặc socket."""
-    x_forwarded_for = request.headers.get("x-forwarded-for")
-    if x_forwarded_for:
-        return x_forwarded_for.split(",")[0].strip()
-    x_real_ip = request.headers.get("x-real-ip")
+    """Xác định IP của client cho hạn mức lớp a.
+
+    Chỉ tin tiêu đề proxy khi kết nối trực tiếp đến từ proxy nội bộ: X-Real-IP do nginx của
+    frontend ghi đè bằng $remote_addr, hoặc phần tử CUỐI của X-Forwarded-For (do proxy gần
+    nhất thêm vào). Phần tử đầu của X-Forwarded-For do phía gọi tự đặt nên không dùng.
+    """
+    ip_ket_noi = request.client.host if request.client and request.client.host else "127.0.0.1"
+    if not _la_proxy_tin_cay(ip_ket_noi):
+        return ip_ket_noi
+    x_real_ip = request.headers.get("x-real-ip", "").strip()
     if x_real_ip:
-        return x_real_ip.strip()
-    if request.client and request.client.host:
-        return request.client.host
-    return "127.0.0.1"
+        return x_real_ip
+    x_forwarded_for = request.headers.get("x-forwarded-for", "")
+    phan_tu_cuoi = x_forwarded_for.split(",")[-1].strip()
+    return phan_tu_cuoi or ip_ket_noi
 
 
 async def ghi_nhat_ky_kiem_toan_han_muc(

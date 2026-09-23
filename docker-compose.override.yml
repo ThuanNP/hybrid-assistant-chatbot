@@ -1,10 +1,13 @@
 # ==============================================================================
 # docker-compose.override.yml - CHỈ DÙNG CHO DEV, KHÔNG DÙNG KHI VẬN HÀNH
-# Gắn dữ liệu và kịch bản vào /srv dưới container backend.
-# Không gắn mã nguồn app/ (image backend chứa mã nguồn /srv/backend).
 # ==============================================================================
 
 services:
+  db:
+    # Ánh xạ cổng loopback 127.0.0.1:5432 CHỈ ở môi trường dev để chạy migration và pytest từ máy chủ
+    ports:
+      - "127.0.0.1:5432:5432"
+
   backend:
     volumes:
       - ./scripts:/srv/scripts:ro

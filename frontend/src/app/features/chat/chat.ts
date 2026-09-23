@@ -400,6 +400,9 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.thongTinHangDoi.set(null);
     this.capNhatTinNhan(troLyId, (tn) => ({
       ...tn,
+      ...(sk.noi_dung_thay_the
+        ? { noiDung: sk.noi_dung_thay_the, khoiVanBan: phanTichVanBan(sk.noi_dung_thay_the) }
+        : {}),
       dangPhat: false,
       tokenVao: sk.token_vao,
       tokenRa: sk.token_ra,

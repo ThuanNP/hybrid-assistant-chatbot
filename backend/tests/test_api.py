@@ -24,7 +24,12 @@ import app.main as main_mod
 from app.chat.su_kien_sse import ManhPhatRa
 from app.config import cau_hinh
 from app.core.bao_mat import KetQuaKiemDuyet
-from app.core.csdl import HoiThoaiModel, LuotModel, NguoiDungModel, lay_sessionmaker_async
+from app.core.csdl import (
+    HoiThoaiModel,
+    LuotModel,
+    NguoiDungModel,
+    lay_sessionmaker_async,
+)
 from app.core.loi import (
     BANG_ANH_XA_LOI,
     LoiDauVao,

@@ -44,5 +44,11 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/quan-tri-bo-chay/quan-tri-bo-chay').then((m) => m.QuanTriBoChayComponent),
   },
+  {
+    path: 'huong-dan',
+    title: 'Hướng dẫn sử dụng · Trợ lý nội bộ',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/huong-dan/huong-dan').then((m) => m.HuongDanComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

@@ -1,13 +1,42 @@
 .trang-quan-tri {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 1rem 0;
+  gap: var(--space-12);
+  padding: 0 var(--space-20) var(--space-20);
 }
 
+/* Thanh cong cu gon mot dong: thoi diem cap nhat, chu ky tu lam moi, nut lam moi */
 .thanh-cong-cu {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  font-size: 13px;
+  color: var(--gray-dark-1);
+}
+
+.chon-tu-lam-moi {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+
+  select {
+    height: 34px;
+    padding: 0 var(--space-8);
+    border: 1px solid var(--gray-base);
+    border-radius: var(--radius-sm);
+    background-color: var(--white);
+    font-size: 13px;
+    color: var(--black);
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: none;
+      border-color: var(--blue-base);
+      box-shadow: var(--shadow-focus-primary);
+    }
+  }
 }
 
 .nut-lam-moi,
@@ -16,12 +45,14 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  height: 34px;
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  background-color: var(--mau-chinh, #0284c7);
-  color: #ffffff;
+  background-color: var(--blue-base);
+  color: var(--white);
   border: none;
   text-decoration: none;
   transition: opacity 0.2s;

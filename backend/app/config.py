@@ -80,6 +80,8 @@ class CauHinhCaiDatChung(BaseModel):
     he_so_an_toan_token: float = 1.15
     nguong_canh_bao_ngan_sach: float = 0.80
     nguong_ty_le_roi_tang: float = 0.20
+    # Tỷ lệ đạt tối thiểu (0-1) của bộ đánh giá trên mỗi tầng và mỗi loại câu hỏi
+    nguong_dat_danh_gia: float = 0.60
 
 
 class CaiDatMoiTruong(BaseSettings):
@@ -114,6 +116,9 @@ class CaiDatMoiTruong(BaseSettings):
     han_muc_token_ngay: int = 100000
     han_muc_chi_phi_ngay_free_usd: float = 0.5
     han_muc_chi_phi_ngay_pro_usd: float = 2.0
+
+    # Độ dài tối đa (ký tự) của một tin nhắn người dùng gửi lên /chat và /chat/stream
+    gioi_han_do_dai_tin_nhan: int = 8000
 
     model_config = SettingsConfigDict(
         env_file=DUONG_DAN_ENV_MAC_DINH,
@@ -153,6 +158,7 @@ class CauHinhHeThong(BaseModel):
     han_muc_token_ngay: int = 100000
     han_muc_chi_phi_ngay_free_usd: float = 0.5
     han_muc_chi_phi_ngay_pro_usd: float = 2.0
+    gioi_han_do_dai_tin_nhan: int = 8000
 
 
 def _doc_bien_gop(duong_dan_env: Path | None) -> dict[str, str]:
@@ -395,6 +401,7 @@ def nap_cau_hinh(
         han_muc_token_ngay=cai_dat_env.han_muc_token_ngay,
         han_muc_chi_phi_ngay_free_usd=cai_dat_env.han_muc_chi_phi_ngay_free_usd,
         han_muc_chi_phi_ngay_pro_usd=cai_dat_env.han_muc_chi_phi_ngay_pro_usd,
+        gioi_han_do_dai_tin_nhan=cai_dat_env.gioi_han_do_dai_tin_nhan,
     )
 
 

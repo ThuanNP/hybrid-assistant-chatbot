@@ -1,7 +1,17 @@
 import { test, expect, type Page } from '@playwright/test';
 
-/** Thực hiện đăng nhập vào hệ thống trước khi thực hiện các kịch bản kiểm thử. */
-async function dangNhap(page: Page, email = 'nv01@vidu.com', matKhau = 'MatKhau123@'): Promise<void> {
+/**
+ * Thực hiện đăng nhập vào hệ thống trước khi thực hiện các kịch bản kiểm thử.
+ * Tài khoản lấy từ biến môi trường E2E_EMAIL, E2E_MAT_KHAU; không ghi mật khẩu vào mã.
+ */
+async function dangNhap(
+  page: Page,
+  email = process.env['E2E_EMAIL'] ?? 'nv01@vidu.com',
+  matKhau = process.env['E2E_MAT_KHAU'] ?? '',
+): Promise<void> {
+  if (!matKhau) {
+    throw new Error('Đặt biến môi trường E2E_MAT_KHAU (mật khẩu của E2E_EMAIL) trước khi chạy.');
+  }
   await page.goto('/dang-nhap');
   await page.waitForLoadState('domcontentloaded');
   if (page.url().includes('/dang-nhap')) {

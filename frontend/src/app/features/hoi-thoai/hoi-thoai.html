@@ -1,7 +1,9 @@
 <div class="trang">
-  <!-- Thanh loc co dinh: go xong hoac chon la loc ngay tren may chu, khong can bam nut tim -->
+  <!-- Thanh loc co dinh (man Stitch "Lich su hoi thoai"): o tim chiem tron chieu ngang,
+       ben trong o co chip Sap xep, vach ngan va nut Tim; doi sap xep thi tai lai ngay -->
   <div class="thanh-loc" role="search" aria-label="Lọc hội thoại">
     <div class="o-tim-kiem">
+      <app-bieu-tuong ten="tim-kiem" class="bieu-tuong-tim" aria-hidden="true" />
       <input
         type="search"
         placeholder="Tìm theo tiêu đề hội thoại..."
@@ -10,107 +12,30 @@
         (input)="nhapTuKhoa($event)"
         (keydown.enter)="timLai()"
       />
-      @if (tuKhoa()) {
-        <button
-          type="button"
-          class="nut-trong-o"
-          data-goi-y="Xoá từ khoá"
-          aria-label="Xoá từ khoá"
-          (click)="tuKhoa.set('')"
-        >
-          <app-bieu-tuong ten="dong" />
-        </button>
-      }
-      <!-- Ket qua tu loc sau khi go; nut nay gui tu khoa ngay va tai lai tu may chu -->
+      <!-- Select trong suot phu kin chip: danh sach tha xuong rong bang dung chip -->
+      <label class="chip-sap-xep">
+        <span class="nhan-sap-xep" aria-hidden="true">Sắp xếp:</span>
+        <span class="gia-tri-sap-xep" aria-hidden="true">{{ nhanSapXep() }}</span>
+        <app-bieu-tuong ten="mui-ten-xuong" class="mui-ten-sap-xep" aria-hidden="true" />
+        <select [value]="sapXep()" (change)="sapXep.set($any($event.target).value)" aria-label="Sắp xếp">
+          @for (tuyChon of cacTuyChonSapXep; track tuyChon.gia) {
+            <option [value]="tuyChon.gia">{{ tuyChon.nhan }}</option>
+          }
+        </select>
+      </label>
+      <span class="vach-trong-o" aria-hidden="true"></span>
       <button
         type="button"
         class="nut-trong-o"
         [class.dang-quay]="ds.dangTai()"
-        data-goi-y="Tìm"
+        title="Tìm"
         aria-label="Tìm"
         [disabled]="ds.dangTai()"
         (click)="timLai()"
       >
         <app-bieu-tuong ten="tim-kiem" />
       </button>
-      <span class="vach-trong-o" aria-hidden="true"></span>
-      <button
-        type="button"
-        class="nut-trong-o"
-        [class.dang-bat]="hienNangCao() || coLocNangCao()"
-        data-goi-y="Tìm kiếm nâng cao"
-        aria-label="Tìm kiếm nâng cao"
-        [attr.aria-expanded]="hienNangCao()"
-        aria-controls="tim-kiem-nang-cao"
-        (click)="hienNangCao.set(!hienNangCao())"
-      >
-        <app-bieu-tuong ten="bo-loc" />
-        @if (coLocNangCao()) {
-          <span class="cham-dang-loc" aria-hidden="true"></span>
-        }
-      </button>
     </div>
-
-    <!-- Tim kiem nang cao: khoang ngay va thu tu sap xep, ap dung ngay khi thay doi -->
-    @if (hienNangCao()) {
-      <div class="nang-cao" id="tim-kiem-nang-cao">
-        <!-- Moi o ngay co nut xoa rieng dua ve null (khong gioi han) -->
-        <div class="o-ngay">
-          <label class="nhan-ngay" for="loc-tu-ngay">Từ ngày</label>
-          <input
-            id="loc-tu-ngay"
-            type="date"
-            [value]="tuNgay() ?? ''"
-            [max]="denNgay()"
-            (change)="chonNgay(tuNgay, $event)"
-          />
-          @if (tuNgay() !== null) {
-            <button
-              type="button"
-              class="nut-xoa-ngay"
-              data-goi-y="Xoá ngày bắt đầu"
-              aria-label="Xoá ngày bắt đầu"
-              (click)="tuNgay.set(null)"
-            >
-              <app-bieu-tuong ten="dong" />
-            </button>
-          }
-        </div>
-        <span class="gach-noi" aria-hidden="true">–</span>
-        <div class="o-ngay">
-          <label class="nhan-ngay" for="loc-den-ngay">Đến ngày</label>
-          <input
-            id="loc-den-ngay"
-            type="date"
-            [value]="denNgay() ?? ''"
-            [min]="tuNgay()"
-            (change)="chonNgay(denNgay, $event)"
-          />
-          @if (denNgay() !== null) {
-            <button
-              type="button"
-              class="nut-xoa-ngay"
-              data-goi-y="Xoá ngày kết thúc"
-              aria-label="Xoá ngày kết thúc"
-              (click)="denNgay.set(null)"
-            >
-              <app-bieu-tuong ten="dong" />
-            </button>
-          }
-        </div>
-        <label class="o-ngay o-sap-xep">
-          <span class="nhan-ngay">Sắp xếp</span>
-          <select [value]="sapXep()" (change)="sapXep.set($any($event.target).value)" aria-label="Sắp xếp">
-            @for (tuyChon of cacTuyChonSapXep; track tuyChon.gia) {
-              <option [value]="tuyChon.gia">{{ tuyChon.nhan }}</option>
-            }
-          </select>
-        </label>
-        @if (dangLoc()) {
-          <button type="button" class="nut nut-vien nut-xoa-loc" (click)="xoaBoLoc()">Xoá lọc</button>
-        }
-      </div>
-    }
   </div>
 
   @if (ds.thongBaoLoi() || loiXoa()) {
@@ -144,7 +69,7 @@
         <path d="M97 63l14 14M111 63l-14 14" stroke="#889397" stroke-width="3.5" stroke-linecap="round" />
       </svg>
       <p class="tieu-de-trong">Không tìm thấy hội thoại phù hợp</p>
-      <p class="goi-y">Thử từ khoá khác hoặc mở rộng khoảng ngày.</p>
+      <p class="goi-y">Thử từ khoá khác hoặc xoá bộ lọc.</p>
       <button type="button" class="nut nut-vien" (click)="xoaBoLoc()">Xoá lọc</button>
     </div>
   } @else {

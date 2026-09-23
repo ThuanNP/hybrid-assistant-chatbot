@@ -7,7 +7,7 @@ và kiểm tra các yêu cầu định dạng JSON một dòng 22 trường.
 import io
 import json
 import logging
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -20,10 +20,9 @@ from app.core.nhat_ky import (
     DinhDangNhatKyJson,
     dat_ma_yeu_cau,
     ghi_nhat_ky_chang,
-    lay_ma_yeu_cau,
 )
 from app.core.xac_thuc import NguoiDung, lay_nguoi_dung_hien_tai
-from app.llm.chinh_sach import KetQuaXacDinhChuoi, NhanDuLieu, Tang
+from app.llm.chinh_sach import KetQuaXacDinhChuoi, Tang
 from app.llm.router import KetQuaGoi
 from app.main import app
 

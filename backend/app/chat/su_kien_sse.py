@@ -26,7 +26,13 @@ from app.chat.hoi_thoai import (
 )
 from app.chat.ngu_canh import dung_ngu_canh
 from app.config import cau_hinh
-from app.core.bao_mat import kiem_duyet_dau_ra, kiem_duyet_dau_vao
+from app.core.bao_mat import (
+    BoKhoiPhucDong,
+    che_du_lieu_ca_nhan,
+    dem_the_da_dung,
+    kiem_duyet_dau_ra,
+    kiem_duyet_dau_vao,
+)
 from app.core.csdl import NguoiDungModel, lay_sessionmaker_async
 from app.core.loi import (
     LOI_DONG,
@@ -47,7 +53,7 @@ class YeuCauChatStream(BaseModel):
     """Dữ liệu yêu cầu gửi tới endpoint phát dòng chat SSE."""
 
     hoi_thoai_id: int | None = None
-    noi_dung: str = Field(min_length=1)
+    noi_dung: str = Field(min_length=1, max_length=cau_hinh.gioi_han_do_dai_tin_nhan)
 
 
 class SuKienHangDoi(BaseModel):
@@ -90,6 +96,8 @@ class SuKienXong(BaseModel):
     ma_yeu_cau: str = ""
     # True khi tầng phục vụ khác tầng đầu của chuỗi thực tế hoặc do bậc nho trả lời
     ha_cap: bool = False
+    # Móc kiểm duyệt đầu ra thay câu trả lời: giao diện thay toàn bộ phần đã phát bằng chuỗi này
+    noi_dung_thay_the: str | None = None
 
 
 class SuKienLoi(BaseModel):
@@ -175,6 +183,7 @@ def _tao_su_kien_tu_manh(
                 nhan_ai=tao_nhan_ai(ten_model),
                 ma_yeu_cau=ma_yeu_cau,
                 ha_cap=kq.ha_cap if kq else False,
+                noi_dung_thay_the=manh.noi_dung or None,
             ),
         )
 
@@ -216,7 +225,11 @@ async def _tien_trinh_san_xuat(
     """Tác vụ nền thực hiện chuỗi xác định chính sách, ngữ cảnh và gọi mô hình theo dòng."""
     hoi_thoai_id: int | None = None
     noi_dung_tro_ly = ""
-    noi_dung_nguoi_dung = yeu_cau.noi_dung
+    # Bản gốc chỉ dùng để gắn nhãn dữ liệu; mọi nơi lưu hoặc gửi model dùng bản đã che,
+    # kể cả nhánh lỗi trước khi đọc xong lịch sử
+    noi_dung_goc = yeu_cau.noi_dung
+    kq_che = che_du_lieu_ca_nhan(noi_dung_goc)
+    noi_dung_nguoi_dung = kq_che.van_ban_da_che
     maker = lay_sessionmaker_async()
     nhan_du_lieu_str: str | None = None
     kq_hoan_thanh: KetQuaGoi | None = None
@@ -237,7 +250,9 @@ async def _tien_trinh_san_xuat(
                 ma_yeu_cau=ma_yeu_cau,
             )
         if kd_dau_vao.noi_dung_thay_the is not None:
-            noi_dung_nguoi_dung = kd_dau_vao.noi_dung_thay_the
+            noi_dung_goc = kd_dau_vao.noi_dung_thay_the
+            kq_che = che_du_lieu_ca_nhan(noi_dung_goc)
+            noi_dung_nguoi_dung = kq_che.van_ban_da_che
 
         # 1. Mở hội thoại của chính người dùng (hoặc tạo mới) và đọc lịch sử theo thời gian
         async with maker() as phien_doc:
@@ -290,8 +305,15 @@ async def _tien_trinh_san_xuat(
 
         # 2. Xác định nhãn dữ liệu, chuỗi định tuyến và dựng ngữ cảnh
         nhan = nhan_cua_hoi_thoai(
-            lich_su=lich_su_tin_nhan, tin_nhan_moi=noi_dung_nguoi_dung
+            lich_su=lich_su_tin_nhan, tin_nhan_moi=noi_dung_goc
         )
+        # Che dữ liệu cá nhân SAU khi gắn nhãn; đánh số tiếp theo thẻ đã có trong lịch sử
+        kq_che = che_du_lieu_ca_nhan(
+            noi_dung_goc,
+            so_bat_dau=dem_the_da_dung(tin["content"] for tin in lich_su_tin_nhan),
+        )
+        noi_dung_nguoi_dung = kq_che.van_ban_da_che
+        khoi_phuc = BoKhoiPhucDong(kq_che)
         nhan_du_lieu_str = nhan.value
         che_do = getattr(nguoi, "che_do_dinh_tuyen", None) or cau_hinh.che_do_dinh_tuyen
         kq_chuoi = xac_dinh_chuoi(
@@ -324,8 +346,11 @@ async def _tien_trinh_san_xuat(
             nhan_du_lieu=nhan.value,
         )
 
-        # 3. Phát phản hồi theo dòng và gom nội dung trợ lý
+        # 3. Phát phản hồi theo dòng và gom nội dung trợ lý. noi_dung_tro_ly giữ bản đã che
+        # để lưu CSDL; chỉ mảnh phát cho chính người hỏi được khôi phục giá trị thật.
+        # Sự kiện xong được giữ lại tới sau móc kiểm duyệt đầu ra.
         kq_hoan_thanh: KetQuaGoi | None = None
+        manh_xong: ManhPhatRa | None = None
         async for manh in goi_mo_hinh_theo_dong(
             kq_ngu_canh.danh_sach,
             nguoi=nguoi,
@@ -336,9 +361,18 @@ async def _tien_trinh_san_xuat(
         ):
             if manh.loai == "manh":
                 noi_dung_tro_ly += manh.noi_dung
-            elif manh.loai == "xong":
+                phan_phat = khoi_phuc.them(manh.noi_dung)
+                if phan_phat:
+                    await hang_doi.put(manh.model_copy(update={"noi_dung": phan_phat}))
+                continue
+            if manh.loai == "xong":
                 kq_hoan_thanh = manh.ket_qua
+                manh_xong = manh
+                continue
             await hang_doi.put(manh)
+        phan_con_lai = khoi_phuc.xa_het()
+        if phan_con_lai:
+            await hang_doi.put(ManhPhatRa(loai="manh", noi_dung=phan_con_lai))
 
         if kq_hoan_thanh:
             ghi_nhat_ky_chang(
@@ -376,6 +410,11 @@ async def _tien_trinh_san_xuat(
             )
         if kd_dau_ra.noi_dung_thay_the is not None:
             noi_dung_tro_ly = kd_dau_ra.noi_dung_thay_the
+        if manh_xong is not None:
+            # Nội dung của mảnh xong mang bản thay thế (nếu có) để giao diện thay phần đã phát
+            await hang_doi.put(
+                manh_xong.model_copy(update={"noi_dung": kd_dau_ra.noi_dung_thay_the or ""})
+            )
 
         # 4. Lưu cả lượt người dùng và lượt trả lời trong MỘT giao dịch duy nhất
         phien_ban_prompt = doc_phien_ban_loi_nhac()

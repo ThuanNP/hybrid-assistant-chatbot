@@ -26,6 +26,7 @@ from app.chat.hoi_thoai import (
 )
 from app.chat.ngu_canh import dung_ngu_canh
 from app.config import cau_hinh
+from app.core.bao_mat import boc_ranh_gioi
 from app.core.csdl import LuotModel
 from app.core.xac_thuc import NguoiDung
 from app.llm.bo_chay_local import KetQuaGoiLocal
@@ -88,7 +89,7 @@ async def test_ghep_ngu_canh_dung_thu_tu_thoi_gian(
     assert tin_nhan_danh_sach[2]["content"] == "Tiền điện tháng 8 của Anh/Chị là 1.200.000 đ."
     assert tin_nhan_danh_sach[3]["content"] == "Hỏi tiền điện tháng 9"
     assert tin_nhan_danh_sach[4]["content"] == "Tiền điện tháng 9 của Anh/Chị là 1.450.000 đ."
-    assert tin_nhan_danh_sach[5]["content"] == "Tháng nào dùng nhiều hơn?"
+    assert tin_nhan_danh_sach[5]["content"] == boc_ranh_gioi("Tháng nào dùng nhiều hơn?")
 
 
 @pytest.mark.asyncio

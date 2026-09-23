@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
-  testMatch: '**/*.e2e.ts',
+  testMatch: ['**/*.e2e.ts', '**/*.spec.ts'],
   outputDir: './e2e/test-results',
   // Model cục bộ (Ollama) trên GPU 8 GB có thể mất 10-30s nạp lần đầu, đặt thời gian chờ mỗi kịch bản 120 giây
   timeout: 120_000,

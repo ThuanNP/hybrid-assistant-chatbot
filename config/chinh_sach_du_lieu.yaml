@@ -3,11 +3,19 @@
 
 # Bộ phát hiện tối giản, thiên về an toàn; việc nhận nhầm thành nhạy cảm
 # chỉ khiến câu hỏi được xử lý ở local, không gây rò rỉ.
+#
+# Cùng bộ biểu thức dùng để che dữ liệu cá nhân (app/core/bao_mat.py): tên khoá viết hoa
+# thành loại thẻ, ví dụ so_dien_thoai -> <SO_DIEN_THOAI_1>. Biểu thức có nhóm bắt thì chỉ
+# phần trong nhóm bị che (giữ lại chữ "chỉ số công tơ"), không có nhóm thì che cả chuỗi khớp.
+# Thứ tự khai báo là thứ tự ưu tiên khi hai biểu thức khớp cùng một đoạn.
 bieu_thuc_nhay_cam:
-  ma_khach_hang: "(?i)\\bKH\\d{8}\\b"
+  # Mã khách hàng: KH + 8 chữ số, hoặc 2 chữ cái + 11 chữ số
+  ma_khach_hang: "(?i)\\b(?:KH\\d{8}|[A-Z]{2}\\d{11})\\b"
   so_dien_thoai: "(?<!\\d)0(?:[.\\s]?\\d){9}(?!\\d)"
   so_cccd: "(?<!\\d)\\d{12}(?!\\d)"
-  chi_so_cong_to: "(?i)(?:chỉ số công tơ|chi so cong to)[^\\d\\n\\r]{0,25}\\d+|\\d+[^\\d\\n\\r]{0,25}(?:chỉ số công tơ|chi so cong to)"
+  chi_so_cong_to: "(?i)(?:chỉ số công tơ|chi so cong to)[^\\d\\n\\r]{0,25}(\\d+)|(\\d+)[^\\d\\n\\r]{0,25}(?:chỉ số công tơ|chi so cong to)"
+  so_cong_to: "(?i)(?<!chỉ )(?<!chi )(?:số công tơ|so cong to|công tơ số|cong to so)[\\s:.#-]{0,5}([A-Z]{0,4}\\d{6,15})"
+  so_the: "(?<!\\d)\\d{13,19}(?!\\d)"
   email: "[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+"
 
 # Phòng ban chỉ được định tuyến qua mô hình nội bộ local, không bao giờ gửi ra đám mây

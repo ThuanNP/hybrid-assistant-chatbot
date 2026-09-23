@@ -580,15 +580,22 @@ def _lap_ke_hoach_bac(
     do_dai_hang_doi: int,
     ma_yeu_cau: str,
     uu_tien_bac_nho: bool = False,
+    bac_ep: str | None = None,
 ) -> tuple[list[CauHinhBacLocal], dict[str, str]]:
     """Chọn các bậc sẽ thử theo thứ tự; trả kèm lý do đã bỏ qua bậc nào.
 
     Chú thích kỹ thuật:
+    - Khi bac_ep="chinh" hoặc "nho": Ép chạy đúng bậc tương ứng (dùng riêng cho runner).
     - Khi uu_tien_bac_nho=True: Dùng bậc nhỏ để không chiếm khe của model chính,
       và không gửi nội dung hội thoại ra đám mây chỉ để đặt tiêu đề.
     - NGOẠI LỆ: Khi so_model_nap_cung_luc = 1 (gpu8 trên laptop), dùng bậc chinh đang nằm
       trong VRAM, vì nạp bậc nho sẽ đẩy model chính ra và người hỏi tiếp theo phải chờ nạp lại.
     """
+    if bac_ep == "chinh":
+        return [cfg.bac_local[0]], {}
+    if bac_ep == "nho":
+        return [cfg.bac_local[1]], {}
+
     if uu_tien_bac_nho:
         if cfg.so_model_nap_cung_luc == 1:
             ly_do_ngoai_le = (
@@ -656,10 +663,11 @@ async def _goi_local_mot_lan(
     cfg: CauHinhHeThong,
     tham_so: dict[str, Any],
     uu_tien_bac_nho: bool = False,
+    bac_ep: str | None = None,
 ) -> KetQuaGoiLocal:
     """Thử lần lượt từng bậc cho lời gọi không phát theo dòng."""
     cac_bac, ly_do = _lap_ke_hoach_bac(
-        cfg, do_dai_hang_doi, ma_yeu_cau, uu_tien_bac_nho=uu_tien_bac_nho
+        cfg, do_dai_hang_doi, ma_yeu_cau, uu_tien_bac_nho=uu_tien_bac_nho, bac_ep=bac_ep
     )
     for bac in cac_bac:
         try:
@@ -684,10 +692,11 @@ async def _goi_local_theo_dong(
     cfg: CauHinhHeThong,
     tham_so: dict[str, Any],
     uu_tien_bac_nho: bool = False,
+    bac_ep: str | None = None,
 ) -> AsyncIterator[KetQuaDongLocal]:
     """Thử lần lượt từng bậc cho luồng phát theo dòng."""
     cac_bac, ly_do = _lap_ke_hoach_bac(
-        cfg, do_dai_hang_doi, ma_yeu_cau, uu_tien_bac_nho=uu_tien_bac_nho
+        cfg, do_dai_hang_doi, ma_yeu_cau, uu_tien_bac_nho=uu_tien_bac_nho, bac_ep=bac_ep
     )
     for bac in cac_bac:
         da_phat = False
@@ -719,6 +728,7 @@ async def goi_local(
     temperature: float | None = None,
     max_tokens: int | None = None,
     uu_tien_bac_nho: bool = False,
+    bac_ep: str | None = None,
 ) -> KetQuaGoiLocal: ...
 
 
@@ -734,6 +744,7 @@ async def goi_local(
     temperature: float | None = None,
     max_tokens: int | None = None,
     uu_tien_bac_nho: bool = False,
+    bac_ep: str | None = None,
 ) -> AsyncIterator[KetQuaDongLocal]: ...
 
 
@@ -748,6 +759,7 @@ async def goi_local(
     temperature: float | None = None,
     max_tokens: int | None = None,
     uu_tien_bac_nho: bool = False,
+    bac_ep: str | None = None,
 ) -> KetQuaGoiLocal | AsyncIterator[KetQuaDongLocal]:
     """Gọi chuỗi local theo thứ tự bậc 1 (chinh) rồi bậc 2 (nho).
 
@@ -762,6 +774,7 @@ async def goi_local(
         "cfg": cfg,
         "tham_so": _tham_so_goi(cfg, temperature, max_tokens),
         "uu_tien_bac_nho": uu_tien_bac_nho,
+        "bac_ep": bac_ep,
     }
     if phat_theo_dong:
         return _goi_local_theo_dong(tin_nhan, **tham_so_chung)

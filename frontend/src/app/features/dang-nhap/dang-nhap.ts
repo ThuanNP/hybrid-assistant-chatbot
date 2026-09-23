@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { CAU_HINH_APP } from '../../core/cau-hinh';
+import { DichVuThongBao } from '../../core/thong-bao';
 
 @Component({
   selector: 'app-dang-nhap',
@@ -23,8 +24,10 @@ import { CAU_HINH_APP } from '../../core/cau-hinh';
 export class DangNhapComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  /** Phien ban hien duoi form lay tu /health (khong can dang nhap), khong ghi cung. */
+  protected readonly thongBao = inject(DichVuThongBao);
 
-  public readonly email = signal('nv01@vidu.com');
+  public readonly email = signal('');
   public readonly matKhau = signal('');
   public readonly hienMatKhau = signal(false);
   public readonly dangXuLy = this.authService.dangXuLy;
@@ -32,6 +35,10 @@ export class DangNhapComponent {
   public readonly maYeuCau = signal<string | null>(null);
 
   public readonly tieuDe = CAU_HINH_APP.TIEU_DE_HE_THONG;
+
+  public constructor() {
+    this.thongBao.taiLai();
+  }
 
   public chuyenDoiHienMatKhau(): void {
     this.hienMatKhau.update((hien) => !hien);

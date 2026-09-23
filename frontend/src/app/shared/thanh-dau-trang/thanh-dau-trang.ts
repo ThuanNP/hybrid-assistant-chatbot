@@ -2,7 +2,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
-  OnInit,
+  effect,
   afterNextRender,
   afterRenderEffect,
   computed,
@@ -13,7 +13,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { BoCucTrang, MucDuongDan, TRANG_CHU } from '../../core/bo-cuc-trang';
 import { CAU_HINH_APP } from '../../core/cau-hinh';
@@ -23,13 +23,16 @@ import { BieuTuongComponent } from '../bieu-tuong/bieu-tuong';
 
 type BangThaXuong = 'he-thong' | 'thong-bao' | 'nguoi-dung';
 
+/** Chu ky kiem tra /health cho nut trang thai "Dang hoat dong" (ms). */
+const CHU_KY_KIEM_TRA_SUC_KHOE_MS = 30_000;
+
 /**
  * Thanh dau trang dung chung (DESIGN.md muc 6.2): nut dong mo sidebar co dinh va breadcrumb
  * ben trai; tim kiem, thong bao va tai khoan ben phai. Tieu de trang nam rieng o vung noi dung.
  */
 @Component({
   selector: 'app-thanh-dau-trang',
-  imports: [RouterLink, BieuTuongComponent],
+  imports: [RouterLink, RouterLinkActive, BieuTuongComponent],
   templateUrl: './thanh-dau-trang.html',
   styleUrl: './thanh-dau-trang.scss',
   host: {
@@ -37,7 +40,7 @@ type BangThaXuong = 'he-thong' | 'thong-bao' | 'nguoi-dung';
     '(document:keydown.escape)': 'dongBang()',
   },
 })
-export class ThanhDauTrangComponent implements OnInit {
+export class ThanhDauTrangComponent {
   protected readonly boCuc = inject(BoCucTrang);
   protected readonly thongBao = inject(DichVuThongBao);
   protected readonly authService = inject(AuthService);
@@ -101,12 +104,26 @@ export class ThanhDauTrangComponent implements OnInit {
       this.boCuc.duongDan();
       untracked(() => this.doLaiDuongDan());
     });
-    inject(DestroyRef).onDestroy(() => quanSat?.disconnect());
+    // Nut trang thai kiem tra lai /health moi CHU_KY_KIEM_TRA_SUC_KHOE_MS; tab an thi bo qua
+    const henGioSucKhoe = setInterval(() => {
+      if (!document.hidden) this.thongBao.kiemTraSucKhoe();
+    }, CHU_KY_KIEM_TRA_SUC_KHOE_MS);
+    const khiHienLai = (): void => {
+      if (!document.hidden) this.thongBao.kiemTraSucKhoe();
+    };
+    document.addEventListener('visibilitychange', khiHienLai);
+    inject(DestroyRef).onDestroy(() => {
+      quanSat?.disconnect();
+      clearInterval(henGioSucKhoe);
+      document.removeEventListener('visibilitychange', khiHienLai);
+    });
   }
 
-  public ngOnInit(): void {
-    this.thongBao.taiLai();
-  }
+  /** Nap lai trang thai he thong moi khi phien dang nhap duoc thiet lap (ke ca sau F5). */
+  private readonly napKhiDangNhap = effect(() => {
+    this.authService.daDangNhap();
+    untracked(() => this.thongBao.taiLai());
+  });
 
   private doLaiDuongDan(): void {
     const khung = this.khungDuongDan().nativeElement;

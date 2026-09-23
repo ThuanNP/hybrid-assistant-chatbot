@@ -75,4 +75,37 @@ describe('QuanTriBoChayComponent', () => {
     expect(component.dinhDangVram(4.4)).toBe('4,4 GB');
     expect(component.dinhDangThoiGian(1800)).toBe('Còn 30m 0s');
   });
+
+  it('tự làm mới mặc định tắt, có thanh chọn chu kỳ và dòng thời điểm cập nhật', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    expect(component.chuKyTuLamMoi()).toBe(0);
+    const cacTuyChon = [...el.querySelectorAll('.chon-tu-lam-moi option')].map((o) => o.textContent?.trim());
+    expect(cacTuyChon).toEqual(['Tắt', '15 giây', '30 giây', '60 giây']);
+    expect(el.querySelector('.nhan-cap-nhat')?.textContent).toContain('Cập nhật lúc');
+  });
+
+  it('chọn chu kỳ thì gọi lại API theo chu kỳ; keep_alive đếm ngược theo đồng hồ', async () => {
+    vi.useFakeTimers();
+    try {
+      // Tao lai component sau khi bat dong ho gia de dong ho dem nguoc dung thoi gian gia
+      fixture = TestBed.createComponent(QuanTriBoChayComponent);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+      const goi = vi.spyOn(mockApiService, 'layTrangThaiBoChay');
+      const o = document.createElement('select');
+      o.innerHTML = '<option value="15">15</option>';
+      o.value = '15';
+      component.chonChuKy({ target: o } as unknown as Event);
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(goi).toHaveBeenCalled();
+
+      component.taiDuLieu();
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(Math.round(component.giayConLai(1800) ?? 0)).toBe(1790);
+    } finally {
+      vi.useRealTimers();
+      localStorage.removeItem('tro-ly.bo-chay.tu-lam-moi-giay');
+    }
+  });
 });

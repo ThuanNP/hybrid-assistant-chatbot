@@ -9,7 +9,8 @@ import logging
 import os
 import random
 import time
-from typing import Any, AsyncIterator, Literal, overload
+from collections.abc import AsyncIterator
+from typing import Any, Literal, overload
 
 import litellm
 import litellm.exceptions

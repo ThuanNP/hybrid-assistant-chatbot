@@ -21,6 +21,7 @@ __all__ = [
     "KhoLuotGoiPostgres",
     "LuotGoi",
     "bao_cao_chi_phi",
+    "chuan_hoa_muc_dich",
     "kho_luot_goi_mac_dinh",
     "kiem_tra_canh_bao_ty_le_roi_tang",
     "kiem_tra_ngan_sach",
@@ -29,7 +30,16 @@ __all__ = [
 ]
 
 
-MucDichGoi = Literal["chat", "tieu_de"]
+MucDichGoi = Literal["chat", "tieu_de", "danh_gia"]
+
+
+def chuan_hoa_muc_dich(muc_dich: str | None) -> MucDichGoi:
+    """Ánh xạ mục đích gọi về giá trị hợp lệ; giá trị lạ tính là lượt hỏi (chat)."""
+    if muc_dich == "tieu_de":
+        return "tieu_de"
+    if muc_dich == "danh_gia":
+        return "danh_gia"
+    return "chat"
 
 
 class LuotGoi(BaseModel):
@@ -63,7 +73,10 @@ class LuotGoi(BaseModel):
     )
     muc_dich: MucDichGoi = Field(
         default="chat",
-        description="chat: lượt hỏi của người dùng; tieu_de: lời gọi nền đặt tiêu đề",
+        description=(
+            "chat: lượt hỏi của người dùng; tieu_de: lời gọi nền đặt tiêu đề; "
+            "danh_gia: lời gọi của bộ đánh giá, không tính vào chỉ số vận hành"
+        ),
     )
 
 
@@ -182,7 +195,7 @@ class KhoLuotGoiPostgres(KhoLuotGoi):
             ma_yeu_cau=row.ma_yeu_cau,
             roi_tang=row.roi_tang,
             ly_do_that_bai_tang_dau=row.ly_do_that_bai_tang_dau,
-            muc_dich="tieu_de" if row.muc_dich == "tieu_de" else "chat",
+            muc_dich=chuan_hoa_muc_dich(row.muc_dich),
         )
 
     def lay_tat_ca(self) -> list[LuotGoi]:

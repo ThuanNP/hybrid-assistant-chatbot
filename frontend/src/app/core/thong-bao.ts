@@ -6,6 +6,7 @@
 
 import { Service, computed, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
+import { AuthService } from './auth/auth.service';
 import { BaoCaoChiPhi, TrangThaiHangDoi, TrangThaiModels } from './mo-hinh';
 
 export type MucThongBao = 'loi' | 'canh-bao' | 'thong-tin';
@@ -30,6 +31,7 @@ const NHAN_TRANG_THAI: Readonly<Record<TrangThaiDichVu, string>> = {
 @Service()
 export class DichVuThongBao {
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
 
   private readonly chiPhi = signal<BaoCaoChiPhi | null>(null);
   private readonly hangDoi = signal<TrangThaiHangDoi | null>(null);
@@ -81,7 +83,8 @@ export class DichVuThongBao {
 
   public readonly soLuong = computed(() => this.danhSach().length);
 
-  public taiLai(): void {
+  /** Chi goi /health (cong khai, khong cham CSDL): dung cho kiem tra dinh ky cua nut trang thai. */
+  public kiemTraSucKhoe(): void {
     this.api.kiemTraSucKhoe().subscribe({
       next: (kq) => {
         this.trangThai.set(kq?.trang_thai === TRANG_THAI_SONG ? 'hoat-dong' : 'mat-ket-noi');
@@ -89,6 +92,12 @@ export class DichVuThongBao {
       },
       error: () => this.trangThai.set('mat-ket-noi'),
     });
+  }
+
+  public taiLai(): void {
+    this.kiemTraSucKhoe();
+    // Cac API con lai can token: chua co phien thi khong goi, tranh 401 va lam moi token thua
+    if (!this.auth.daDangNhap()) return;
     this.api.layModels().subscribe({ next: (kq) => this.moHinh.set(kq), error: () => {} });
     this.api.layChiPhi().subscribe({ next: (kq) => this.chiPhi.set(kq), error: () => {} });
     this.api.layTrangThaiHangDoi().subscribe({ next: (kq) => this.hangDoi.set(kq), error: () => {} });

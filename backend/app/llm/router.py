@@ -38,6 +38,7 @@ from app.llm.bo_chay_local import (
 from app.llm.chi_phi import (
     KhoLuotGoi,
     LuotGoi,
+    chuan_hoa_muc_dich,
     kho_luot_goi_mac_dinh,
     kiem_tra_canh_bao_ty_le_roi_tang,
     kiem_tra_ngan_sach,
@@ -96,6 +97,8 @@ _KHOA_NOI_BO = frozenset({
     "so_luot_bi_cat",
     "luon_vao_hang",
     "muc_dich",
+    "ep_tang",
+    "bac_ep",
 })
 
 
@@ -203,7 +206,7 @@ def _luu_nhat_ky_va_kho(
         ly_do_that_bai_tang_dau=(
             loai_loi_cac_tang.get(tang_dau) if roi_tang and tang_dau is not None else None
         ),
-        muc_dich="tieu_de" if muc_dich == "tieu_de" else "chat",
+        muc_dich=chuan_hoa_muc_dich(muc_dich),
     )
     kho.ghi(lg)
     kiem_tra_canh_bao_ty_le_roi_tang(kho=kho, cfg=cfg)
@@ -266,6 +269,7 @@ async def _thuc_hien_goi_local(
     temperature = tuy_chon.get("temperature")
     max_tokens = tuy_chon.get("max_tokens")
     uu_tien_bac_nho = bool(tuy_chon.get("uu_tien_bac_nho", False))
+    bac_ep = tuy_chon.get("bac_ep")
     return await goi_local(
         tin_nhan,
         ma_yeu_cau=ma_yeu_cau,
@@ -276,6 +280,7 @@ async def _thuc_hien_goi_local(
         temperature=temperature,
         max_tokens=max_tokens,
         uu_tien_bac_nho=uu_tien_bac_nho,
+        bac_ep=bac_ep,
     )
 
 
@@ -306,12 +311,14 @@ async def goi_mo_hinh(
     ma_yeu_cau: str,
     nhan_du_lieu: NhanDuLieu = NhanDuLieu.THUONG,
     uu_tien_bac_nho: bool = False,
+    ep_tang: str | int | None = None,
     **tuy_chon: Any,
 ) -> KetQuaGoi:
     """Gọi mô hình LLM qua chuỗi định tuyến đã được xác thực chính sách.
 
     Điểm nhập duy nhất trong ứng dụng cho các lời gọi mô hình không phát dòng.
     Khi uu_tien_bac_nho=True: Chuỗi chỉ gồm tầng 0, không rơi sang đám mây.
+    Khi ep_tang được truyền (chỉ dùng cho đánh giá/eval runner): ép chạy đúng tầng đó.
     """
     cfg: CauHinhHeThong = tuy_chon.get("cau_hinh_he_thong") or cau_hinh
     dp: DieuPhoi = tuy_chon.get("dieu_phoi") or dieu_phoi_mac_dinh
@@ -337,6 +344,31 @@ async def goi_mo_hinh(
         chuoi = [t for t in chuoi if t.so == 0]
         if not chuoi:
             chuoi = [Tang(so=0, ten="local", cua_so_ngu_canh=4096, nguon="local")]
+
+    ep_tang_hieu_luc = ep_tang if ep_tang is not None else tuy_chon.get("ep_tang")
+    if ep_tang_hieu_luc is not None:
+        if ep_tang_hieu_luc == "local1":
+            chuoi = [Tang(so=0, ten="local", cua_so_ngu_canh=8192, nguon="local")]
+            tuy_chon["bac_ep"] = "chinh"
+        elif ep_tang_hieu_luc == "local2":
+            chuoi = [Tang(so=0, ten="local", cua_so_ngu_canh=8192, nguon="local")]
+            tuy_chon["bac_ep"] = "nho"
+        elif str(ep_tang_hieu_luc) in ("1", "2", "3", "4"):
+            tang_so = int(ep_tang_hieu_luc)
+            if nhan_du_lieu == NhanDuLieu.NHAY_CAM or str(nhan_du_lieu).upper() == "NHAY_CAM":
+                raise LoiDauVao(
+                    f"Dữ liệu nhãn NHAY_CAM không được phép gửi tới tầng đám mây {tang_so} (Quy tắc 2)",
+                    ma_yeu_cau=ma_yeu_cau,
+                )
+            tang_dm_cfg = next((cdm for cdm in cfg.chuoi_dam_may if cdm.tang == tang_so), None)
+            if tang_dm_cfg is None:
+                raise LoiDauVao(
+                    f"Tầng đám mây {tang_so} không tồn tại trong cấu hình",
+                    ma_yeu_cau=ma_yeu_cau,
+                )
+            chuoi = [Tang(so=tang_so, ten=tang_dm_cfg.ten, cua_so_ngu_canh=tang_dm_cfg.cua_so_ngu_canh, nguon="dam_may")]
+        else:
+            raise LoiDauVao(f"Giá trị ep_tang không hợp lệ: {ep_tang_hieu_luc}", ma_yeu_cau=ma_yeu_cau)
 
     tang_dau = chuoi[0].so if chuoi else None
     co_tang_dam_may = any(t.so > 0 for t in chuoi)
@@ -549,6 +581,7 @@ async def _dong_local(
     temperature = tuy_chon.get("temperature")
     max_tokens = tuy_chon.get("max_tokens")
     uu_tien_bac_nho = bool(tuy_chon.get("uu_tien_bac_nho", False))
+    bac_ep = tuy_chon.get("bac_ep")
     gen = await goi_local(
         tin_nhan,
         ma_yeu_cau=ma_yeu_cau,
@@ -559,6 +592,7 @@ async def _dong_local(
         temperature=temperature,
         max_tokens=max_tokens,
         uu_tien_bac_nho=uu_tien_bac_nho,
+        bac_ep=bac_ep,
     )
     async for item in gen:
         yield item
@@ -593,6 +627,7 @@ async def goi_mo_hinh_theo_dong(
     ma_yeu_cau: str,
     nhan_du_lieu: NhanDuLieu = NhanDuLieu.THUONG,
     do_dai_hang_doi: int = 0,
+    ep_tang: str | int | None = None,
     **tuy_chon: Any,
 ) -> AsyncIterator[ManhPhatRa]:
     """Gọi mô hình LLM dạng phát theo dòng (SSE) qua chuỗi định tuyến.
@@ -601,6 +636,7 @@ async def goi_mo_hinh_theo_dong(
     - Phát mảnh "hang_doi" ngay khi yêu cầu vào hàng đợi tầng 0.
     - Lỗi trước mảnh đầu: chuyển sang tầng sau bình thường.
     - Lỗi giữa chừng sau khi đã phát: kết thúc luồng bằng mảnh 'loi', không rơi tầng.
+    - Khi ep_tang được truyền: ép chạy đúng tầng đó (dùng cho đánh giá).
     """
     cfg: CauHinhHeThong = tuy_chon.get("cau_hinh_he_thong") or cau_hinh
     dp: DieuPhoi = tuy_chon.get("dieu_phoi") or dieu_phoi_mac_dinh
@@ -620,6 +656,31 @@ async def goi_mo_hinh_theo_dong(
         chuoi = [t for t in chuoi if t.so == 0]
         if not chuoi:
             chuoi = [Tang(so=0, ten="local", cua_so_ngu_canh=4096, nguon="local")]
+
+    ep_tang_hieu_luc = ep_tang if ep_tang is not None else tuy_chon.get("ep_tang")
+    if ep_tang_hieu_luc is not None:
+        if ep_tang_hieu_luc == "local1":
+            chuoi = [Tang(so=0, ten="local", cua_so_ngu_canh=8192, nguon="local")]
+            tuy_chon["bac_ep"] = "chinh"
+        elif ep_tang_hieu_luc == "local2":
+            chuoi = [Tang(so=0, ten="local", cua_so_ngu_canh=8192, nguon="local")]
+            tuy_chon["bac_ep"] = "nho"
+        elif str(ep_tang_hieu_luc) in ("1", "2", "3", "4"):
+            tang_so = int(ep_tang_hieu_luc)
+            if nhan_du_lieu == NhanDuLieu.NHAY_CAM or str(nhan_du_lieu).upper() == "NHAY_CAM":
+                raise LoiDauVao(
+                    f"Dữ liệu nhãn NHAY_CAM không được phép gửi tới tầng đám mây {tang_so} (Quy tắc 2)",
+                    ma_yeu_cau=ma_yeu_cau,
+                )
+            tang_dm_cfg = next((cdm for cdm in cfg.chuoi_dam_may if cdm.tang == tang_so), None)
+            if tang_dm_cfg is None:
+                raise LoiDauVao(
+                    f"Tầng đám mây {tang_so} không tồn tại trong cấu hình",
+                    ma_yeu_cau=ma_yeu_cau,
+                )
+            chuoi = [Tang(so=tang_so, ten=tang_dm_cfg.ten, cua_so_ngu_canh=tang_dm_cfg.cua_so_ngu_canh, nguon="dam_may")]
+        else:
+            raise LoiDauVao(f"Giá trị ep_tang không hợp lệ: {ep_tang_hieu_luc}", ma_yeu_cau=ma_yeu_cau)
 
     tang_dau = chuoi[0].so if chuoi else None
     co_tang_dam_may = any(t.so > 0 for t in chuoi)

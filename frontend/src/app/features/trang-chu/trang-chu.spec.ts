@@ -1,9 +1,11 @@
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { KhoHoiThoai } from '../../core/kho-hoi-thoai';
+import { NguoiDung } from '../../core/mo-hinh';
 import { DANH_SACH_TAC_VU_NHANH } from '../../core/tac-vu-nhanh';
 import { TrangChuComponent } from './trang-chu';
 
@@ -43,13 +45,22 @@ describe('TrangChuComponent', () => {
     kiemTraSucKhoe: () => of({ trang_thai: 'song', phien_ban: '0.3.0' }),
   };
 
+  /** Mac dinh la quan tri (xem bon chi so toan he thong); tung kich ban doi vai tro khi can. */
+  const mockAuthService = {
+    laQuanTri: signal(true),
+    nguoiDung: signal<Partial<NguoiDung> | null>({ da_dung_trong_gio: 12, han_muc_con_lai: 48 }),
+    layThongTinToi: () => of(null),
+  };
+
   beforeEach(async () => {
+    mockAuthService.laQuanTri.set(true);
     await TestBed.configureTestingModule({
       imports: [TrangChuComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([]),
         { provide: ApiService, useValue: mockApiService },
+        { provide: AuthService, useValue: mockAuthService },
       ],
     }).compileComponents();
 
@@ -64,14 +75,15 @@ describe('TrangChuComponent', () => {
     expect(component.dinhDangPhanTram(component.tyLeLocal() ?? 0)).toBe('75%');
   });
 
-  it('lượt hỏi dạng tổng/đám mây kèm biểu đồ tròn; hàng đợi dạng thanh ngang theo sức chứa', () => {
+  it('quản trị: lượt hỏi toàn hệ thống kèm biểu đồ tròn; hàng đợi dạng thanh ngang theo sức chứa', () => {
     expect(component.luotNoiBo()).toBe(30);
     expect(component.phanTramLuotNoiBo()).toBe(75);
     expect(component.phanTramHangDoi()).toBe(10);
 
     const el = fixture.nativeElement as HTMLElement;
     const cacThe = el.querySelectorAll('.the-kpi');
-    expect(cacThe[0].querySelector('.gia-tri-kpi')?.textContent?.replace(/\s/g, '')).toBe('40/10');
+    expect(cacThe[0].querySelector('.gia-tri-kpi')?.textContent?.replace(/\s/g, '')).toBe('40câuhỏi');
+    expect(cacThe[0].textContent).toContain('Toàn hệ thống');
     expect(cacThe[0].querySelector('.vong-luot-hoi')).not.toBeNull();
     expect(cacThe[3].querySelector('.gia-tri-kpi')?.textContent).toContain('/20 đang chờ');
     const thanh = cacThe[3].querySelector('[role="progressbar"]');
@@ -79,10 +91,25 @@ describe('TrangChuComponent', () => {
     expect(thanh?.getAttribute('aria-valuemax')).toBe('20');
   });
 
-  it('hiển thị đủ 4 thẻ chỉ số và 4 tác vụ nhanh', () => {
+  it('quản trị thấy đủ 4 thẻ chỉ số và 4 tác vụ nhanh', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelectorAll('.the-kpi').length).toBe(4);
     expect(el.querySelectorAll('.o-tac-vu').length).toBe(DANH_SACH_TAC_VU_NHANH.length);
+  });
+
+  it('cán bộ chỉ thấy hạn mức lượt hỏi của mình trong giờ và hàng đợi nội bộ', async () => {
+    mockAuthService.laQuanTri.set(false);
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    const cacThe = el.querySelectorAll('.the-kpi');
+    expect(cacThe.length).toBe(2);
+    expect(cacThe[0].textContent).toContain('Lượt hỏi của Anh/Chị');
+    expect(cacThe[0].querySelector('.gia-tri-kpi')?.textContent?.replace(/\s/g, '')).toBe(
+      '12/60tronggiờ',
+    );
+    expect(cacThe[0].textContent).toContain('Còn 48 lượt');
+    expect(cacThe[1].textContent).toContain('Hàng đợi nội bộ');
+    expect(el.textContent).not.toContain('Chi phí đám mây');
   });
 
   it('chọn tác vụ nhanh sẽ mở cuộc trò chuyện mới kèm câu hỏi mẫu', () => {

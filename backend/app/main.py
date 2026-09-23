@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timezone
@@ -39,8 +40,14 @@ from app.chat.su_kien_sse import (
     tao_luong_su_kien,
     tao_nhan_ai,
 )
+from app.chat.thuong_gap import (
+    lay_cau_hoi_thuong_gap_api,
+    lay_huong_dan_su_dung_api,
+)
 from app.config import CauHinhBacLocal, cau_hinh
 from app.core.bao_mat import (
+    che_du_lieu_ca_nhan,
+    dem_the_da_dung,
     kiem_duyet_dau_ra,
     kiem_duyet_dau_vao,
     kiem_tra_phoi_lo,
@@ -124,6 +131,9 @@ def doc_phien_ban() -> str:
 
 PHIEN_BAN = doc_phien_ban()
 
+# Mã yêu cầu phía gọi gửi lên: chữ, số, gạch nối, gạch dưới; không nhận ký tự điều khiển
+_MAU_MA_YEU_CAU_HOP_LE = re.compile(r"[A-Za-z0-9_-]{8,64}")
+
 
 def _kiem_tra_cors_prod() -> None:
     """Kiểm tra quy định CORS: môi trường prod cấm tuyệt đối ký tự đại diện '*'."""
@@ -193,11 +203,10 @@ app.add_middleware(
 @app.middleware("http")
 async def middleware_ma_yeu_cau(request: Request, call_next: Any) -> Response:
     """Middleware gắn mã yêu cầu ma_yeu_cau 12 ký tự xuyên suốt mỗi chu trình HTTP."""
-    ma_yc = request.headers.get("X-Ma-Yeu-Cau")
-    if not ma_yc or not ma_yc.strip():
+    # Nhận mã do phía gọi gửi để nối chuỗi truy vết, chỉ khi đúng dạng ký tự an toàn
+    ma_yc = (request.headers.get("X-Ma-Yeu-Cau") or "").strip()
+    if not _MAU_MA_YEU_CAU_HOP_LE.fullmatch(ma_yc):
         ma_yc = sinh_ma_yeu_cau()
-    else:
-        ma_yc = ma_yc.strip()[:50]
 
     dat_ma_yeu_cau(ma_yc)
     phan_hoi: Response = await call_next(request)
@@ -262,7 +271,11 @@ class YeuCauChat(BaseModel):
     """Dữ liệu yêu cầu cho endpoint chat không phát dòng."""
 
     hoi_thoai_id: int | None = None
-    noi_dung: str = Field(min_length=1, description="Nội dung câu hỏi của người dùng")
+    noi_dung: str = Field(
+        min_length=1,
+        max_length=cau_hinh.gioi_han_do_dai_tin_nhan,
+        description="Nội dung câu hỏi của người dùng",
+    )
 
 
 class PhanHoiChat(BaseModel):
@@ -380,6 +393,29 @@ class TinhTrangNguCanh(BaseModel):
     bac_local: list[ThongTinBacNguCanh]
     ngan_sach_token: int
     so_luot_trung_binh_giu_duoc: int
+
+
+class ItemCauHoiThuongGap(BaseModel):
+    """Chi tiết một mục câu hỏi thường gặp."""
+
+    ma: str
+    nhom: str
+    cau_hoi: str
+    tra_loi: str
+
+
+class PhanHoiCauHoiThuongGap(BaseModel):
+    """Phản hồi danh sách câu hỏi thường gặp."""
+
+    phien_ban: str
+    muc: list[ItemCauHoiThuongGap]
+
+
+class PhanHoiHuongDanSuDung(BaseModel):
+    """Phản hồi tài liệu hướng dẫn sử dụng."""
+
+    phien_ban: str
+    noi_dung: str
 
 
 # ---------------------------------------------------------------------------
@@ -842,15 +878,21 @@ async def chat_dong_bo(
                 http=422,
                 ma_yeu_cau=ma_yc,
             )
-        noi_dung_nguoi_dung = kd_vao.noi_dung_thay_the or yeu_cau.noi_dung
+        noi_dung_goc = kd_vao.noi_dung_thay_the or yeu_cau.noi_dung
 
         # 2. Truy vấn hội thoại và lịch sử
         ht_id, lich_su, la_luot_dau = await _chuan_bi_hoi_thoai_dong_bo(
             yeu_cau.hoi_thoai_id, nguoi, ma_yc
         )
 
-        # 3. Xác định nhãn dữ liệu, chuỗi định tuyến và dựng ngữ cảnh
-        nhan = nhan_cua_hoi_thoai(lich_su=lich_su, tin_nhan_moi=noi_dung_nguoi_dung)
+        # 3. Gắn nhãn trên bản gốc, rồi che dữ liệu cá nhân: model, CSDL và nhật ký chỉ
+        # nhận bản đã che; giá trị thật chỉ được khôi phục trong phản hồi cho người hỏi
+        nhan = nhan_cua_hoi_thoai(lich_su=lich_su, tin_nhan_moi=noi_dung_goc)
+        kq_che = che_du_lieu_ca_nhan(
+            noi_dung_goc,
+            so_bat_dau=dem_the_da_dung(tin["content"] for tin in lich_su),
+        )
+        noi_dung_nguoi_dung = kq_che.van_ban_da_che
         che_do = getattr(nguoi, "che_do_dinh_tuyen", None) or cau_hinh.che_do_dinh_tuyen
         kq_chuoi = xac_dinh_chuoi(nguoi, nhan, che_do=che_do, cau_hinh_he_thong=cau_hinh)
         ghi_nhat_ky_chang(
@@ -996,7 +1038,7 @@ async def chat_dong_bo(
 
         return PhanHoiChat(
             hoi_thoai_id=ht_id,
-            noi_dung=noi_dung_tro_ly,
+            noi_dung=kq_che.restore(noi_dung_tro_ly),
             nguon=str(kq_goi.nguon),
             tang=kq_goi.tang,
             bac_local=kq_goi.bac_local,
@@ -1254,3 +1296,27 @@ async def lay_tinh_trang_ngu_canh(
         ngan_sach_token=ngan_sach,
         so_luot_trung_binh_giu_duoc=so_luot,
     )
+
+
+# ---------------------------------------------------------------------------
+# Endpoint tài liệu hướng dẫn sử dụng và câu hỏi thường gặp
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/v1/huong-dan", response_model=PhanHoiHuongDanSuDung)
+async def lay_huong_dan_su_dung(
+    _: Annotated[NguoiDung, Depends(lay_nguoi_dung_hien_tai)],
+) -> PhanHoiHuongDanSuDung:
+    """Trả về tài liệu hướng dẫn sử dụng định dạng Markdown cho cán bộ nhân viên."""
+    du_lieu = lay_huong_dan_su_dung_api()
+    return PhanHoiHuongDanSuDung(**du_lieu)
+
+
+@app.get("/api/v1/cau-hoi-thuong-gap", response_model=PhanHoiCauHoiThuongGap)
+async def lay_cau_hoi_thuong_gap(
+    _: Annotated[NguoiDung, Depends(lay_nguoi_dung_hien_tai)],
+) -> PhanHoiCauHoiThuongGap:
+    """Trả về danh sách 20 mục câu hỏi thường gặp thuộc 5 nhóm chuẩn nghiệp vụ."""
+    du_lieu = lay_cau_hoi_thuong_gap_api()
+    return PhanHoiCauHoiThuongGap(**du_lieu)
+

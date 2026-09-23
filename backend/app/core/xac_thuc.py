@@ -107,13 +107,31 @@ def tao_refresh_token() -> tuple[str, str, datetime]:
 
 def kiem_tra_an_toan_xac_thuc() -> None:
     """Từ chối khởi động ứng dụng nếu cấu hình bảo mật không an toàn."""
-    if cau_hinh.moi_truong == "prod" and cau_hinh.xac_thuc_gia:
-        thong_diep = (
-            "LỖI CẤU HÌNH BẢO MẬT: XAC_THUC_GIA=true không được phép ở MOI_TRUONG=prod. "
-            "Ứng dụng từ chối khởi động."
-        )
-        logger.critical(thong_diep)
-        sys.exit(thong_diep)
+    if cau_hinh.moi_truong == "prod":
+        if cau_hinh.xac_thuc_gia:
+            thong_diep = (
+                "LỖI CẤU HÌNH BẢO MẬT: XAC_THUC_GIA=true không được phép ở MOI_TRUONG=prod. "
+                "Ứng dụng từ chối khởi động."
+            )
+            logger.critical(thong_diep)
+            sys.exit(thong_diep)
+
+        secret = (cau_hinh.app_secret or "").strip()
+        cac_gia_tri_khong_hop_le = {
+            "",
+            "dan-khoa-that-vao-day",
+            "secret",
+            "changeme",
+            "khoa-bi-mat-dev-khong-dung-trong-van-hanh",
+            "12345678901234567890123456789012",
+        }
+        if not secret or len(secret) < 32 or secret in cac_gia_tri_khong_hop_le:
+            thong_diep = (
+                "LỖI CẤU HÌNH BẢO MẬT: APP_SECRET trong môi trường prod bắt buộc phải có, "
+                "độ dài tối thiểu 32 ký tự và không được sử dụng giá trị mẫu mặc định."
+            )
+            logger.critical(thong_diep)
+            sys.exit(thong_diep)
 
 
 async def khoi_tao_nguoi_dung_gia_dev() -> None:

@@ -48,7 +48,8 @@
     color: var(--black);
   }
 
-  &.dang-mo {
+  &.dang-mo,
+  &.active {
     background-color: var(--blue-light-3);
     color: var(--blue-base);
   }

@@ -11,14 +11,8 @@ import { HttpErrorResponse, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from
 import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { ENDPOINTS } from '../cau-hinh';
+import { taoMaYeuCau } from '../ma-yeu-cau';
 import { AuthService } from './auth.service';
-
-function taoMaYeuCauNgauNhien(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `yc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}
 
 export const authInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
   const authService = inject(AuthService);
@@ -29,7 +23,7 @@ export const authInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, ne
     headers = headers.set('Authorization', `Bearer ${token}`);
   }
   if (!headers.has('X-Ma-Yeu-Cau')) {
-    headers = headers.set('X-Ma-Yeu-Cau', taoMaYeuCauNgauNhien());
+    headers = headers.set('X-Ma-Yeu-Cau', taoMaYeuCau());
   }
 
   const yeuCauMoi = req.clone({ headers });

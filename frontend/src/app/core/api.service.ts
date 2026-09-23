@@ -22,6 +22,8 @@ import {
   TrangThaiModels,
   TrangThaiSucKhoe,
   TrangThaiBoChay,
+  PhanHoiCauHoiThuongGap,
+  PhanHoiHuongDanSuDung,
 } from './mo-hinh';
 
 export interface LoiApiTuyBien extends Error {
@@ -143,6 +145,28 @@ export class ApiService {
   public layTrangThaiBoChay(): Observable<TrangThaiBoChay> {
     return this.thucThiYeuCau(
       this.http.get<TrangThaiBoChay>(ENDPOINTS.GIAM_SAT_BO_CHAY, {
+        observe: 'response',
+      }),
+    );
+  }
+
+  /**
+   * Lay noi dung tai lieu huong dan su dung Markdown (/api/v1/huong-dan).
+   */
+  public layHuongDanSuDung(): Observable<PhanHoiHuongDanSuDung> {
+    return this.thucThiYeuCau(
+      this.http.get<PhanHoiHuongDanSuDung>(ENDPOINTS.HUONG_DAN, {
+        observe: 'response',
+      }),
+    );
+  }
+
+  /**
+   * Lay danh sach 20 cau hoi thuong gap phan theo 5 nhom nghiep vu (/api/v1/cau-hoi-thuong-gap).
+   */
+  public layCauHoiThuongGap(): Observable<PhanHoiCauHoiThuongGap> {
+    return this.thucThiYeuCau(
+      this.http.get<PhanHoiCauHoiThuongGap>(ENDPOINTS.CAU_HOI_THUONG_GAP, {
         observe: 'response',
       }),
     );

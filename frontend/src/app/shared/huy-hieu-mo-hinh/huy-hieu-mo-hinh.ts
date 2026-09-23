@@ -1,7 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
 const DINH_DANG_USD = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 });
 const DINH_DANG_GIAY = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 });
+/** So nguyen va so thap phan kieu Viet Nam: 1.070 token, 52,9 tok/s. */
+const DINH_DANG_SO = new Intl.NumberFormat('vi-VN');
+const DINH_DANG_TOC_DO = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 });
 
 @Component({
   selector: 'app-huy-hieu-mo-hinh',
@@ -21,6 +24,8 @@ export class HuyHieuMoHinhComponent {
   public readonly tocDoTokS = input<number>(0);
   public readonly doTreMs = input<number>(0);
   public readonly maYeuCau = input<string>('');
+  /** Hien "Da sao chep ma" trong 2 giay sau khi bam chip ma yeu cau. */
+  public readonly daSaoChep = signal(false);
   /**
    * Co ha_cap do may chu tinh theo chuoi dinh tuyen thuc te cua nguoi dung: tang phuc vu khac
    * tang dau cua chuoi, hoac bac nho tra loi. `null` khi may chu cu chua tra truong nay.
@@ -53,6 +58,10 @@ export class HuyHieuMoHinhComponent {
   });
 
   public readonly chuoiChiPhi = computed(() => `${DINH_DANG_USD.format(this.chiPhiUsd())} USD`);
+  public readonly chuoiToken = computed(
+    () => `${DINH_DANG_SO.format(this.tokenVao())}/${DINH_DANG_SO.format(this.tokenRa())} token`,
+  );
+  public readonly chuoiTocDo = computed(() => `${DINH_DANG_TOC_DO.format(this.tocDoTokS())} tok/s`);
 
   /** Mo ta day du cho tooltip va trinh doc man hinh; dong hien thi chi giu thong so khac 0. */
   public readonly moTaDayDu = computed(() =>
@@ -84,7 +93,10 @@ export class HuyHieuMoHinhComponent {
     const ma = this.maYeuCau();
     const thongSo = `Model: ${this.model()}, Tầng: ${this.tang()}, Token: ${this.tokenVao()}/${this.tokenRa()}, Mã yêu cầu: ${ma}`;
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      void navigator.clipboard.writeText(ma || thongSo);
+      void navigator.clipboard.writeText(ma || thongSo).then(() => {
+        this.daSaoChep.set(true);
+        setTimeout(() => this.daSaoChep.set(false), 2000);
+      });
     }
   }
 }

@@ -17,6 +17,7 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -34,6 +35,7 @@ from app.core.han_muc import (
     chiem_khe_yeu_cau,
     giai_phong_khe_yeu_cau,
     kiem_tra_dang_chay,
+    lay_ip_yeu_cau,
 )
 from app.core.xac_thuc import NguoiDung, bam_mat_khau, lay_nguoi_dung_hien_tai
 from app.llm.router import KetQuaGoi
@@ -497,3 +499,29 @@ async def test_get_toi_bo_sung_du_lieu_han_muc(
     assert "han_muc_con_lai" in du_lieu
     assert "dang_chay" in du_lieu
     assert du_lieu["dang_chay"] is False
+
+
+def _yeu_cau_gia(ip_ket_noi: str, headers: dict[str, str]) -> Request:
+    """Dựng Request tối giản với địa chỉ kết nối trực tiếp và tiêu đề cho trước."""
+    return Request(
+        {
+            "type": "http",
+            "client": (ip_ket_noi, 50000),
+            "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()],
+        }
+    )
+
+
+def test_ip_bo_qua_tieu_de_proxy_tu_client_truc_tiep() -> None:
+    """Client kết nối thẳng từ ngoài không tự đổi được IP hạn mức bằng tiêu đề proxy."""
+    yc = _yeu_cau_gia("8.8.4.4", {"x-forwarded-for": "1.2.3.4", "x-real-ip": "5.6.7.8"})
+    assert lay_ip_yeu_cau(yc) == "8.8.4.4"
+
+
+def test_ip_qua_proxy_noi_bo_dung_x_real_ip_va_phan_tu_cuoi() -> None:
+    """Qua nginx nội bộ: ưu tiên X-Real-IP, sau đó phần tử cuối của X-Forwarded-For."""
+    assert lay_ip_yeu_cau(_yeu_cau_gia("172.18.0.3", {"x-real-ip": "192.168.1.20"})) == (
+        "192.168.1.20"
+    )
+    yc = _yeu_cau_gia("172.18.0.3", {"x-forwarded-for": "1.2.3.4, 192.168.1.21"})
+    assert lay_ip_yeu_cau(yc) == "192.168.1.21"

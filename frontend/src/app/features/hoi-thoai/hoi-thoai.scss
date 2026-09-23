@@ -22,7 +22,7 @@
   border-bottom: 1px solid var(--gray-light-2);
 }
 
-/* O tim: bieu tuong tim ben trai, nut xoa va nut tim nang cao nam trong o ben phai */
+/* O tim: bieu tuong tim ben trai; chip sap xep, vach ngan va nut tim nam trong o ben phai */
 .o-tim-kiem {
   flex: 1 1 100%;
   display: flex;
@@ -77,11 +77,6 @@
     color: var(--black);
   }
 
-  &.dang-bat {
-    background-color: var(--blue-light-3);
-    color: var(--blue-base);
-  }
-
   &:disabled {
     cursor: progress;
     color: var(--gray-base);
@@ -110,97 +105,62 @@
   background-color: var(--gray-light-2);
 }
 
-.cham-dang-loc {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 7px;
-  height: 7px;
-  border: 1.5px solid var(--white);
-  border-radius: var(--radius-full);
-  background-color: var(--blue-base);
+.bieu-tuong-tim {
+  flex-shrink: 0;
+  margin-left: var(--space-6);
+  color: var(--gray-base);
 }
 
-/* Bang tim kiem nang cao xuong dong rieng khi duoc mo */
-.nang-cao {
-  flex-basis: 100%;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-8);
-}
-
-.o-sap-xep {
-  margin-left: auto;
-
-  select {
-    border: none;
-    outline: none;
-    font-size: 13px;
-    color: var(--black);
-    background: transparent;
-    cursor: pointer;
-  }
-}
-
-.o-ngay {
-  display: flex;
+/* Chip "Sap xep: Moi nhat" nam trong o tim; select that phu len chip de dung ban phim duoc */
+.chip-sap-xep {
+  position: relative;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-6);
-  height: 40px;
+  height: 28px;
   padding: 0 var(--space-10);
-  border: 1px solid var(--gray-base);
+  border: 1px solid var(--gray-light-2);
   border-radius: var(--radius-sm);
   background-color: var(--white);
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: var(--gray-base);
+  }
 
   &:focus-within {
     border-color: var(--blue-base);
     box-shadow: var(--shadow-focus-primary);
   }
 
-  .nhan-ngay {
+  .nhan-sap-xep {
     font-size: 12px;
     color: var(--gray-dark-1);
-    white-space: nowrap;
   }
 
-  input {
-    border: none;
-    outline: none;
-    font-size: 13px;
+  .gia-tri-sap-xep {
+    font-size: 12px;
+    font-weight: 500;
     color: var(--black);
-    background: transparent;
-  }
-}
-
-/* Nut xoa trong o ngay: dua o ve null (khong gioi han); chi hien khi o co gia tri */
-.nut-xoa-ngay {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-  color: var(--gray-base);
-
-  &:hover {
-    background-color: var(--gray-light-2);
-    color: var(--gray-dark-3);
   }
 
-  &:focus-visible {
-    box-shadow: var(--shadow-focus-primary);
+  /* Select that trong suot phu kin chip de danh sach tha xuong rong bang chip */
+  select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    font-size: 13px;
+    cursor: pointer;
   }
-}
 
-.gach-noi {
-  color: var(--gray-base);
-}
-
-.nut-xoa-loc {
-  height: 40px;
+  .mui-ten-sap-xep {
+    font-size: 14px;
+    color: var(--gray-dark-1);
+    pointer-events: none;
+  }
 }
 
 .minh-hoa-trong {
@@ -424,11 +384,8 @@
     padding: var(--space-10) var(--space-12);
   }
 
-  .nang-cao .o-ngay {
-    flex: 1 1 140px;
-  }
-
-  .o-sap-xep {
-    margin-left: 0;
+  /* Man hep: an nhan "Sap xep:" de chip gon, van giu gia tri dang chon */
+  .chip-sap-xep .nhan-sap-xep {
+    display: none;
   }
 }

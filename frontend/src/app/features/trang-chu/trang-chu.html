@@ -1,12 +1,39 @@
 <div class="trang">
   <!-- 1. Hang the chi so (DESIGN.md muc 6.4): moi the cung khung nhan / gia tri / chu thich;
        moi con so lay tu API, khong do model tinh -->
-  <section class="hang-kpi" aria-label="Chỉ số vận hành hôm nay">
-    <article class="the-kpi">
+  <!-- Quan tri xem bon chi so toan he thong; can bo xem han muc cua chinh minh va hang doi -->
+  <section class="hang-kpi" [class.hai-the]="!laQuanTri()" aria-label="Chỉ số hôm nay">
+    @if (!laQuanTri()) {
+      <article class="the-kpi" title="Số câu hỏi Anh/Chị đã gửi trong giờ này so với hạn mức mỗi giờ">
+        <p class="nhan-kpi"><app-bieu-tuong ten="tro-chuyen" /> Lượt hỏi của Anh/Chị</p>
+        <div class="hang-gia-tri">
+          <p class="gia-tri-kpi">
+            {{ luotDaDungTrongGio() === null ? '—' : dinhDangSo(luotDaDungTrongGio()!) }}<span class="don-vi">/{{ hanMucGio() === null ? '—' : dinhDangSo(hanMucGio()!) }} trong giờ</span>
+          </p>
+          <svg class="vong-tien-do" viewBox="0 0 72 72" aria-hidden="true">
+            <circle cx="36" cy="36" r="30" class="vong-nen" />
+            <circle
+              cx="36"
+              cy="36"
+              r="30"
+              class="vong-gia-tri"
+              [attr.stroke-dasharray]="chuViVong"
+              [attr.stroke-dashoffset]="doLechVong(phanTramHanMucDaDung())"
+            />
+          </svg>
+        </div>
+        <div class="chan-kpi">
+          <p class="chu-thich-kpi">
+            Còn {{ luotConLai() === null ? '—' : dinhDangSo(luotConLai()!) }} lượt trong giờ này · hạn mức tự làm mới sau mỗi giờ
+          </p>
+        </div>
+      </article>
+    } @else {
+    <article class="the-kpi" title="Tổng số câu hỏi của mọi cán bộ trong ngày và nơi trả lời">
       <p class="nhan-kpi"><app-bieu-tuong ten="tro-chuyen" /> Lượt hỏi hôm nay</p>
       <div class="hang-gia-tri">
-        <p class="gia-tri-kpi" title="Tổng lượt hỏi / lượt qua đám mây">
-          {{ tongLuotHomNay() === null ? '—' : dinhDangSo(tongLuotHomNay()!) }}<span class="don-vi">/{{ dinhDangSo(luotDamMay()) }}</span>
+        <p class="gia-tri-kpi">
+          {{ tongLuotHomNay() === null ? '—' : dinhDangSo(tongLuotHomNay()!) }}<span class="don-vi"> câu hỏi</span>
         </p>
         <!-- Bieu do tron: nen la phan dam may, cung dam la phan noi bo -->
         <svg class="vong-tien-do vong-luot-hoi" viewBox="0 0 72 72" aria-hidden="true">
@@ -23,13 +50,17 @@
       </div>
       <div class="chan-kpi">
         <p class="chu-thich-kpi chu-giai">
+          <span>Toàn hệ thống, đã trả lời:</span>
           <span class="noi-bo"><i class="cham-chu-giai"></i>Nội bộ <strong>{{ dinhDangSo(luotNoiBo()) }}</strong></span>
           <span class="dam-may"><i class="cham-chu-giai"></i>Đám mây <strong>{{ dinhDangSo(luotDamMay()) }}</strong></span>
         </p>
       </div>
     </article>
 
-    <article class="the-kpi">
+    <article
+      class="the-kpi"
+      title="Tỷ lệ câu trả lời do mô hình trên máy chủ nội bộ tạo ra; phần còn lại rơi sang đám mây và phát sinh chi phí"
+    >
       <p class="nhan-kpi"><app-bieu-tuong ten="chip" /> Phục vụ nội bộ</p>
       <div class="hang-gia-tri">
         <p class="gia-tri-kpi">{{ tyLeLocal() === null ? '—' : dinhDangPhanTram(tyLeLocal()!) }}</p>
@@ -46,7 +77,7 @@
         </svg>
       </div>
       <div class="chan-kpi">
-        <p class="chu-thich-kpi">Tỷ lệ lượt trả lời bằng mô hình nội bộ</p>
+        <p class="chu-thich-kpi">Câu trả lời do mô hình nội bộ tạo, toàn hệ thống hôm nay</p>
       </div>
     </article>
 
@@ -70,6 +101,7 @@
         </p>
       </div>
     </article>
+    }
 
     <article class="the-kpi">
       <p class="nhan-kpi"><app-bieu-tuong ten="hang-doi" /> Hàng đợi nội bộ</p>

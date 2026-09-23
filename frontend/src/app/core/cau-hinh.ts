@@ -19,6 +19,8 @@ export const ENDPOINTS = {
   DANG_XUAT: `${API_GOC}/dang-xuat`,
   TOI: `${API_GOC}/toi`,
   GIAM_SAT_BO_CHAY: `${API_GOC}/giam-sat/bo-chay`,
+  HUONG_DAN: `${API_GOC}/huong-dan`,
+  CAU_HOI_THUONG_GAP: `${API_GOC}/cau-hoi-thuong-gap`,
 } as const;
 
 export const CAU_HINH_APP = {

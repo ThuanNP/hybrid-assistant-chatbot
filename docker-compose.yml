@@ -2,6 +2,8 @@ services:
   db:
     image: postgres:17
     restart: unless-stopped
+    networks:
+      - mang_tro_ly
     environment:
       # Không đặt giá trị mặc định cho tài khoản CSDL: thiếu trong .env thì compose dừng và báo lỗi
       POSTGRES_USER: ${POSTGRES_USER:?Thiếu POSTGRES_USER trong .env}
@@ -9,44 +11,68 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?Thiếu POSTGRES_DB trong .env}
     volumes:
       - du_lieu_postgres:/var/lib/postgresql/data
-    # Cổng 127.0.0.1:5432 CHỈ ở dev để chạy alembic và pytest từ máy.
-    # Chú thích: không bao giờ mở 0.0.0.0; nếu máy đã có PostgreSQL chiếm 5432 thì đổi cổng bên trái, ví dụ 127.0.0.1:55432.
-    ports:
-      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
     restart: unless-stopped
+    networks:
+      - mang_tro_ly
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4096M
     ports:
-      # Ở môi trường prod, backend không cần mở cổng 8000 ra ngoài (mọi truy cập đi qua frontend nginx cổng 8080);
-      # chỉ giữ cổng 8000 cho dev để kiểm tra API trực tiếp hoặc truy cập tài liệu /docs.
-      - "8000:8000"
+      # Mọi truy cập của người dùng đi qua frontend nginx cổng 8080; cổng 8000 chỉ mở ở
+      # loopback cho kiểm tra sức khỏe, kịch bản chẩn đoán và tài liệu nội bộ trên chính máy
+      - "127.0.0.1:8000:8000"
     env_file:
       - .env
     depends_on:
       db:
         condition: service_healthy
     extra_hosts:
-      # đây là cách container trên Docker Engine cho Linux gọi được Ollama chạy trên máy chủ; Docker Desktop cho Windows/macOS đã có sẵn tên này nên dòng này vô hại, giữ để chạy được cả trên máy chủ Linux.
+      # Hỗ trợ container gọi Ollama/LM Studio chạy trên máy chủ
       - "host.docker.internal:host-gateway"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     restart: unless-stopped
+    networks:
+      - mang_tro_ly
     ports:
       - "8080:8080"
     depends_on:
       backend:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  mang_tro_ly:
+    driver: bridge
 
 volumes:
   du_lieu_postgres:

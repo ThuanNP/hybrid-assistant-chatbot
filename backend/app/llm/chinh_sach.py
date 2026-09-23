@@ -6,16 +6,17 @@ Dữ liệu nhãn NHAY_CAM hoặc thuộc phòng ban cấu hình chi_local KHÔN
 có kiểm soát, không im lặng.
 """
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-import re
 from typing import Any, Literal, NamedTuple
 
 import yaml
 from pydantic import BaseModel, Field
 
-from app.config import CauHinhHeThong, cau_hinh as cau_hinh_mac_dinh
+from app.config import CauHinhHeThong
+from app.config import cau_hinh as cau_hinh_mac_dinh
 
 # Đường dẫn mặc định đến tệp cấu hình chính sách dữ liệu
 THU_MUC_GOC = Path(__file__).resolve().parents[3]
@@ -114,6 +115,18 @@ def _bien_dich_bieu_thuc(
 _MAU_BIEN_DICH_MAC_DINH = _bien_dich_bieu_thuc(_cau_hinh_cs)
 
 
+def lay_bieu_thuc_theo_loai(
+    cau_hinh_cs: CauHinhChinhSachDuLieu | None = None,
+) -> list[tuple[str, re.Pattern[str]]]:
+    """Trả về cặp (loại, regex đã biên dịch) theo thứ tự khai báo trong bieu_thuc_nhay_cam."""
+    cs = cau_hinh_cs or _cau_hinh_cs
+    return [(loai, re.compile(mau)) for loai, mau in cs.bieu_thuc_nhay_cam.items() if mau]
+
+
+# Thẻ thay thế dữ liệu cá nhân do app.core.bao_mat sinh ra, ví dụ <MA_KHACH_HANG_1>
+MAU_THE_DA_CHE = re.compile(r"<[A-Z][A-Z_]*_\d+>")
+
+
 def phat_hien_nhay_cam(
     van_ban: str,
     cau_hinh_cs: CauHinhChinhSachDuLieu | None = None,
@@ -136,7 +149,9 @@ def phat_hien_nhay_cam(
         if bieu_thuc.search(van_ban):
             return True
 
-    return False
+    # Thẻ che có đánh số (<SO_DIEN_THOAI_1>...) cho biết lượt cũ đã chứa dữ liệu cá nhân,
+    # nên hội thoại vẫn giữ nhãn NHAY_CAM sau khi lịch sử được lưu ở dạng đã che.
+    return MAU_THE_DA_CHE.search(van_ban) is not None
 
 
 def _trich_xuat_van_ban(tin_nhan: Any) -> str:
@@ -151,10 +166,10 @@ def _trich_xuat_van_ban(tin_nhan: Any) -> str:
             or ""
         )
     if hasattr(tin_nhan, "noi_dung"):
-        val = getattr(tin_nhan, "noi_dung")
+        val = tin_nhan.noi_dung
         return str(val) if val is not None else ""
     if hasattr(tin_nhan, "content"):
-        val = getattr(tin_nhan, "content")
+        val = tin_nhan.content
         return str(val) if val is not None else ""
     return str(tin_nhan)
 
@@ -169,7 +184,7 @@ def _kiem_tra_tin_nhan_nhay_cam(
         if nhan in (NhanDuLieu.NHAY_CAM, NhanDuLieu.NHAY_CAM.value):
             return True
     elif hasattr(tin_nhan, "nhan_du_lieu"):
-        if getattr(tin_nhan, "nhan_du_lieu") in (
+        if tin_nhan.nhan_du_lieu in (
             NhanDuLieu.NHAY_CAM,
             NhanDuLieu.NHAY_CAM.value,
         ):
@@ -209,7 +224,7 @@ def _lay_phong_ban_nguoi_dung(nguoi: Any, phong_ban_mac_dinh: str) -> str:
     if isinstance(nguoi, dict):
         return str(nguoi.get("phong_ban", phong_ban_mac_dinh))
     if hasattr(nguoi, "phong_ban"):
-        val = getattr(nguoi, "phong_ban")
+        val = nguoi.phong_ban
         return str(val) if val is not None else phong_ban_mac_dinh
     return phong_ban_mac_dinh
 

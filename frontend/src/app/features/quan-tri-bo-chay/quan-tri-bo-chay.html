@@ -9,7 +9,19 @@
       </div>
     </div>
   } @else {
+    <!-- Thanh cong cu: thoi diem cap nhat, chu ky tu lam moi, nut lam moi ngay -->
     <div class="thanh-cong-cu">
+      @if (nhanCapNhat(); as luc) {
+        <span class="nhan-cap-nhat">Cập nhật lúc {{ luc }}</span>
+      }
+      <label class="chon-tu-lam-moi">
+        <span>Tự làm mới</span>
+        <select [value]="chuKyTuLamMoi()" (change)="chonChuKy($event)" aria-label="Chu kỳ tự làm mới">
+          @for (ck of cacChuKy; track ck.giay) {
+            <option [value]="ck.giay">{{ ck.nhan }}</option>
+          }
+        </select>
+      </label>
       <button type="button" class="nut-lam-moi" (click)="taiDuLieu()" [disabled]="dangTai()">
         <app-bieu-tuong ten="dong-ho" /> Làm mới
       </button>
@@ -35,7 +47,7 @@
         <section class="the-chinh" aria-labelledby="tieu-de-bo-chay">
           <div class="dau-the">
             <h2 id="tieu-de-bo-chay" class="tieu-de-the">
-              <app-bieu-tuong ten="hang-doi" /> Tình trạng bộ chạy
+              <app-bieu-tuong ten="hang-doi" /> Tài nguyên GPU và mô hình
             </h2>
             <div class="nhom-huy-hieu">
               <span class="huy-hieu huy-hieu-gpu">Hồ sơ: {{ tt.ho_so_gpu }} ({{ tt.dung_luong_vram_gb }} GB)</span>
@@ -97,8 +109,8 @@
                         <td><code>{{ m.ten }}</code></td>
                         <td>{{ dinhDangVram(m.dung_luong_vram_gb) }}</td>
                         <td>
-                          <span [class.het-han]="(m.so_giay_con_lai ?? 0) <= 0">
-                            {{ dinhDangThoiGian(m.so_giay_con_lai) }}
+                          <span [class.het-han]="(giayConLai(m.so_giay_con_lai) ?? 0) <= 0">
+                            {{ dinhDangThoiGian(giayConLai(m.so_giay_con_lai)) }}
                           </span>
                         </td>
                       </tr>

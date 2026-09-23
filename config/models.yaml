@@ -124,3 +124,6 @@ cai_dat_chung:
   he_so_an_toan_token: 1.15
   nguong_canh_bao_ngan_sach: 0.80
   nguong_ty_le_roi_tang: 0.20
+  # Tỷ lệ đạt tối thiểu của bộ đánh giá (app.eval.runner) trên mỗi tầng và mỗi loại câu hỏi;
+  # scripts/kiem_tra_truoc_khi_mo.py dòng 16 đọc ngưỡng này
+  nguong_dat_danh_gia: 0.60

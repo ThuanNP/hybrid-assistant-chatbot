@@ -11,8 +11,11 @@ Mô-đun chịu trách nhiệm:
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from app.config import CauHinhHeThong, cau_hinh as cau_hinh_mac_dinh
-from app.core.loi import LoiNguCanhQuaDai, NGU_CANH_QUA_DAI
+from app.chat.thuong_gap import chon_muc_lien_quan, dinh_dang_khoi_thuong_gap
+from app.config import CauHinhHeThong
+from app.config import cau_hinh as cau_hinh_mac_dinh
+from app.core.bao_mat import boc_ranh_gioi
+from app.core.loi import LoiNguCanhQuaDai
 from app.llm.chinh_sach import Tang
 from app.llm.dem_token import dem_token
 
@@ -150,18 +153,28 @@ def dung_ngu_canh(
     cfg = cau_hinh_he_thong or cau_hinh_mac_dinh
     ngan_sach = tinh_ngan_sach_token(chuoi, cfg)
 
-    # Quy tắc a: Lời nhắc hệ thống
+    # Quy tắc b: Chuẩn hóa tin nhắn mới nhất của người dùng
+    tin_moi = _chuan_hoa_tin_nhan(tin_nhan_moi, vai_tro_mac_dinh="user")
+
+    # Quy tắc a: Lời nhắc hệ thống kèm câu hỏi thường gặp liên quan (nếu có)
     noi_dung_he_thong = (
         loi_nhac_he_thong
         if loi_nhac_he_thong is not None
         else doc_loi_nhac_he_thong()
     )
+    muc_lien_quan = chon_muc_lien_quan(tin_moi["content"])
+    if muc_lien_quan:
+        khoi_thuong_gap = dinh_dang_khoi_thuong_gap(muc_lien_quan)
+        if khoi_thuong_gap:
+            noi_dung_he_thong = f"{noi_dung_he_thong}\n\n{khoi_thuong_gap}"
+
+    # Chọn câu hỏi thường gặp trên câu hỏi thật, rồi mới bọc khối ranh giới để model coi
+    # nội dung người dùng là dữ liệu chứ không phải mệnh lệnh
+    tin_moi = {"role": tin_moi["role"], "content": boc_ranh_gioi(tin_moi["content"])}
+    token_moi = dem_token(tin_moi["content"])
+
     tin_he_thong = {"role": "system", "content": noi_dung_he_thong}
     token_he_thong = dem_token(noi_dung_he_thong)
-
-    # Quy tắc b: Tin nhắn mới nhất của người dùng
-    tin_moi = _chuan_hoa_tin_nhan(tin_nhan_moi, vai_tro_mac_dinh="user")
-    token_moi = dem_token(tin_moi["content"])
 
     # Quy tắc e: Kiểm tra riêng lời nhắc hệ thống + tin nhắn mới
     token_bat_buoc = token_he_thong + token_moi

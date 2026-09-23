@@ -1,0 +1,188 @@
+<!-- Doan chu co **dam** va `ma` dung chung cho moi khoi -->
+<ng-template #chu let-phan>
+  @for (p of phan; track $index) {
+    @if (p.dam) {
+      <strong>{{ p.chu }}</strong>
+    } @else if (p.ma) {
+      <code class="ma-inline">{{ p.chu }}</code>
+    } @else {
+      {{ p.chu }}
+    }
+  }
+</ng-template>
+
+<div class="trang-huong-dan">
+  <!-- Cot trai: muc luc co dinh, khong cuon -->
+  <aside class="muc-luc" aria-label="Mục lục hướng dẫn">
+    <span class="tieu-de-muc-luc">Nội dung</span>
+    <nav>
+      <ul class="danh-sach-muc-luc">
+        @for (muc of danhSachMucLuc(); track muc.id) {
+          <li>
+            <button
+              type="button"
+              class="nut-muc-luc"
+              [class.dang-chon]="mucLucActive() === muc.id"
+              [attr.aria-current]="mucLucActive() === muc.id ? 'location' : null"
+              (click)="cuonToiMuc(muc.id)"
+            >
+              {{ muc.tieuDe }}
+            </button>
+          </li>
+        }
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Cot phai: the noi dung la vung cuon duy nhat cua man -->
+  <section class="the-noi-dung" (scroll)="theoDoiCuon($event)">
+    @if (loi()) {
+      <div class="thong-bao-loi" role="alert">
+        <app-bieu-tuong ten="canh-bao" />
+        <span>{{ loi() }}</span>
+      </div>
+    }
+
+    <!-- 1. Cau hoi thuong gap -->
+    <div [id]="idCauHoiThuongGap" class="muc">
+      <h2 class="tieu-de-muc">Câu hỏi thường gặp</h2>
+
+      <div class="hang-chip" role="tablist" aria-label="Nhóm câu hỏi thường gặp">
+        @for (chip of chipsNhom; track chip.ma) {
+          <button
+            type="button"
+            role="tab"
+            class="chip-nhom"
+            [class.dang-chon]="nhomDangChon() === chip.ma"
+            [attr.aria-selected]="nhomDangChon() === chip.ma"
+            (click)="chuyenNhom(chip.ma)"
+          >
+            {{ chip.nhan }}
+          </button>
+        }
+      </div>
+
+      <div class="hop-accordion">
+        @for (item of faqHienThi(); track item.ma) {
+          <article class="the-faq" [class.dang-mo]="laDangMo(item.ma)">
+            <button
+              type="button"
+              class="dau-the-faq"
+              [attr.aria-expanded]="laDangMo(item.ma)"
+              [attr.aria-controls]="'tra-loi-' + item.ma"
+              (click)="chuyenDoiAccordion(item.ma)"
+            >
+              <span class="cau-hoi">{{ item.cau_hoi }}</span>
+              <app-bieu-tuong ten="mui-ten-xuong" class="mui-ten-accordion" />
+            </button>
+            @if (laDangMo(item.ma)) {
+              <div class="than-the-faq" [id]="'tra-loi-' + item.ma">
+                <p class="tra-loi">{{ item.tra_loi }}</p>
+                <button type="button" class="nut-hoi-tro-ly" (click)="hoiTroLy(item.cau_hoi, $event)">
+                  <app-bieu-tuong ten="tro-chuyen" />
+                  <span>Hỏi trợ lý</span>
+                </button>
+              </div>
+            }
+          </article>
+        } @empty {
+          <p class="dong-trong">Chưa có câu hỏi trong nhóm này.</p>
+        }
+      </div>
+    </div>
+
+    <!-- 2. Cac muc cua tai lieu huong dan su dung -->
+    @if (dangTai()) {
+      <div class="dang-tai" role="status">
+        <span class="vong-xoay" aria-hidden="true"></span>
+        <span>Đang nạp tài liệu hướng dẫn...</span>
+      </div>
+    }
+    @for (muc of cacMucHuongDan(); track muc.id) {
+      <hr class="phan-cach" />
+      <div [id]="muc.id" class="muc">
+        <h2 class="tieu-de-muc">{{ muc.tieuDe }}</h2>
+
+        @for (khoi of muc.cacKhoi; track $index) {
+          @switch (khoi.loai) {
+            @case ('doan') {
+              <p class="doan"><ng-container *ngTemplateOutlet="chu; context: { $implicit: khoi.noiDung }" /></p>
+            }
+            @case ('danh-sach') {
+              <ul class="danh-sach-cham">
+                @for (y of khoi.cacMuc; track $index) {
+                  <li><ng-container *ngTemplateOutlet="chu; context: { $implicit: y }" /></li>
+                }
+              </ul>
+            }
+            @case ('nhom-the') {
+              <div class="luoi-the">
+                @for (the of khoi.cacThe; track the.tieuDe) {
+                  <div class="the-kha-nang" [class.chua-dat]="the.kieu === 'chua-dat'">
+                    <p class="dau-the-kha-nang">
+                      <app-bieu-tuong [ten]="the.kieu === 'dat' ? 'da-xong' : 'dong'" />
+                      <span>{{ the.tieuDe }}</span>
+                    </p>
+                    <ul>
+                      @for (y of the.cacMuc; track $index) {
+                        <li><ng-container *ngTemplateOutlet="chu; context: { $implicit: y }" /></li>
+                      }
+                    </ul>
+                  </div>
+                }
+              </div>
+            }
+            @case ('cac-buoc') {
+              <ol class="luoi-buoc">
+                @for (buoc of khoi.cacBuoc; track $index) {
+                  <li class="the-buoc">
+                    <span class="so-buoc" aria-hidden="true">{{ $index + 1 }}</span>
+                    <h3 class="tieu-de-buoc">{{ buoc.tieuDe }}</h3>
+                    <p class="mo-ta-buoc">{{ buoc.moTa }}</p>
+                  </li>
+                }
+              </ol>
+            }
+            @case ('huy-hieu') {
+              <div class="hang-huy-hieu">
+                @for (hh of khoi.cacHuyHieu; track hh.nhan) {
+                  <span class="huy-hieu-tang" [class.dam-may]="hh.kieu === 'dam-may'">
+                    <i class="cham-tang" aria-hidden="true"></i>
+                    <strong>{{ hh.nhan }}</strong>
+                    <span class="mo-ta-tang">({{ hh.moTa }})</span>
+                  </span>
+                }
+              </div>
+            }
+            @case ('vi-du') {
+              <p class="khung-vi-du">
+                <strong>Ví dụ:</strong>
+                <ng-container *ngTemplateOutlet="chu; context: { $implicit: khoi.noiDung }" />
+              </p>
+            }
+            @case ('canh-bao') {
+              <p class="khung-canh-bao">
+                <app-bieu-tuong ten="canh-bao" />
+                <span><ng-container *ngTemplateOutlet="chu; context: { $implicit: khoi.noiDung }" /></span>
+              </p>
+            }
+            @case ('ma') {
+              <span class="chip-ma">
+                <code>{{ khoi.ma }}</code>
+                <button
+                  type="button"
+                  class="nut-sao-chep"
+                  [title]="maDaSaoChep() === khoi.ma ? 'Đã sao chép' : 'Sao chép'"
+                  [attr.aria-label]="maDaSaoChep() === khoi.ma ? 'Đã sao chép' : 'Sao chép mã'"
+                  (click)="saoChepMa(khoi.ma)"
+                >
+                  <app-bieu-tuong [ten]="maDaSaoChep() === khoi.ma ? 'da-xong' : 'sao-chep'" />
+                </button>
+              </span>
+            }
+          }
+        }
+      </div>
+    }
+  </section>
+</div>

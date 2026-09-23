@@ -1,0 +1,239 @@
+phien_ban: "2026-09-24.2"
+
+gioi_han:
+  toi_da_muc: 3
+  toi_da_token: 600
+
+muc:
+  # ============================================================================
+  # Nhóm 1: bat_dau (Bắt đầu sử dụng)
+  # ============================================================================
+  - ma: TG-01
+    nhom: bat_dau
+    cau_hoi: "Tôi đăng nhập bằng tài khoản nào?"
+    tra_loi: "Anh/Chị sử dụng địa chỉ email nội bộ và mật khẩu do quản trị viên hệ thống cấp để đăng nhập. Nếu chưa có tài khoản, vui lòng liên hệ bộ phận Công nghệ thông tin để được cấp quyền truy cập."
+    tu_khoa:
+      - dang nhap
+      - tai khoan
+      - email
+      - mat khau
+      - cap tai khoan
+
+  - ma: TG-02
+    nhom: bat_dau
+    cau_hoi: "Quên hoặc cần đổi mật khẩu thì liên hệ ai?"
+    tra_loi: "Hệ thống hiện tại chưa hỗ trợ tự đổi mật khẩu trên giao diện. Nếu quên hoặc cần cấp lại mật khẩu, Anh/Chị vui lòng liên hệ quản trị viên bộ phận Công nghệ thông tin để được hỗ trợ đặt lại mật khẩu mới."
+    tu_khoa:
+      - quen mat khau
+      - doi mat khau
+      - cap lai mat khau
+      - quan tri vien
+      - quen pass
+
+  - ma: TG-03
+    nhom: bat_dau
+    cau_hoi: "Bắt đầu cuộc trò chuyện mới ở đâu?"
+    tra_loi: "Anh/Chị bấm vào nút 'Cuộc trò chuyện mới' có dấu cộng ở thanh điều hướng bên trái giao diện, hoặc truy cập trang chủ và bấm vào một trong các câu hỏi gợi ý để mở phiên hội thoại mới."
+    tu_khoa:
+      - cuoc tro chuyen moi
+      - bat dau tro chuyen
+      - hoi thoai moi
+      - tao chat
+      - tao moi
+
+  - ma: TG-04
+    nhom: bat_dau
+    cau_hoi: "Trợ lý có dùng thử được trên điện thoại không?"
+    tra_loi: "Giao diện trợ lý được thiết kế tương thích với trình duyệt web trên điện thoại di động và máy tính bảng. Anh/Chị mở trình duyệt trên điện thoại, truy cập địa chỉ nội bộ của hệ thống và đăng nhập như trên máy tính."
+    tu_khoa:
+      - dien thoai
+      - di dong
+      - tablet
+      - mobile
+      - may tinh bang
+
+  # ============================================================================
+  # Nhóm 2: dat_cau_hoi (Cách đặt câu hỏi)
+  # ============================================================================
+  - ma: TG-05
+    nhom: dat_cau_hoi
+    cau_hoi: "Đặt câu hỏi thế nào cho rõ ràng để trợ lý trả lời chính xác?"
+    tra_loi: "Anh/Chị nên nêu rõ bối cảnh nghiệp vụ, mục đích yêu cầu, đối tượng hướng tới và định dạng mong muốn (ví dụ: tóm tắt 3 ý chính, lập bảng Markdown hoặc soạn thảo văn bản khoảng 200 từ)."
+    tu_khoa:
+      - dat cau hoi
+      - ro rang
+      - chinh xac
+      - huong dan hoi
+      - cach hoi
+
+  - ma: TG-06
+    nhom: dat_cau_hoi
+    cau_hoi: "Có thể hỏi tiếp trong cùng cuộc trò chuyện không?"
+    tra_loi: "Có. Trợ lý ghi nhớ các lượt trao đổi trước trong cùng cuộc hội thoại. Anh/Chị có thể hỏi tiếp, yêu cầu giải thích rõ hơn hoặc điều chỉnh nội dung đã trả lời mà không cần nhắc lại toàn bộ câu hỏi trước."
+    tu_khoa:
+      - hoi tiep
+      - trong cung cuoc tro chuyen
+      - ngu canh
+      - lien tuc
+      - hoi them
+
+  - ma: TG-07
+    nhom: dat_cau_hoi
+    cau_hoi: "Dừng câu trả lời đang chạy thế nào?"
+    tra_loi: "Khi câu trả lời đang sinh văn bản, nút gửi sẽ đổi thành nút hình vuông 'Dừng'. Anh/Chị bấm vào nút này để ngắt phản hồi ngay lập tức mà không cần đợi câu trả lời chạy hết."
+    tu_khoa:
+      - dung cau tra loi
+      - dung phan hoi
+      - ngat tra loi
+      - cancel
+      - stop
+
+  - ma: TG-08
+    nhom: dat_cau_hoi
+    cau_hoi: "Sử dụng câu hỏi gợi ý ở trang chủ như thế nào?"
+    tra_loi: "Tại Trang chủ, hệ thống cung cấp các thẻ tác vụ nhanh như tra cứu giá điện, thủ tục cấp điện, soạn thông báo. Anh/Chị chỉ cần bấm vào thẻ để hệ thống tự động điền câu hỏi và bắt đầu phiên trò chuyện mới."
+    tu_khoa:
+      - cau hoi goi y
+      - tac vu nhanh
+      - trang chu
+      - the goi y
+      - mau cau hoi
+
+  # ============================================================================
+  # Nhóm 3: doc_ket_qua (Đọc kết quả và huy hiệu)
+  # ============================================================================
+  - ma: TG-09
+    nhom: doc_ket_qua
+    cau_hoi: "Ý nghĩa của huy hiệu tầng Nội bộ và Đám mây là gì?"
+    tra_loi: "Huy hiệu ghi 'Nội bộ' (chấm xanh lá) dưới câu trả lời cho biết yêu cầu được xử lý trên máy chủ nội bộ doanh nghiệp. Huy hiệu ghi 'Đám mây' (chấm xám) cho biết yêu cầu đã được xử lý bởi mô hình đám mây qua chuỗi dự phòng."
+    tu_khoa:
+      - huy hieu tang
+      - noi bo
+      - dam may
+      - y nghia tang
+      - badge
+
+  - ma: TG-10
+    nhom: doc_ket_qua
+    cau_hoi: "Dòng 'Nội dung do AI tạo' ở chân câu trả lời có ý nghĩa gì?"
+    tra_loi: "Đây là nhãn bắt buộc theo quy định an toàn AI, cho biết tên mô hình đã sinh nội dung và thời điểm tạo. Nhãn nhắc nhở cán bộ kiểm tra lại trước khi sử dụng trong văn bản chính thức."
+    tu_khoa:
+      - nhan ai
+      - noi dung do ai tao
+      - chan cau tra loi
+      - nhan nguon goc
+      - thoi diem tao
+
+  - ma: TG-11
+    nhom: doc_ket_qua
+    cau_hoi: "Vì sao cần đối chiếu số liệu quan trọng với hệ thống chính thức?"
+    tra_loi: "Mô hình ngôn ngữ lớn có khả năng tổng hợp ngôn ngữ tự nhiên nhưng không phải là hệ thống tính toán nghiệp vụ. Mọi số liệu về tiền điện, chỉ số công tơ, công nợ bắt buộc phải đối chiếu trên hệ thống chính thức (CMIS, ERP)."
+    tu_khoa:
+      - doi chieu so lieu
+      - he thong chinh thuc
+      - tinh tien dien
+      - cmis
+      - erp
+
+  - ma: TG-12
+    nhom: doc_ket_qua
+    cau_hoi: "Vì sao câu trả lời có thể khác nhau giữa các lần hỏi?"
+    tra_loi: "Mô hình AI sử dụng cơ chế lấy mẫu xác suất khi sinh từ nên có thể diễn đạt câu trả lời theo các cách khác nhau. Ngoài ra, việc hệ thống phân bổ lời gọi giữa mô hình nội bộ và đám mây cũng có thể tạo ra văn phong khác nhau."
+    tu_khoa:
+      - khac nhau
+      - giua cac lan hoi
+      - thay doi cau tra loi
+      - ket qua khac
+
+  # ============================================================================
+  # Nhóm 4: lich_su (Lịch sử cuộc trò chuyện)
+  # ============================================================================
+  - ma: TG-13
+    nhom: lich_su
+    cau_hoi: "Làm sao xem lại cuộc trò chuyện cũ?"
+    tra_loi: "Anh/Chị bấm vào mục 'Lịch sử hội thoại' ở thanh bên trái hoặc biểu tượng lịch sử trên thanh đầu trang để xem danh sách toàn bộ các cuộc trò chuyện trước đây của tài khoản mình."
+    tu_khoa:
+      - xem lai
+      - cuoc tro chuyen cu
+      - lich su hoi thoai
+      - tim lai chat
+      - xem lich su
+
+  - ma: TG-14
+    nhom: lich_su
+    cau_hoi: "Làm thế nào để tìm kiếm và lọc cuộc trò chuyện cũ?"
+    tra_loi: "Tại màn hình 'Lịch sử hội thoại', Anh/Chị có thể nhập từ khóa vào ô tìm kiếm tiêu đề; bấm biểu tượng bộ lọc cạnh ô tìm kiếm để chọn thứ tự sắp xếp (mới nhất, cũ nhất, theo tên)."
+    tu_khoa:
+      - tim kiem cuoc tro chuyen
+      - loc hoi thoai
+      - tu khoa
+      - sap xep
+
+  - ma: TG-15
+    nhom: lich_su
+    cau_hoi: "Làm sao đổi tên cuộc trò chuyện?"
+    tra_loi: "Hệ thống tự động đặt tiêu đề cho cuộc trò chuyện dựa trên câu hỏi đầu tiên. Tính năng chỉnh sửa thủ công tiêu đề hội thoại hiện chưa được hỗ trợ trên giao diện ở phiên bản hiện tại."
+    tu_khoa:
+      - doi ten
+      - sua tieu de
+      - doi tieu de
+      - dat ten hoi thoai
+
+  - ma: TG-16
+    nhom: lich_su
+    cau_hoi: "Xoá cuộc trò chuyện cũ như thế nào?"
+    tra_loi: "Tại màn hình 'Lịch sử hội thoại', Anh/Chị rê chuột vào cuộc trò chuyện cần xoá và bấm vào biểu tượng thùng rác màu đỏ. Hệ thống sẽ xoá mềm cuộc trò chuyện khỏi danh sách hiển thị của Anh/Chị."
+    tu_khoa:
+      - xoa cuoc tro chuyen
+      - xoa hoi thoai
+      - thung rac
+      - xoa chat
+      - delete
+
+  # ============================================================================
+  # Nhóm 5: su_co_va_du_lieu (Sự cố và dữ liệu)
+  # ============================================================================
+  - ma: TG-17
+    nhom: su_co_va_du_lieu
+    cau_hoi: "Thông báo đang xếp hàng hoặc đang nạp model nghĩa là gì?"
+    tra_loi: "Khi nhiều cán bộ cùng gửi yêu cầu, hệ thống sẽ xếp hàng đợi để bộ xử lý phục vụ lần lượt; hoặc khi model local chưa sẵn sàng trong bộ nhớ VRAM máy chủ, hệ thống cần vài giây nạp model trước khi bắt đầu sinh câu trả lời."
+    tu_khoa:
+      - dang xep hang
+      - dang nap model
+      - hang doi
+      - cho luot
+      - nap vram
+
+  - ma: TG-18
+    nhom: su_co_va_du_lieu
+    cau_hoi: "Thông báo vượt hạn mức sử dụng và thời điểm hỏi lại ra sao?"
+    tra_loi: "Hệ thống áp dụng hạn mức theo phút (địa chỉ IP) và theo giờ (người dùng). Khi nhận thông báo vượt hạn mức (HTTP 429), màn hình sẽ hiển thị thời gian đếm ngược hoặc số giây cần chờ trước khi Anh/Chị có thể gửi câu hỏi tiếp."
+    tu_khoa:
+      - vuot han muc
+      - "429"
+      - rate limit
+      - thoi diem hoi lai
+      - dem nguoc
+
+  - ma: TG-19
+    nhom: su_co_va_du_lieu
+    cau_hoi: "Khi gặp lỗi giữa chừng, cách gửi ma_yeu_cau cho bộ phận hỗ trợ thế nào?"
+    tra_loi: "Mỗi lượt xử lý và thông báo lỗi đều có mã định danh 12 ký tự (ví dụ: a1b2c3d4e5f6). Anh/Chị bấm biểu tượng sao chép mã yêu cầu và gửi cho quản trị viên bộ phận Công nghệ thông tin để tra cứu nhật ký xử lý lỗi."
+    tu_khoa:
+      - loi giua chung
+      - ma_yeu_cau
+      - bo phan ho tro
+      - gui ma yeu cau
+      - ho tro cntt
+
+  - ma: TG-20
+    nhom: su_co_va_du_lieu
+    cau_hoi: "Dữ liệu cá nhân của khách hàng không được nhập và trợ lý đã tra được tài liệu nội bộ chưa?"
+    tra_loi: "Tuyệt đối không nhập mã khách hàng, số điện thoại, số CCCD hay chỉ số công tơ vào trợ lý. Ở phiên bản hiện tại, trợ lý chưa kết nối tra cứu tài liệu nội bộ tự động (chức năng RAG sẽ được bổ sung ở Giai đoạn 6)."
+    tu_khoa:
+      - du lieu ca nhan
+      - nhay cam
+      - khong duoc nhap
+      - ma khach hang
+      - tai lieu noi bo
+      - rag

@@ -47,6 +47,8 @@ export interface SuKienXong {
   ma_yeu_cau?: string;
   /** May chu tinh: tang phuc vu khac tang dau cua chuoi hoac do bac nho tra loi. */
   ha_cap?: boolean;
+  /** Kiem duyet dau ra da thay cau tra loi: thay toan bo phan da phat bang chuoi nay. */
+  noi_dung_thay_the?: string | null;
 }
 
 export interface SuKienLoi {
@@ -301,5 +303,24 @@ export interface PhanHoiLamMoiToken {
 export interface PhanHoiDangXuat {
   thanh_cong: boolean;
   thong_diep: string;
+}
+
+/** Mot muc cau hoi thuong gap, dung hop dong GET /api/v1/cau-hoi-thuong-gap. */
+export interface MucCauHoiThuongGap {
+  ma: string;
+  nhom: string;
+  cau_hoi: string;
+  tra_loi: string;
+}
+
+export interface PhanHoiCauHoiThuongGap {
+  phien_ban: string;
+  muc: MucCauHoiThuongGap[];
+}
+
+/** Tai lieu huong dan su dung Markdown, dung hop dong GET /api/v1/huong-dan. */
+export interface PhanHoiHuongDanSuDung {
+  phien_ban: string;
+  noi_dung: string;
 }
 

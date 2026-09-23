@@ -85,40 +85,15 @@ describe('HoiThoaiComponent (màn Lịch sử hội thoại)', () => {
     expect(component.cacNhom().map((n) => n.ten)).toEqual(['Hôm nay', 'Cũ hơn']);
   });
 
-  it('mặc định Từ ngày, Đến ngày là null: không gửi bộ lọc ngày, hiển thị toàn bộ lịch sử', async () => {
-    expect(component.tuNgay()).toBeNull();
-    expect(component.denNgay()).toBeNull();
-    expect(component.coLocNangCao()).toBe(false);
-    expect(boLocGanNhat().tuNgay).toBeNull();
-
-    // Xoa trang o ngay sau khi da chon thi tro ve null, khong loc
-    component.tuNgay.set('2026-09-01');
-    const o = document.createElement('input');
-    o.value = '';
-    component.chonNgay(component.tuNgay, { target: o } as unknown as Event);
-    await fixture.whenStable();
-    expect(component.tuNgay()).toBeNull();
-    expect(boLocGanNhat().tuNgay).toBeNull();
-  });
-
-  it('mỗi ô ngày có nút xoá riêng, chỉ hiện khi ô có giá trị, bấm thì ô về null', async () => {
+  it('ô tìm theo bản Stitch: chip Sắp xếp và nút Tìm nằm trong ô, không có lọc khoảng ngày', () => {
     const el = fixture.nativeElement as HTMLElement;
-    component.hienNangCao.set(true);
-    await fixture.whenStable();
-    expect(el.querySelectorAll('.nut-xoa-ngay').length).toBe(0);
-
-    component.tuNgay.set('2026-09-01');
-    component.denNgay.set('2026-09-23');
-    await fixture.whenStable();
-    el.querySelector<HTMLButtonElement>('button[aria-label="Xoá ngày bắt đầu"]')?.click();
-    await fixture.whenStable();
-    expect(component.tuNgay()).toBeNull();
-    expect(component.denNgay()).toBe('2026-09-23');
-
-    el.querySelector<HTMLButtonElement>('button[aria-label="Xoá ngày kết thúc"]')?.click();
-    await fixture.whenStable();
-    expect(component.denNgay()).toBeNull();
-    expect(el.querySelectorAll('.nut-xoa-ngay').length).toBe(0);
+    const oTim = el.querySelector('.o-tim-kiem');
+    expect(oTim?.querySelector('.chip-sap-xep select')).not.toBeNull();
+    expect(oTim?.querySelector('.chip-sap-xep')?.textContent).toContain('Sắp xếp:');
+    expect(oTim?.querySelector('button[aria-label="Tìm"]')).not.toBeNull();
+    expect(el.querySelector('input[type="date"]')).toBeNull();
+    expect(boLocGanNhat().tuNgay).toBeUndefined();
+    expect(boLocGanNhat().denNgay).toBeUndefined();
   });
 
   it('dòng phụ của mục ghi số lượt và thời điểm cập nhật', () => {
@@ -132,22 +107,11 @@ describe('HoiThoaiComponent (màn Lịch sử hội thoại)', () => {
     expect(lienKet?.getAttribute('href')).toBe('/tro-chuyen/1');
   });
 
-  it('tìm kiếm nâng cao ẩn mặc định, mở bằng nút biểu tượng trong ô tìm có tooltip', async () => {
-    const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('.nang-cao')).toBeNull();
-
-    const nut = el.querySelector<HTMLButtonElement>('.o-tim-kiem button[aria-label="Tìm kiếm nâng cao"]');
-    expect(nut?.getAttribute('data-goi-y')).toBe('Tìm kiếm nâng cao');
-    nut?.click();
+  it('đổi sắp xếp khác mặc định tính là đang lọc', async () => {
+    expect(component.dangLoc()).toBe(false);
+    component.sapXep.set('cu_nhat');
     await fixture.whenStable();
-    expect(el.querySelector('.nang-cao')).not.toBeNull();
-    expect(nut?.getAttribute('aria-expanded')).toBe('true');
-
-    nut?.click();
-    await fixture.whenStable();
-    component.tuNgay.set('2026-09-01');
-    await fixture.whenStable();
-    expect(el.querySelector('.cham-dang-loc')).not.toBeNull();
+    expect(component.dangLoc()).toBe(true);
   });
 
   it('sắp xếp gửi lên máy chủ; theo tên thì một danh sách phẳng, cũ nhất đảo thứ tự nhóm', async () => {
@@ -166,15 +130,9 @@ describe('HoiThoaiComponent (màn Lịch sử hội thoại)', () => {
     expect(component.cacNhom().map((n) => n.ten)).toEqual(['Cũ hơn', 'Hôm nay']);
   });
 
-  it('lọc theo khoảng ngày ở máy chủ; không có kết quả thì hiện minh hoạ và nút Xoá lọc', async () => {
-    component.tuNgay.set('2020-01-01');
-    component.denNgay.set('2020-01-02');
-    await fixture.whenStable();
-    expect(boLocGanNhat()).toMatchObject({ tuNgay: '2020-01-01', denNgay: '2020-01-02' });
-    expect(component['ds'].danhSach().map((ht) => ht.id)).toEqual([2]);
-
-    component.tuNgay.set('2019-01-01');
-    component.denNgay.set('2019-01-31');
+  it('tìm không có kết quả thì hiện minh hoạ và nút Xoá lọc', async () => {
+    component.tuKhoa.set('không tồn tại');
+    component.timLai();
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.minh-hoa-trong')).not.toBeNull();

@@ -37,8 +37,9 @@ và `APP_SECRET` trong `.env` trước khi khởi chạy.
 
 Sau khi khởi chạy thành công:
 
-- **Backend API**: <http://localhost:8000/docs>
-- **Frontend Web**: <http://localhost:8080>
+- **Frontend Web** (người dùng trong mạng nội bộ truy cập cổng này): <http://localhost:8080>
+- **Backend API** (chỉ mở ở `127.0.0.1` trên chính máy chủ, tắt khi `MOI_TRUONG=prod`):
+  <http://localhost:8000/docs>
 
 ## 4. Chuẩn bị môi trường phát triển
 
@@ -91,8 +92,11 @@ cd frontend
 npm ci
 npm test                            # Chạy kiểm thử đơn vị frontend (Vitest)
 npx playwright install chromium     # Tải trình duyệt cho kiểm thử E2E (chỉ cần chạy một lần)
-npx playwright test                 # Chạy kiểm thử đầu cuối E2E trên hệ thống compose đang chạy
+E2E_MAT_KHAU='<mật khẩu>' npx playwright test   # Kiểm thử đầu cuối trên hệ thống compose đang chạy
 ```
+
+Kiểm thử đầu cuối đăng nhập bằng `E2E_EMAIL` (mặc định `nv01@vidu.com`) và `E2E_MAT_KHAU`;
+không ghi mật khẩu vào mã.
 
 Giao diện theo chuẩn thiết kế `DESIGN.md`. Bản thiết kế tham chiếu bố cục đã duyệt là dự án
 Google Stitch "Trợ lý AI nội bộ · v2"
@@ -213,6 +217,8 @@ Hai endpoint giám sát sức khoẻ hệ thống (`/health` và `/ready`) đư�
 | `GET` | `/api/v1/models` | Cấu hình mô hình, hồ sơ GPU, bậc local và tầng đám mây | Bắt buộc |
 | `GET` | `/api/v1/hang-doi/tinh-trang` | Trạng thái tức thời của bộ điều phối hàng đợi local | Bắt buộc |
 | `GET` | `/api/v1/ngu-canh/tinh-trang` | Hiện trạng ngữ cảnh cấu hình, thực tế và ngân sách token | Bắt buộc |
+| `GET` | `/api/v1/huong-dan` | Nội dung tài liệu hướng dẫn sử dụng Markdown | Bắt buộc |
+| `GET` | `/api/v1/cau-hoi-thuong-gap` | Danh sách 20 câu hỏi thường gặp phân theo 5 nhóm nghiệp vụ | Bắt buộc |
 
 ### 6.2. Tham số và trường dữ liệu chính
 
@@ -277,3 +283,43 @@ nội dung lỗi JSON, nhật ký vận hành và bản ghi cơ sở dữ liệu
 
 Lỗi xảy ra sau khi luồng SSE đã mở được trả bằng sự kiện `loi` với HTTP 200. CORS mở hai header
 `X-Ma-Yeu-Cau` và `Retry-After` để giao diện khác nguồn đọc được.
+
+## 7. Đánh giá chất lượng các tầng mô hình (Evaluation Suite)
+
+Hệ thống tích hợp bộ đánh giá tự động hai lớp (lớp tất định và lớp mô hình cục bộ bậc 1)
+đối chiếu với bộ 40 câu hỏi nghiệp vụ ngành điện lực (`eval/bo_cau_hoi.yaml`):
+
+```bash
+docker compose exec backend python -m app.eval.runner --tang all --lan 3
+```
+
+- `--tang` nhận `local1`, `local2`, `1`, `2`, `3`, `4`, `all` hoặc danh sách cách nhau bằng dấu
+  phẩy; chạy tuần tự từng tầng, mỗi câu `--lan` lần, ngữ cảnh dựng giống luồng chat thật.
+- Tuân thủ Quy tắc tuyệt đối 2: Câu hỏi có nhãn `nhay_cam: true` chỉ chạy trên các tầng local
+  (`local1`, `local2`) và tự động ghi nhận `BO_QUA` khi chạy trên các tầng đám mây.
+- Lượt bị giới hạn tần suất ghi `GIỚI HẠN`, không tính trượt. Tầng 2 (`openrouter_free`) chỉ để
+  tham khảo, không đưa vào danh sách bất đồng và không so với lần chạy trước.
+- Bảng in ra có mỗi cột là một tầng; các hàng gồm tỷ lệ đạt theo từng loại câu hỏi, tỷ lệ chung,
+  độ trễ p50/p95, tok/s, chi phí cả bộ, độ dài trung bình, chênh lệch so với lần trước và kết luận
+  ngưỡng (`cai_dat_chung.nguong_dat_danh_gia` trong `config/models.yaml`).
+- Kết quả lưu tại `ket_qua_eval/<ngày>_<tầng>.json`.
+
+## 8. Kiểm tra toàn diện trước khi mở vận hành (Go-Live Checklist)
+
+Trước khi mở hệ thống cho người dùng, chạy danh mục kiểm tra theo Phụ lục 4 (cần hệ thống compose
+đang chạy, Ollama đang chạy và kết quả bộ đánh giá gần nhất trong `ket_qua_eval/`):
+
+```bash
+cd backend
+uv run --frozen python ../scripts/kiem_tra_truoc_khi_mo.py
+```
+
+Kịch bản in bảng theo đúng số dòng của Phụ lục 4:
+
+- Dòng Máy 1-16, 19, 25 (Giai đoạn 1-5): mỗi dòng dùng lại kiểm thử hoặc kịch bản chẩn đoán của
+  tính năng tương ứng (`quet_bi_mat.py`, `kiem_tra_bo_chay.py`, `kiem_tra_phoi_lo.py`, các tệp
+  `tests/test_*.py`) và đọc kết quả bộ đánh giá lần gần nhất cho dòng 16.
+- Dòng 17, 18, 20 in `CHƯA ÁP DỤNG` cho tới khi Giai đoạn 6, 7 bổ sung.
+- Dòng Người 21-24 in `CHỜ XÁC NHẬN`, không tính vào mã thoát.
+
+Mã thoát 0 khi mọi dòng Máy đang áp dụng đều đạt, 1 khi còn dòng chưa đạt.

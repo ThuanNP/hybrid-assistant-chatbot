@@ -1,7 +1,6 @@
 import {
   Component,
   ElementRef,
-  WritableSignal,
   afterRenderEffect,
   computed,
   effect,
@@ -60,37 +59,22 @@ export class HoiThoaiComponent {
   public readonly dangThucHienXoa = signal(false);
   public readonly loiXoa = signal<string | null>(null);
 
-  /**
-   * Khoang ngay dang `YYYY-MM-DD` tu o chon ngay. Mac dinh `null` o ca hai dau: khong gioi han,
-   * hien toan bo lich su.
-   */
-  public readonly tuNgay = signal<string | null>(null);
-  public readonly denNgay = signal<string | null>(null);
-
   public readonly sapXep = signal<SapXepHoiThoai>('moi_nhat');
   public readonly cacTuyChonSapXep = CAC_TUY_CHON_SAP_XEP;
-
-  /** Bang tim kiem nang cao (khoang ngay, sap xep) an mac dinh, mo bang nut trong o tim. */
-  public readonly hienNangCao = signal(false);
-  public readonly coLocNangCao = computed(
-    () => this.tuNgay() !== null || this.denNgay() !== null || this.sapXep() !== 'moi_nhat',
+  /** Nhan cua thu tu dang chon, hien trong chip (select that trong suot phu len tren). */
+  public readonly nhanSapXep = computed(
+    () => CAC_TUY_CHON_SAP_XEP.find((t) => t.gia === this.sapXep())?.nhan ?? '',
   );
-
-  /** Doc gia tri o chon ngay; o bi xoa trang thi tro ve `null` (khong gioi han). */
-  public chonNgay(dich: WritableSignal<string | null>, suKien: Event): void {
-    const giaTri = (suKien.target as HTMLInputElement).value;
-    dich.set(giaTri === '' ? null : giaTri);
-  }
 
   /** Bo loc da chot gui len may chu; doi bo loc thi tai lai tu trang 1. */
   public readonly boLoc = computed<BoLocHoiThoai>(() => ({
     tuKhoa: this.tuKhoaDaChot(),
-    tuNgay: this.tuNgay(),
-    denNgay: this.denNgay(),
     sapXep: this.sapXep(),
   }));
 
-  public readonly dangLoc = computed(() => this.tuKhoaDaChot() !== '' || this.coLocNangCao());
+  public readonly dangLoc = computed(
+    () => this.tuKhoaDaChot() !== '' || this.sapXep() !== 'moi_nhat',
+  );
 
   /** Enter hoac nut Tim: gui tu khoa ngay, khong cho het thoi gian go; cung tu khoa thi tai lai. */
   public timLai(): void {
@@ -105,8 +89,6 @@ export class HoiThoaiComponent {
   public xoaBoLoc(): void {
     this.tuKhoa.set('');
     this.tuKhoaDaChot.set('');
-    this.tuNgay.set(null);
-    this.denNgay.set(null);
     this.sapXep.set('moi_nhat');
   }
 

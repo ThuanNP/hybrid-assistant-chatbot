@@ -10,38 +10,29 @@
     <span class="cham-nguon" aria-hidden="true"></span>
     {{ nhanNguonTang() }}
   </span>
-  <span class="ten-model">{{ model() }}</span>
-  <span>{{ tokenVao() }}/{{ tokenRa() }} token</span>
+  <!-- Ten model da co trong nhan "Noi dung do AI tao" ngay duoi nen khong lap lai o day;
+       van co trong tooltip moTaDayDu -->
+  <span>{{ chuoiToken() }}</span>
   @if (chiPhiUsd() > 0) {
     <span class="thong-so-chi-phi">{{ chuoiChiPhi() }}</span>
   }
   @if (tocDoTokS() > 0) {
-    <span>{{ tocDoTokS() }} tok/s</span>
+    <span>{{ chuoiTocDo() }}</span>
   }
   @if (doTreMs() > 0) {
     <span>{{ chuoiDoTre() }}</span>
   }
 
   @if (maYeuCau()) {
+    <!-- Chip ma yeu cau co chu, tach bach voi nut sao chep cau tra loi (bieu tuong) ben phai -->
     <button
       type="button"
       class="nut-sao-chep"
       (click)="saoChepThongSo()"
-      [title]="'Mã yêu cầu: ' + maYeuCau()"
+      title="Sao chép mã yêu cầu để gửi bộ phận hỗ trợ"
       [attr.aria-label]="'Sao chép mã yêu cầu: ' + maYeuCau()"
     >
-      <svg
-        class="icon-copy"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-      </svg>
+      {{ daSaoChep() ? 'Đã sao chép mã' : 'Mã yêu cầu: ' + maYeuCau() }}
     </button>
   }
 </div>

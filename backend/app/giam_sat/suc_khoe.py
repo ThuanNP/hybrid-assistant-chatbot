@@ -18,6 +18,7 @@ from app.core.loi import LoiUngDung
 from app.core.nhat_ky import ghi_nhat_ky_chang, lay_ma_yeu_cau
 from app.core.xac_thuc import NguoiDung, lay_nguoi_dung_hien_tai
 from app.llm.bo_chay_local import (
+    BoChay,
     ThongTinModelDangNap,
     doc_ngu_canh_thuc_te,
     lay_bo_chay,
@@ -155,6 +156,22 @@ def _tinh_uoc_luong_vram(
     )
 
 
+async def _ngu_canh_khi_dang_nap(
+    model: str,
+    model_dang_nap: set[str],
+    bo_chay: BoChay,
+    cfg: CauHinhHeThong,
+) -> int | None:
+    """Ngữ cảnh thực tế chỉ so được khi model đang nạp (/api/ps).
+
+    Model chưa nạp thì /api/show chỉ cho độ dài tối đa của model, không phải num_ctx bộ chạy
+    sẽ dùng (num_ctx gửi kèm mỗi lời gọi), nên trả None để không bật cờ co_lech sai.
+    """
+    if model not in model_dang_nap:
+        return None
+    return await doc_ngu_canh_thuc_te(model, bo_chay, cfg)
+
+
 async def lay_thong_tin_bo_chay(
     cau_hinh_he_thong: CauHinhHeThong | None = None,
 ) -> PhanHoiGiamSatBoChay:
@@ -178,9 +195,10 @@ async def lay_thong_tin_bo_chay(
 
     ngu_canh_list: list[NguCanhModelDTO] = []
     co_lech_chung = False
+    model_dang_nap = {m.ten for m in ds_nap_raw}
 
     for b in cfg.bac_local:
-        ctx_thuc_te = await doc_ngu_canh_thuc_te(b.model, bo_chay, cfg)
+        ctx_thuc_te = await _ngu_canh_khi_dang_nap(b.model, model_dang_nap, bo_chay, cfg)
         lech = ctx_thuc_te is not None and ctx_thuc_te != b.num_ctx
         if lech:
             co_lech_chung = True
@@ -260,8 +278,9 @@ async def kiem_tra_bo_chay_dinh_ky(
         _so_lan_bac_1_vang_mat = 0
 
     co_lech_ngu_canh = False
+    model_dang_nap = {m.ten for m in ds_nap}
     for b in cfg.bac_local:
-        ctx_thuc_te = await doc_ngu_canh_thuc_te(b.model, bo_chay, cfg)
+        ctx_thuc_te = await _ngu_canh_khi_dang_nap(b.model, model_dang_nap, bo_chay, cfg)
         if ctx_thuc_te is not None and ctx_thuc_te != b.num_ctx:
             co_lech_ngu_canh = True
             logger.warning(

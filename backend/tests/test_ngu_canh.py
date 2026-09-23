@@ -11,6 +11,12 @@ Tuân thủ đầy đủ 6 kịch bản kiểm thử bắt buộc:
 
 import pytest
 
+from app.chat.ngu_canh import (
+    THONG_BAO_CAT_NGU_CANH,
+    dung_ngu_canh,
+    tinh_ngan_sach_token,
+    uoc_luong_so_luot_giu_duoc,
+)
 from app.config import (
     CauHinhBacLocal,
     CauHinhCaiDatChung,
@@ -18,16 +24,9 @@ from app.config import (
     CauHinhTangDamMay,
     cau_hinh,
 )
-from app.core.loi import LoiNguCanhQuaDai, NGU_CANH_QUA_DAI
-from app.chat.ngu_canh import (
-    THONG_BAO_CAT_NGU_CANH,
-    KetQuaNguCanh,
-    dung_ngu_canh,
-    tinh_ngan_sach_token,
-    uoc_luong_so_luot_giu_duoc,
-)
+from app.core.bao_mat import boc_ranh_gioi
+from app.core.loi import NGU_CANH_QUA_DAI, LoiNguCanhQuaDai
 from app.llm.chinh_sach import Tang
-from app.llm.dem_token import dem_token
 
 
 def _tao_cau_hinh_gia_lap(
@@ -149,9 +148,9 @@ def test_khong_bao_gio_cat_loi_nhac_he_thong() -> None:
     )
 
     assert kq.danh_sach[0]["role"] == "system"
-    assert kq.danh_sach[0]["content"] == loi_nhac
+    assert kq.danh_sach[0]["content"].startswith(loi_nhac)
     assert kq.danh_sach[-1]["role"] == "user"
-    assert kq.danh_sach[-1]["content"] == tin_moi
+    assert kq.danh_sach[-1]["content"] == boc_ranh_gioi(tin_moi)
 
 
 def test_khong_cat_le_nua_cap() -> None:
