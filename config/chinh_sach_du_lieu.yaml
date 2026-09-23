@@ -21,7 +21,6 @@ phong_ban_mac_dinh: CNTT
 # Danh sách phòng ban mẫu trong hệ thống doanh nghiệp điện lực
 phong_ban_mau:
   - KINH_DOANH
-  - KY_THUAT
-  - AN_TOAN
+  - KY_THUAT_AN_TOAN
   - CHAM_SOC_KHACH_HANG
   - CNTT

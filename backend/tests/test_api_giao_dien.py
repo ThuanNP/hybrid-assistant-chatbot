@@ -93,7 +93,7 @@ async def _hoi_thoai_nguoi_khac(phien: AsyncSession) -> int:
                 ho_ten="Cán bộ phòng ban khác",
                 vai_tro="nguoi_dung",
                 bac="chinh",
-                phong_ban="KY_THUAT",
+                phong_ban="KY_THUAT_AN_TOAN",
                 dang_hoat_dong=True,
             )
         )
