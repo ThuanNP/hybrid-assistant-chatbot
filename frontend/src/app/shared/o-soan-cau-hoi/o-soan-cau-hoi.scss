@@ -92,6 +92,19 @@
   }
 }
 
+.nut-dem-nguoc {
+  background-color: var(--red-light-2, #ffebee);
+  color: var(--red-dark-1, #c62828);
+  border: 1px solid var(--red-base, #e53935);
+  cursor: not-allowed;
+  font-weight: 600;
+}
+
+.chu-dem-nguoc {
+  font-size: 11px;
+  line-height: 1;
+}
+
 @media (max-width: 767px) {
   .goi-y-phim {
     visibility: hidden;

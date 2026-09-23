@@ -55,6 +55,7 @@ export interface SuKienLoi {
   thong_diep: string;
   ma_yeu_cau: string;
   phan_da_nhan?: string;
+  retry_after?: number;
 }
 
 /**
@@ -231,6 +232,12 @@ export interface NguoiDung {
   phong_ban?: string | null;
   che_do_dinh_tuyen: 'tu_dong' | 'chi_local';
   ho_ten?: string | null;
+  bac?: string;
+  da_dung_trong_gio?: number;
+  token_da_sinh_hom_nay?: number;
+  chi_phi_hom_nay_usd?: number;
+  han_muc_con_lai?: number;
+  dang_chay?: boolean;
   kich_hoat: boolean;
   tao_luc?: string | null;
   dang_nhap_cuoi_luc?: string | null;

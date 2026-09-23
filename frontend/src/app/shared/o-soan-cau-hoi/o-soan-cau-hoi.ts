@@ -18,6 +18,7 @@ export class OSoanCauHoiComponent {
 
   public readonly noiDung = model('');
   public readonly dangGui = input(false);
+  public readonly thoiGianDemNguoc = input<number | null>(null);
   public readonly goiY = input('Nhập câu hỏi nghiệp vụ...');
   public readonly nhanTruyCap = input('Nhập câu hỏi nghiệp vụ');
   public readonly gui = output<string>();
@@ -31,7 +32,8 @@ export class OSoanCauHoiComponent {
 
   public bamGui(): void {
     const cauHoi = this.noiDung().trim();
-    if (!cauHoi || this.dangGui()) return;
+    const demNguoc = this.thoiGianDemNguoc();
+    if (!cauHoi || this.dangGui() || (demNguoc !== null && demNguoc > 0)) return;
     this.gui.emit(cauHoi);
     this.noiDung.set('');
     this.datLaiChieuCao();

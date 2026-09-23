@@ -9,7 +9,7 @@ import asyncio
 import json
 import logging
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Any
 
@@ -428,6 +428,7 @@ async def tao_luong_su_kien(
     yeu_cau: YeuCauChatStream,
     request: Request,
     nguoi: NguoiDung,
+    on_finish: Callable[[], Awaitable[None]] | None = None,
 ) -> AsyncIterator[str]:
     """Khởi tạo và kiểm soát luồng sự kiện SSE trả về cho người dùng."""
     ma_yeu_cau = lay_ma_yeu_cau()
@@ -485,3 +486,8 @@ async def tao_luong_su_kien(
                 pass
             except Exception as err:  # noqa: BLE001
                 logger.debug("[%s] Lỗi huỷ tác vụ: %s", ma_yeu_cau, err)
+        if on_finish is not None:
+            try:
+                await on_finish()
+            except Exception as err_finish:  # noqa: BLE001
+                logger.error("[%s] Lỗi thực thi callback on_finish: %s", ma_yeu_cau, err_finish)

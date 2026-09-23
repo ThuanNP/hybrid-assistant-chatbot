@@ -26,6 +26,7 @@ import {
 export interface LoiApiTuyBien extends Error {
   maYeuCau?: string;
   maLoi?: string;
+  retryAfter?: number;
 }
 
 @Injectable({
@@ -159,8 +160,17 @@ export class ApiService {
     let thongDiep = 'Đã xảy ra lỗi không xác định.';
     let maLoi = 'LOI_KHONG_XAC_DINH';
 
+    let retryAfter: number | undefined;
+
     if (err instanceof HttpErrorResponse) {
       const headerMa = err.headers.get('X-Ma-Yeu-Cau');
+      const headerRetry = err.headers.get('Retry-After');
+      if (err.status === 429 && headerRetry) {
+        const parsed = parseInt(headerRetry, 10);
+        if (!Number.isNaN(parsed)) {
+          retryAfter = parsed;
+        }
+      }
       const bodyLoi = err.error as
         { loi?: { ma?: string; thong_diep?: string; ma_yeu_cau?: string } } | undefined;
 
@@ -194,6 +204,7 @@ export class ApiService {
     const loiTuyBien: LoiApiTuyBien = new Error(noiDungLoi);
     loiTuyBien.maYeuCau = maYc;
     loiTuyBien.maLoi = maLoi;
+    loiTuyBien.retryAfter = retryAfter;
 
     return throwError(() => loiTuyBien);
   }

@@ -107,6 +107,14 @@ class CaiDatMoiTruong(BaseSettings):
     ghi_noi_dung: bool = False
     xac_thuc_gia: bool = True
 
+    # Cấu hình hạn mức (Rate Limiting)
+    han_muc_ip_phut: int = 20
+    han_muc_moi_nguoi_gio: int = 60
+    he_so_bac_pro: float = 2.0
+    han_muc_token_ngay: int = 100000
+    han_muc_chi_phi_ngay_free_usd: float = 0.5
+    han_muc_chi_phi_ngay_pro_usd: float = 2.0
+
     model_config = SettingsConfigDict(
         env_file=DUONG_DAN_ENV_MAC_DINH,
         env_file_encoding="utf-8",
@@ -138,6 +146,12 @@ class CauHinhHeThong(BaseModel):
     xac_thuc_gia: bool
     app_secret: str | None
     cors_origins: list[str]
+    han_muc_ip_phut: int = 20
+    han_muc_moi_nguoi_gio: int = 60
+    he_so_bac_pro: float = 2.0
+    han_muc_token_ngay: int = 100000
+    han_muc_chi_phi_ngay_free_usd: float = 0.5
+    han_muc_chi_phi_ngay_pro_usd: float = 2.0
 
 
 def _doc_bien_gop(duong_dan_env: Path | None) -> dict[str, str]:
@@ -359,6 +373,12 @@ def nap_cau_hinh(
         xac_thuc_gia=cai_dat_env.xac_thuc_gia,
         app_secret=cai_dat_env.app_secret,
         cors_origins=[s.strip() for s in cai_dat_env.cors_origins.split(",") if s.strip()],
+        han_muc_ip_phut=cai_dat_env.han_muc_ip_phut,
+        han_muc_moi_nguoi_gio=cai_dat_env.han_muc_moi_nguoi_gio,
+        he_so_bac_pro=cai_dat_env.he_so_bac_pro,
+        han_muc_token_ngay=cai_dat_env.han_muc_token_ngay,
+        han_muc_chi_phi_ngay_free_usd=cai_dat_env.han_muc_chi_phi_ngay_free_usd,
+        han_muc_chi_phi_ngay_pro_usd=cai_dat_env.han_muc_chi_phi_ngay_pro_usd,
     )
 
 

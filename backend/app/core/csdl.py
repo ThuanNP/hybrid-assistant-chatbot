@@ -302,6 +302,31 @@ class NhatKyKiemToanModel(Base):
     )
 
 
+class HanMucDemModel(Base):
+    """Bảng lưu trữ cửa sổ trượt đếm số lượng yêu cầu để kiểm soát hạn mức.
+
+    LƯU Ý QUY MÔ VÀ KIẾN TRÚC:
+    Bảng này lưu trữ cửa sổ trượt trong PostgreSQL cho quy mô hiện tại, không cần Redis.
+    Khi chạy nhiều bản sao backend hoặc vượt vài nghìn yêu cầu mỗi phút thì chuyển sang
+    Redis (Giai đoạn 9).
+    """
+
+    __tablename__ = "han_muc_dem"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    khoa: Mapped[str] = mapped_column(String(100), nullable=False)
+    thoi_diem: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("ix_han_muc_dem_khoa_thoi_diem", "khoa", "thoi_diem"),
+    )
+
+
 
 # Quản lý vòng đời Async Engine và Sessionmaker
 _async_engine: AsyncEngine | None = None

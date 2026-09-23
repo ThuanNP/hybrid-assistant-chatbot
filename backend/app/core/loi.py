@@ -33,11 +33,40 @@ class LoiUngDung(LoiHeThong):
         *,
         ma_yeu_cau: str = "",
         chi_tiet: Any = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(thong_diep, ma_yeu_cau=ma_yeu_cau)
         self.ma = ma
         self.http = http
         self.chi_tiet = chi_tiet
+        self.headers = headers or {}
+
+
+class LoiVuotHanMuc(LoiUngDung):
+    """Ngoại lệ khi vượt bất kỳ tầng hạn mức nào (HTTP 429)."""
+
+    def __init__(
+        self,
+        thong_diep: str,
+        so_giay_cho: int,
+        loai_han_muc: str,
+        *,
+        ma_yeu_cau: str = "",
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        cac_headers = {"Retry-After": str(max(1, so_giay_cho))}
+        if headers:
+            cac_headers.update(headers)
+        super().__init__(
+            ma="VUOT_HAN_MUC",
+            thong_diep=thong_diep,
+            http=429,
+            ma_yeu_cau=ma_yeu_cau,
+            chi_tiet={"loai": loai_han_muc, "so_giay_cho": so_giay_cho},
+            headers=cac_headers,
+        )
+        self.so_giay_cho = so_giay_cho
+        self.loai_han_muc = loai_han_muc
 
 
 class LoiDauVao(LoiHeThong):
@@ -308,10 +337,13 @@ def dang_ky_bo_bat_loi(app: FastAPI) -> None:
     async def _xu_ly_loi_ung_dung(request: Request, exc: LoiUngDung) -> JSONResponse:
         ma_yc = exc.ma_yeu_cau or lay_ma_yeu_cau()
         logger.warning("[%s] Lỗi ứng dụng (%s): %s", ma_yc, exc.ma, exc.thong_diep)
+        cac_headers = {"X-Ma-Yeu-Cau": ma_yc}
+        if exc.headers:
+            cac_headers.update(exc.headers)
         return JSONResponse(
             status_code=exc.http,
             content=tao_noi_dung_loi(exc.ma, exc.thong_diep, ma_yc),
-            headers={"X-Ma-Yeu-Cau": ma_yc},
+            headers=cac_headers,
         )
 
     @app.exception_handler(LoiHeThong)

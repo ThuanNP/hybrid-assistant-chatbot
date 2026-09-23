@@ -47,6 +47,13 @@ from app.core.csdl import (
     PhienDangNhapModel,
     lay_sessionmaker_async,
 )
+from app.core.han_muc import (
+    giai_phong_khe_yeu_cau,
+    kiem_tra_han_muc_ip,
+    kiem_tra_toan_bo_han_muc_chat,
+    lay_ip_yeu_cau,
+    lay_thong_tin_han_muc_nguoi_dung,
+)
 from app.core.loi import (
     LoiUngDung,
     dang_ky_bo_bat_loi,
@@ -202,6 +209,11 @@ class ThongTinNguoiDungPhanHoi(BaseModel):
     bac: str
     phong_ban: str
     che_do_dinh_tuyen: str | None = None
+    da_dung_trong_gio: int = 0
+    token_da_sinh_hom_nay: int = 0
+    chi_phi_hom_nay_usd: float = 0.0
+    han_muc_con_lai: int = 0
+    dang_chay: bool = False
 
 
 class PhanHoiDangNhap(BaseModel):
@@ -417,10 +429,14 @@ async def kiem_tra_san_sang() -> Response:
 @app.post("/api/v1/dang-nhap", response_model=PhanHoiDangNhap)
 async def dang_nhap(
     yeu_cau: YeuCauDangNhap,
+    request: Request,
     response: Response,
 ) -> PhanHoiDangNhap:
     """Đăng nhập bằng địa chỉ email và mật khẩu, phát JWT 15 phút và refresh token 8 giờ."""
     ma_yc = lay_ma_yeu_cau()
+    # 0. Kiểm tra hạn mức IP (Lớp a) trước tiên, không chạm DB người dùng nếu đã bị chặn
+    await kiem_tra_han_muc_ip(lay_ip_yeu_cau(request), ma_yc)
+
     email_chuan = chuan_hoa_email(yeu_cau.email)
 
     if not kiem_tra_dinh_dang_email(email_chuan):
@@ -620,7 +636,7 @@ async def dang_xuat(
 async def lay_thong_tin_toi(
     nguoi: Annotated[NguoiDung, Depends(lay_nguoi_dung_hien_tai)],
 ) -> ThongTinNguoiDungPhanHoi:
-    """Lấy thông tin hồ sơ của người dùng hiện tại."""
+    """Lấy thông tin hồ sơ của người dùng hiện tại kèm số liệu hạn mức."""
     che_do_str = (
         nguoi.che_do_dinh_tuyen.value
         if isinstance(nguoi.che_do_dinh_tuyen, CheDoDinhTuyen)
@@ -628,6 +644,12 @@ async def lay_thong_tin_toi(
         if nguoi.che_do_dinh_tuyen
         else None
     )
+    maker = lay_sessionmaker_async()
+    async with maker() as phien:
+        da_dung_gio, token_hom_nay, chi_phi_usd, han_muc_con, dang_chay = (
+            await lay_thong_tin_han_muc_nguoi_dung(nguoi.id, nguoi.bac, phien)
+        )
+
     return ThongTinNguoiDungPhanHoi(
         id=nguoi.id,
         email=nguoi.email,
@@ -636,6 +658,11 @@ async def lay_thong_tin_toi(
         bac=nguoi.bac,
         phong_ban=nguoi.phong_ban,
         che_do_dinh_tuyen=che_do_str,
+        da_dung_trong_gio=da_dung_gio,
+        token_da_sinh_hom_nay=token_hom_nay,
+        chi_phi_hom_nay_usd=chi_phi_usd,
+        han_muc_con_lai=han_muc_con,
+        dang_chay=dang_chay,
     )
 
 
@@ -651,18 +678,31 @@ async def chat_stream(
     nguoi: Annotated[NguoiDung, Depends(lay_nguoi_dung_hien_tai)],
 ) -> StreamingResponse:
     """Endpoint phát phản hồi hội thoại theo dòng (SSE) qua chuỗi định tuyến lai."""
+    ma_yc = lay_ma_yeu_cau()
     if nguoi.vai_tro == "chi_doc":
         raise LoiUngDung(
             ma="KHONG_CO_QUYEN",
             thong_diep="Tài khoản chỉ đọc không có quyền gửi tin nhắn mới.",
             http=403,
-            ma_yeu_cau=lay_ma_yeu_cau(),
+            ma_yeu_cau=ma_yc,
         )
-    return StreamingResponse(
-        tao_luong_su_kien(yeu_cau, request, nguoi),
-        media_type="text/event-stream",
-        headers=HEADER_SSE,
-    )
+
+    # Kiểm tra tuần tự 4 lớp hạn mức (chi phí thấp -> cao) và chiếm khe lớp d
+    await kiem_tra_toan_bo_han_muc_chat(request, nguoi, ma_yc)
+
+    async def _giai_phong_khe() -> None:
+        await giai_phong_khe_yeu_cau(nguoi.id)
+
+    try:
+        luong = tao_luong_su_kien(yeu_cau, request, nguoi, on_finish=_giai_phong_khe)
+        return StreamingResponse(
+            luong,
+            media_type="text/event-stream",
+            headers=HEADER_SSE,
+        )
+    except Exception:
+        await giai_phong_khe_yeu_cau(nguoi.id)
+        raise
 
 
 async def _chuan_bi_hoi_thoai_dong_bo(
@@ -722,6 +762,7 @@ async def _chuan_bi_hoi_thoai_dong_bo(
 @app.post("/api/v1/chat", response_model=PhanHoiChat)
 async def chat_dong_bo(
     yeu_cau: YeuCauChat,
+    request: Request,
     nguoi: Annotated[NguoiDung, Depends(lay_nguoi_dung_hien_tai)],
 ) -> PhanHoiChat:
     """Endpoint xử lý hội thoại không phát theo dòng cho tích hợp máy với máy."""
@@ -735,96 +776,102 @@ async def chat_dong_bo(
             ma_yeu_cau=ma_yc,
         )
 
-    # 1. Móc kiểm duyệt đầu vào (gọi trước khi dựng ngữ cảnh)
-    kd_vao = await kiem_duyet_dau_vao(yeu_cau.noi_dung, nguoi)
-    if not kd_vao.cho_qua:
-        raise LoiUngDung(
-            ma="NOI_DUNG_BI_CHAN",
-            thong_diep=kd_vao.ly_do or "Nội dung vi phạm chính sách kiểm duyệt.",
-            http=422,
-            ma_yeu_cau=ma_yc,
-        )
-    noi_dung_nguoi_dung = kd_vao.noi_dung_thay_the or yeu_cau.noi_dung
+    # Kiểm tra tuần tự 4 lớp hạn mức (chi phí thấp -> cao) và chiếm khe lớp d
+    await kiem_tra_toan_bo_han_muc_chat(request, nguoi, ma_yc)
 
-    # 2. Truy vấn hội thoại và lịch sử
-    ht_id, lich_su, la_luot_dau = await _chuan_bi_hoi_thoai_dong_bo(
-        yeu_cau.hoi_thoai_id, nguoi, ma_yc
-    )
+    try:
+        # 1. Móc kiểm duyệt đầu vào (gọi trước khi dựng ngữ cảnh)
+        kd_vao = await kiem_duyet_dau_vao(yeu_cau.noi_dung, nguoi)
+        if not kd_vao.cho_qua:
+            raise LoiUngDung(
+                ma="NOI_DUNG_BI_CHAN",
+                thong_diep=kd_vao.ly_do or "Nội dung vi phạm chính sách kiểm duyệt.",
+                http=422,
+                ma_yeu_cau=ma_yc,
+            )
+        noi_dung_nguoi_dung = kd_vao.noi_dung_thay_the or yeu_cau.noi_dung
 
-    # 3. Xác định nhãn dữ liệu, chuỗi định tuyến và dựng ngữ cảnh
-    nhan = nhan_cua_hoi_thoai(lich_su=lich_su, tin_nhan_moi=noi_dung_nguoi_dung)
-    che_do = getattr(nguoi, "che_do_dinh_tuyen", None) or cau_hinh.che_do_dinh_tuyen
-    kq_chuoi = xac_dinh_chuoi(nguoi, nhan, che_do=che_do, cau_hinh_he_thong=cau_hinh)
-    kq_ngu_canh = dung_ngu_canh(
-        lich_su, noi_dung_nguoi_dung, kq_chuoi.chuoi, ma_yeu_cau=ma_yc
-    )
-
-    # 4. Thực thi gọi mô hình qua router duy nhất
-    kq_goi: KetQuaGoi = await goi_mo_hinh(
-        kq_ngu_canh.danh_sach,
-        nguoi=nguoi,
-        ma_yeu_cau=ma_yc,
-        nhan_du_lieu=nhan,
-        da_cat_ngu_canh=kq_ngu_canh.da_cat,
-        so_luot_bi_cat=kq_ngu_canh.so_luot_bi_cat,
-    )
-
-    # 5. Móc kiểm duyệt đầu ra (gọi trên toàn văn trước khi lưu CSDL)
-    kd_ra = await kiem_duyet_dau_ra(kq_goi.noi_dung, nguoi)
-    if not kd_ra.cho_qua:
-        raise LoiUngDung(
-            ma="NOI_DUNG_BI_CHAN",
-            thong_diep=kd_ra.ly_do or "Nội dung vi phạm chính sách kiểm duyệt.",
-            http=422,
-            ma_yeu_cau=ma_yc,
-        )
-    noi_dung_tro_ly = (
-        kd_ra.noi_dung_thay_the
-        if kd_ra.noi_dung_thay_the is not None
-        else kq_goi.noi_dung
-    )
-
-    # 6. Lưu cả lượt người dùng và lượt trợ lý trong MỘT giao dịch duy nhất
-    maker = lay_sessionmaker_async()
-    async with maker() as phien_luu, phien_luu.begin():
-        await luu_cap_luot_hoi_thoai(
-            phien_luu,
-            hoi_thoai_id=ht_id,
-            noi_dung_nguoi=noi_dung_nguoi_dung,
-            noi_dung_tro_ly=noi_dung_tro_ly,
-            kq_goi=kq_goi,
-            ma_yeu_cau=ma_yc,
-            nhan_du_lieu=nhan.value,
-            phien_ban_prompt=doc_phien_ban_loi_nhac(),
+        # 2. Truy vấn hội thoại và lịch sử
+        ht_id, lich_su, la_luot_dau = await _chuan_bi_hoi_thoai_dong_bo(
+            yeu_cau.hoi_thoai_id, nguoi, ma_yc
         )
 
-    # 7. Tự động sinh tiêu đề chạy nền sau lượt đầu tiên
-    if la_luot_dau:
-        asyncio.create_task(
-            tu_dat_tieu_de(
+        # 3. Xác định nhãn dữ liệu, chuỗi định tuyến và dựng ngữ cảnh
+        nhan = nhan_cua_hoi_thoai(lich_su=lich_su, tin_nhan_moi=noi_dung_nguoi_dung)
+        che_do = getattr(nguoi, "che_do_dinh_tuyen", None) or cau_hinh.che_do_dinh_tuyen
+        kq_chuoi = xac_dinh_chuoi(nguoi, nhan, che_do=che_do, cau_hinh_he_thong=cau_hinh)
+        kq_ngu_canh = dung_ngu_canh(
+            lich_su, noi_dung_nguoi_dung, kq_chuoi.chuoi, ma_yeu_cau=ma_yc
+        )
+
+        # 4. Thực thi gọi mô hình qua router duy nhất
+        kq_goi: KetQuaGoi = await goi_mo_hinh(
+            kq_ngu_canh.danh_sach,
+            nguoi=nguoi,
+            ma_yeu_cau=ma_yc,
+            nhan_du_lieu=nhan,
+            da_cat_ngu_canh=kq_ngu_canh.da_cat,
+            so_luot_bi_cat=kq_ngu_canh.so_luot_bi_cat,
+        )
+
+        # 5. Móc kiểm duyệt đầu ra (gọi trên toàn văn trước khi lưu CSDL)
+        kd_ra = await kiem_duyet_dau_ra(kq_goi.noi_dung, nguoi)
+        if not kd_ra.cho_qua:
+            raise LoiUngDung(
+                ma="NOI_DUNG_BI_CHAN",
+                thong_diep=kd_ra.ly_do or "Nội dung vi phạm chính sách kiểm duyệt.",
+                http=422,
+                ma_yeu_cau=ma_yc,
+            )
+        noi_dung_tro_ly = (
+            kd_ra.noi_dung_thay_the
+            if kd_ra.noi_dung_thay_the is not None
+            else kq_goi.noi_dung
+        )
+
+        # 6. Lưu cả lượt người dùng và lượt trợ lý trong MỘT giao dịch duy nhất
+        maker = lay_sessionmaker_async()
+        async with maker() as phien_luu, phien_luu.begin():
+            await luu_cap_luot_hoi_thoai(
+                phien_luu,
                 hoi_thoai_id=ht_id,
                 noi_dung_nguoi=noi_dung_nguoi_dung,
                 noi_dung_tro_ly=noi_dung_tro_ly,
-                nguoi=nguoi,
+                kq_goi=kq_goi,
+                ma_yeu_cau=ma_yc,
+                nhan_du_lieu=nhan.value,
+                phien_ban_prompt=doc_phien_ban_loi_nhac(),
             )
-        )
 
-    return PhanHoiChat(
-        hoi_thoai_id=ht_id,
-        noi_dung=noi_dung_tro_ly,
-        nguon=str(kq_goi.nguon),
-        tang=kq_goi.tang,
-        bac_local=kq_goi.bac_local,
-        model=kq_goi.ten_model,
-        token_vao=kq_goi.token_vao,
-        token_ra=kq_goi.token_ra,
-        chi_phi_usd=kq_goi.chi_phi_usd,
-        do_tre_ms=kq_goi.do_tre_ms,
-        toc_do_tok_s=kq_goi.toc_do_tok_s,
-        nhan_ai=tao_nhan_ai(kq_goi.ten_model),
-        ma_yeu_cau=ma_yc,
-        ha_cap=kq_goi.ha_cap,
-    )
+        # 7. Tự động sinh tiêu đề chạy nền sau lượt đầu tiên
+        if la_luot_dau:
+            asyncio.create_task(
+                tu_dat_tieu_de(
+                    hoi_thoai_id=ht_id,
+                    noi_dung_nguoi=noi_dung_nguoi_dung,
+                    noi_dung_tro_ly=noi_dung_tro_ly,
+                    nguoi=nguoi,
+                )
+            )
+
+        return PhanHoiChat(
+            hoi_thoai_id=ht_id,
+            noi_dung=noi_dung_tro_ly,
+            nguon=str(kq_goi.nguon),
+            tang=kq_goi.tang,
+            bac_local=kq_goi.bac_local,
+            model=kq_goi.ten_model,
+            token_vao=kq_goi.token_vao,
+            token_ra=kq_goi.token_ra,
+            chi_phi_usd=kq_goi.chi_phi_usd,
+            do_tre_ms=kq_goi.do_tre_ms,
+            toc_do_tok_s=kq_goi.toc_do_tok_s,
+            nhan_ai=tao_nhan_ai(kq_goi.ten_model),
+            ma_yeu_cau=ma_yc,
+            ha_cap=kq_goi.ha_cap,
+        )
+    finally:
+        await giai_phong_khe_yeu_cau(nguoi.id)
 
 
 # ---------------------------------------------------------------------------

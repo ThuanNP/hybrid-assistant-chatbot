@@ -326,7 +326,12 @@ export class SseService {
       }
     }
 
+    let retryAfterGiay: number | undefined;
     if (phanHoi.status === 429 && retryAfter) {
+      const parsed = parseInt(retryAfter, 10);
+      if (!Number.isNaN(parsed)) {
+        retryAfterGiay = parsed;
+      }
       thongDiep = `${thongDiep} (Thử lại sau ${retryAfter} giây)`;
     }
 
@@ -336,6 +341,7 @@ export class SseService {
       thong_diep: thongDiep,
       ma_yeu_cau: maYeuCau,
       phan_da_nhan: '',
+      retry_after: retryAfterGiay,
     };
   }
 

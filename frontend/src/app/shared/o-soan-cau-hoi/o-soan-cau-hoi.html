@@ -22,6 +22,16 @@
       >
         <app-bieu-tuong ten="dung" />
       </button>
+    } @else if (thoiGianDemNguoc() !== null && thoiGianDemNguoc()! > 0) {
+      <button
+        type="button"
+        class="nut-tron nut-dem-nguoc"
+        disabled
+        aria-label="Đang trong thời gian chờ hạn mức"
+        [title]="'Thử lại sau ' + thoiGianDemNguoc() + ' giây'"
+      >
+        <span class="chu-dem-nguoc">{{ thoiGianDemNguoc() }}s</span>
+      </button>
     } @else {
       <button
         type="button"

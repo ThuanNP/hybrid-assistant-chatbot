@@ -106,6 +106,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   public readonly dangOViTriCuoi = signal<boolean>(true);
   public readonly cheDoDinhTuyen = signal<string>('local_truoc');
   public readonly idDaSaoChep = signal<string | number | null>(null);
+  public readonly thoiGianDemNguoc = signal<number | null>(null);
   /** Cac cau hoi dai nguoi dung da bam "Xem thêm". */
   private readonly cacIdMoRong = signal<ReadonlySet<string | number>>(new Set());
 
@@ -122,6 +123,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   private abortController: AbortController | null = null;
   private sseSubscription: Subscription | null = null;
   private timerNapModel: ReturnType<typeof setTimeout> | null = null;
+  private timerDemNguoc: ReturnType<typeof setInterval> | null = null;
   private daNhanManhDauTien = false;
 
   constructor() {
@@ -168,6 +170,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   public ngOnDestroy(): void {
     this.huyStreaming();
     this.xoaHenGioNapModel();
+    this.xoaTimerDemNguoc();
   }
 
   private xuLyDoiTuyen(id: string): void {
@@ -241,7 +244,8 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   public guiTinNhan(cauHoi: string = this.noiDungNhap()): void {
     const text = cauHoi.trim();
-    if (!text || this.dangGui()) return;
+    const demNguoc = this.thoiGianDemNguoc();
+    if (!text || this.dangGui() || (demNguoc !== null && demNguoc > 0)) return;
 
     this.themTinNhanNguoiDung(text);
     this.noiDungNhap.set('');
@@ -414,6 +418,9 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   private xuLyLoi(sk: SuKienLoi, troLyId: string): void {
+    if (sk.retry_after && sk.retry_after > 0) {
+      this.batDauDemNguoc(sk.retry_after);
+    }
     this.capNhatTinNhan(troLyId, (tn) => ({
       ...tn,
       dangPhat: false,
@@ -424,6 +431,12 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   private xuLyLoiStream(err: unknown, troLyId: string): void {
+    if (typeof err === 'object' && err !== null && 'retryAfter' in err) {
+      const retry = (err as { retryAfter?: number }).retryAfter;
+      if (typeof retry === 'number' && retry > 0) {
+        this.batDauDemNguoc(retry);
+      }
+    }
     const thongDiep = err instanceof Error ? err.message : 'Lỗi kết nối mạng';
     this.capNhatTinNhan(troLyId, (tn) => ({
       ...tn,
@@ -432,6 +445,27 @@ export class ChatComponent implements OnInit, OnDestroy {
       thongDiepLoi: thongDiep,
     }));
     this.ketThucGui(troLyId);
+  }
+
+  public batDauDemNguoc(soGiay: number): void {
+    this.xoaTimerDemNguoc();
+    this.thoiGianDemNguoc.set(soGiay);
+    this.timerDemNguoc = setInterval(() => {
+      const hienTai = this.thoiGianDemNguoc();
+      if (hienTai === null || hienTai <= 1) {
+        this.xoaTimerDemNguoc();
+        this.thoiGianDemNguoc.set(null);
+      } else {
+        this.thoiGianDemNguoc.set(hienTai - 1);
+      }
+    }, 1000);
+  }
+
+  private xoaTimerDemNguoc(): void {
+    if (this.timerDemNguoc) {
+      clearInterval(this.timerDemNguoc);
+      this.timerDemNguoc = null;
+    }
   }
 
   private ketThucGui(troLyId: string): void {
