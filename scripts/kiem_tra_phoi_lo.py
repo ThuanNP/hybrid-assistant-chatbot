@@ -12,7 +12,8 @@ from urllib.parse import urlparse
 import httpx
 
 # Cấu hình encoding utf-8 để in tiếng Việt chính xác trên Windows / PowerShell
-sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stdout, "reconfigure"):
+    getattr(sys.stdout, "reconfigure")(encoding="utf-8")
 
 
 def lay_ip_lan_tu_dong() -> str:
@@ -22,7 +23,7 @@ def lay_ip_lan_tu_dong() -> str:
         # Không phát sinh gói tin thật trên mạng, chỉ mở socket để lấy IP giao diện
         sock.connect(("8.8.8.8", 80))
         ip_lan = str(sock.getsockname()[0])
-    except Exception:
+    except Exception:  # noqa: BLE001
         ip_lan = "127.0.0.1"
     finally:
         sock.close()
@@ -56,7 +57,7 @@ def _thu_ket_noi_tags(dia_chi_goc: str) -> tuple[bool, str]:
                 return True, f"GET /api/tags thành công (HTTP {phan_hoi.status_code})"
     except (httpx.ConnectError, httpx.ConnectTimeout):
         return False, "Kết nối bị từ chối hoặc quá thời gian chờ (ConnectTimeout/ConnectError)"
-    except Exception as err:
+    except Exception as err:  # noqa: BLE001
         return False, f"Lỗi kết nối: {err}"
     return False, "GET /api/tags không phản hồi thành công"
 
@@ -74,7 +75,7 @@ def _thu_ket_noi_pull(dia_chi_goc: str) -> tuple[bool, str]:
                 return True, f"POST /api/pull tiếp nhận yêu cầu (HTTP {phan_hoi.status_code})"
     except (httpx.ConnectError, httpx.ConnectTimeout):
         return False, "Kết nối bị từ chối hoặc quá thời gian chờ (ConnectTimeout/ConnectError)"
-    except Exception as err:
+    except Exception as err:  # noqa: BLE001
         return False, f"Lỗi kết nối: {err}"
     return False, "POST /api/pull không kết nối được"
 

@@ -91,7 +91,7 @@ def _trich_xuat_host(dia_chi: str) -> str:
 
         parsed = urlparse(dia_chi_chuan)
         return parsed.hostname or ""
-    except Exception:
+    except Exception:  # noqa: BLE001
         return dia_chi.split(":")[0].strip()
 
 

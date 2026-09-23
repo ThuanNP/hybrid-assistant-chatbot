@@ -127,7 +127,8 @@ Rủi ro phát sinh khi mở rộng để container hoặc máy trạm khác tru
   Không cần đổi biến `OLLAMA_HOST`. Container gọi qua `http://host.docker.internal:11434`,
   Docker Desktop tự chuyển tiếp an toàn tới loopback của máy chủ mà không mở ra LAN.
 - **Linux (Docker Engine)**:
-  Backend dùng `network_mode: host` trong Docker Compose hoặc chạy backend trực tiếp ngoài container.
+  Backend dùng `network_mode: host` trong Docker Compose hoặc chạy backend
+  trực tiếp ngoài container.
 
 #### Cách B - Chỉ dùng trên máy chủ Linux (Ưu tiên số 2)
 

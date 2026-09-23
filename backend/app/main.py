@@ -82,7 +82,8 @@ from app.core.xac_thuc import (
     xac_minh_mat_khau,
 )
 from app.giam_sat.chi_so import tong_hop_chi_so_van_hanh
-from app.giam_sat.suc_khoe import router as router_giam_sat, vong_lap_giam_sat_bo_chay
+from app.giam_sat.suc_khoe import router as router_giam_sat
+from app.giam_sat.suc_khoe import vong_lap_giam_sat_bo_chay
 from app.hang_doi.dieu_phoi import TrangThaiHangDoi, dieu_phoi_mac_dinh
 from app.llm.bo_chay_local import kiem_tra_khi_khoi_dong, lay_bo_chay
 from app.llm.chi_phi import bao_cao_chi_phi
