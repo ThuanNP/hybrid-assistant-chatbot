@@ -73,6 +73,7 @@ class KetQuaGoi(BaseModel):
     do_tre_ms: float = 0.0
     thoi_gian_nap_ms: float = 0.0
     toc_do_tok_s: float = 0.0
+    do_dai_hang_doi: int = 0
     so_lan_thu: int = 1
     danh_sach_tang_da_hong: list[int] = Field(default_factory=list)
     da_cat_ngu_canh: bool = False
@@ -406,6 +407,7 @@ async def goi_mo_hinh(
                     do_tre_ms=kq_local.do_tre_ms,
                     thoi_gian_nap_ms=kq_local.thoi_gian_nap_ms,
                     toc_do_tok_s=kq_local.toc_do_tok_s,
+                    do_dai_hang_doi=dp.dang_cho,
                     so_lan_thu=1,
                     danh_sach_tang_da_hong=list(danh_sach_tang_da_hong),
                     da_cat_ngu_canh=bool(tuy_chon.get("da_cat_ngu_canh", False)),
@@ -710,6 +712,7 @@ async def goi_mo_hinh_theo_dong(
                                 do_tre_ms=mau_local.do_tre_ms,
                                 thoi_gian_nap_ms=mau_local.thoi_gian_nap_ms,
                                 toc_do_tok_s=mau_local.toc_do_tok_s,
+                                do_dai_hang_doi=dp.dang_cho,
                                 so_lan_thu=1,
                                 danh_sach_tang_da_hong=list(danh_sach_tang_da_hong),
                                 da_cat_ngu_canh=bool(tuy_chon.get("da_cat_ngu_canh", False)),

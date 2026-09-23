@@ -180,6 +180,9 @@ class LuotModel(Base):
     so_luot_bi_cat: Mapped[int] = mapped_column(
         Integer, default=0, server_default=text("0"), nullable=False
     )
+    do_dai_hang_doi: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0"), nullable=False
+    )
     nhan_du_lieu: Mapped[str | None] = mapped_column(String(50), nullable=True)
     nguon_tham_chieu: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
     phien_ban_loi_nhac: Mapped[str | None] = mapped_column(String(50), nullable=True)

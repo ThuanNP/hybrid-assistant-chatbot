@@ -476,6 +476,12 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.capNhatTinNhan(troLyId, (tn) => ({ ...tn, dangPhat: false }));
   }
 
+  public saoChepMaYeuCau(ma: string): void {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      void navigator.clipboard.writeText(ma);
+    }
+  }
+
   private capNhatTinNhan(
     id: string | number,
     capNhat: (tn: TinNhanHienThi) => TinNhanHienThi,

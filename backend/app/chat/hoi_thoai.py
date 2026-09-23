@@ -146,6 +146,7 @@ async def luu_cap_luot_hoi_thoai(
         do_tre_ms=kq_goi.do_tre_ms if kq_goi else 0.0,
         da_cat_ngu_canh=kq_goi.da_cat_ngu_canh if kq_goi else False,
         so_luot_bi_cat=kq_goi.so_luot_bi_cat if kq_goi else 0,
+        do_dai_hang_doi=getattr(kq_goi, "do_dai_hang_doi", 0) if kq_goi else 0,
         nhan_du_lieu=nhan_du_lieu,
         nguon_tham_chieu=None,
         phien_ban_loi_nhac=pb_prompt,

@@ -34,7 +34,7 @@ from app.core.loi import (
     LoiUngDung,
     chuyen_doi_loi_sang_loi_ung_dung,
 )
-from app.core.nhat_ky import lay_ma_yeu_cau
+from app.core.nhat_ky import ghi_nhat_ky_chang, lay_ma_yeu_cau
 from app.core.thoi_gian import MUI_GIO_VN
 from app.core.xac_thuc import NguoiDung
 from app.llm.chinh_sach import nhan_cua_hoi_thoai, xac_dinh_chuoi
@@ -297,11 +297,31 @@ async def _tien_trinh_san_xuat(
         kq_chuoi = xac_dinh_chuoi(
             nguoi, nhan, che_do=che_do, cau_hinh_he_thong=cau_hinh
         )
+        ghi_nhat_ky_chang(
+            chang="xac_dinh_chuoi",
+            thong_diep=f"Xác định chuỗi định tuyến (nhãn: {nhan.value})",
+            ma_yeu_cau=ma_yeu_cau,
+            nguoi_id=nguoi.id,
+            phong_ban=nguoi.phong_ban,
+            hoi_thoai_id=hoi_thoai_id,
+            nhan_du_lieu=nhan.value,
+        )
+
         kq_ngu_canh = dung_ngu_canh(
             lich_su_tin_nhan,
             noi_dung_nguoi_dung,
             kq_chuoi.chuoi,
             ma_yeu_cau=ma_yeu_cau,
+        )
+        ghi_nhat_ky_chang(
+            chang="dung_ngu_canh",
+            thong_diep="Dựng ngữ cảnh hội thoại stream",
+            ma_yeu_cau=ma_yeu_cau,
+            nguoi_id=nguoi.id,
+            phong_ban=nguoi.phong_ban,
+            hoi_thoai_id=hoi_thoai_id,
+            da_cat_ngu_canh=kq_ngu_canh.da_cat,
+            nhan_du_lieu=nhan.value,
         )
 
         # 3. Phát phản hồi theo dòng và gom nội dung trợ lý
@@ -319,6 +339,30 @@ async def _tien_trinh_san_xuat(
             elif manh.loai == "xong":
                 kq_hoan_thanh = manh.ket_qua
             await hang_doi.put(manh)
+
+        if kq_hoan_thanh:
+            ghi_nhat_ky_chang(
+                chang="goi_mo_hinh",
+                thong_diep=f"Hoàn thành gọi mô hình phát dòng: {kq_hoan_thanh.ten_model}",
+                ma_yeu_cau=ma_yeu_cau,
+                nguoi_id=nguoi.id,
+                phong_ban=nguoi.phong_ban,
+                hoi_thoai_id=hoi_thoai_id,
+                nguon=str(kq_hoan_thanh.nguon),
+                tang=kq_hoan_thanh.tang,
+                bac_local=kq_hoan_thanh.bac_local,
+                model=kq_hoan_thanh.ten_model,
+                token_vao=kq_hoan_thanh.token_vao,
+                token_ra=kq_hoan_thanh.token_ra,
+                chi_phi_usd=kq_hoan_thanh.chi_phi_usd,
+                toc_do_tok_s=kq_hoan_thanh.toc_do_tok_s,
+                thoi_gian_nap_ms=kq_hoan_thanh.thoi_gian_nap_ms,
+                do_dai_hang_doi=getattr(kq_hoan_thanh, "do_dai_hang_doi", 0),
+                do_tre_ms=kq_hoan_thanh.do_tre_ms,
+                da_cat_ngu_canh=kq_hoan_thanh.da_cat_ngu_canh,
+                nhan_du_lieu=nhan.value,
+                danh_sach_tang_da_hong=kq_hoan_thanh.danh_sach_tang_da_hong,
+            )
 
         # 3b. Móc kiểm duyệt đầu ra trên toàn văn trước khi lưu CSDL
         kd_dau_ra = await kiem_duyet_dau_ra(noi_dung_tro_ly, nguoi)
@@ -353,6 +397,28 @@ async def _tien_trinh_san_xuat(
 
             await asyncio.shield(_luu_db())
             da_luu_db = True
+            ghi_nhat_ky_chang(
+                chang="luu_hoi_thoai",
+                thong_diep="Lưu cặp lượt hội thoại stream vào CSDL thành công",
+                ma_yeu_cau=ma_yeu_cau,
+                nguoi_id=nguoi.id,
+                phong_ban=nguoi.phong_ban,
+                hoi_thoai_id=hoi_thoai_id,
+                nguon=str(kq_hoan_thanh.nguon) if kq_hoan_thanh else None,
+                tang=kq_hoan_thanh.tang if kq_hoan_thanh else None,
+                bac_local=kq_hoan_thanh.bac_local if kq_hoan_thanh else None,
+                model=kq_hoan_thanh.ten_model if kq_hoan_thanh else None,
+                token_vao=kq_hoan_thanh.token_vao if kq_hoan_thanh else 0,
+                token_ra=kq_hoan_thanh.token_ra if kq_hoan_thanh else 0,
+                chi_phi_usd=kq_hoan_thanh.chi_phi_usd if kq_hoan_thanh else 0.0,
+                toc_do_tok_s=kq_hoan_thanh.toc_do_tok_s if kq_hoan_thanh else 0.0,
+                thoi_gian_nap_ms=kq_hoan_thanh.thoi_gian_nap_ms if kq_hoan_thanh else 0.0,
+                do_dai_hang_doi=getattr(kq_hoan_thanh, "do_dai_hang_doi", 0) if kq_hoan_thanh else 0,
+                do_tre_ms=kq_hoan_thanh.do_tre_ms if kq_hoan_thanh else 0.0,
+                da_cat_ngu_canh=kq_hoan_thanh.da_cat_ngu_canh if kq_hoan_thanh else False,
+                nhan_du_lieu=nhan.value,
+                danh_sach_tang_da_hong=kq_hoan_thanh.danh_sach_tang_da_hong if kq_hoan_thanh else [],
+            )
 
         # 5. Tự đặt tiêu đề chạy nền sau lượt trả lời ĐẦU TIÊN
         if la_luot_dau and hoi_thoai_id is not None:
@@ -491,3 +557,11 @@ async def tao_luong_su_kien(
                 await on_finish()
             except Exception as err_finish:  # noqa: BLE001
                 logger.error("[%s] Lỗi thực thi callback on_finish: %s", ma_yeu_cau, err_finish)
+        ghi_nhat_ky_chang(
+            chang="http_ra",
+            thong_diep="Hoàn tất và kết thúc luồng phát sự kiện SSE",
+            ma_yeu_cau=ma_yeu_cau,
+            nguoi_id=nguoi.id,
+            phong_ban=nguoi.phong_ban,
+            hoi_thoai_id=hoi_thoai_id_hop[0],
+        )

@@ -313,6 +313,35 @@
   color: var(--red-dark-2);
   font-size: 13px;
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+
+  .nut-sao-chep-ma {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 4px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-xs);
+    color: var(--red-dark-2);
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--red-light-2);
+    }
+
+    &:focus-visible {
+      box-shadow: var(--shadow-focus-primary);
+    }
+
+    .icon-copy {
+      width: 14px;
+      height: 14px;
+    }
+  }
 }
 
 .thong-so-duoi-cau-tra-loi {

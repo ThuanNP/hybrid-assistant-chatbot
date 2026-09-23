@@ -351,6 +351,12 @@ def nap_cau_hinh(
         cai_dat_env.database_url,
         dang_trong_container=os.path.exists("/.dockerenv"),
     )
+    if cai_dat_env.ghi_noi_dung and cai_dat_env.moi_truong != "dev":
+        raise ValueError(
+            "Cờ GHI_NOI_DUNG=true chỉ được phép bật khi MOI_TRUONG=dev; "
+            f"bật trong môi trường '{cai_dat_env.moi_truong}' bị từ chối khởi động."
+        )
+
     ho_so_chon = ho_so_dict[cai_dat_env.ho_so_gpu]
 
     return CauHinhHeThong(

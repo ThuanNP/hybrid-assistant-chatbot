@@ -336,7 +336,12 @@ def dang_ky_bo_bat_loi(app: FastAPI) -> None:
     @app.exception_handler(LoiUngDung)
     async def _xu_ly_loi_ung_dung(request: Request, exc: LoiUngDung) -> JSONResponse:
         ma_yc = exc.ma_yeu_cau or lay_ma_yeu_cau()
-        logger.warning("[%s] Lỗi ứng dụng (%s): %s", ma_yc, exc.ma, exc.thong_diep)
+        logger.warning(
+            "Lỗi ứng dụng (%s): %s",
+            exc.ma,
+            exc.thong_diep,
+            extra={"ma_yeu_cau": ma_yc},
+        )
         cac_headers = {"X-Ma-Yeu-Cau": ma_yc}
         if exc.headers:
             cac_headers.update(exc.headers)
@@ -351,7 +356,10 @@ def dang_ky_bo_bat_loi(app: FastAPI) -> None:
         ma_yc = exc.ma_yeu_cau or lay_ma_yeu_cau()
         loi_ud = chuyen_doi_loi_sang_loi_ung_dung(exc, ma_yc)
         logger.warning(
-            "[%s] Ngoại lệ nghiệp vụ (%s): %s", ma_yc, loi_ud.ma, exc.thong_diep
+            "Ngoại lệ nghiệp vụ (%s): %s",
+            loi_ud.ma,
+            exc.thong_diep,
+            extra={"ma_yeu_cau": ma_yc},
         )
         return JSONResponse(
             status_code=loi_ud.http,
@@ -372,9 +380,9 @@ def dang_ky_bo_bat_loi(app: FastAPI) -> None:
             }
         )
         logger.info(
-            "[%s] Dữ liệu đầu vào không hợp lệ: %s",
-            ma_yc,
+            "Dữ liệu đầu vào không hợp lệ: %s",
             [(e["loc"], e["type"]) for e in exc.errors()],
+            extra={"ma_yeu_cau": ma_yc},
         )
         return JSONResponse(
             status_code=422,
@@ -392,6 +400,12 @@ def dang_ky_bo_bat_loi(app: FastAPI) -> None:
     ) -> JSONResponse:
         ma_yc = lay_ma_yeu_cau()
         loi_ud = chuyen_doi_loi_sang_loi_ung_dung(exc, ma_yc)
+        logger.warning(
+            "Lỗi HTTP (%s): %s",
+            exc.status_code,
+            loi_ud.thong_diep,
+            extra={"ma_yeu_cau": ma_yc},
+        )
         return JSONResponse(
             status_code=exc.status_code,
             content=tao_noi_dung_loi(loi_ud.ma, loi_ud.thong_diep, ma_yc),
@@ -403,10 +417,10 @@ def dang_ky_bo_bat_loi(app: FastAPI) -> None:
         ma_yc = lay_ma_yeu_cau()
         # Vết ngăn xếp CHỈ ghi vào nhật ký, TUYỆT ĐỐI không trả ra ngoài
         logger.error(
-            "[%s] Lỗi hệ thống không lường trước: %s",
-            ma_yc,
+            "Lỗi hệ thống không lường trước: %s",
             exc,
             exc_info=True,  # noqa: LOG014
+            extra={"ma_yeu_cau": ma_yc},
         )
         return JSONResponse(
             status_code=500,

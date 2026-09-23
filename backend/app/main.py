@@ -60,8 +60,10 @@ from app.core.loi import (
 )
 from app.core.nhat_ky import (
     dat_ma_yeu_cau,
+    ghi_nhat_ky_chang,
     lay_ma_yeu_cau,
     sinh_ma_yeu_cau,
+    thiet_lap_nhat_ky,
 )
 from app.core.xac_thuc import (
     NguoiDung,
@@ -75,6 +77,7 @@ from app.core.xac_thuc import (
     tao_refresh_token,
     xac_minh_mat_khau,
 )
+from app.giam_sat.chi_so import tong_hop_chi_so_van_hanh
 from app.hang_doi.dieu_phoi import TrangThaiHangDoi, dieu_phoi_mac_dinh
 from app.llm.bo_chay_local import kiem_tra_khi_khoi_dong, lay_bo_chay
 from app.llm.chi_phi import bao_cao_chi_phi
@@ -86,6 +89,9 @@ from app.llm.chinh_sach import (
     xac_dinh_chuoi,
 )
 from app.llm.router import KetQuaGoi, goi_mo_hinh
+
+# Khởi tạo định dạng nhật ký JSON một dòng cho toàn ứng dụng
+thiet_lap_nhat_ky()
 
 logger = logging.getLogger(__name__)
 
@@ -679,6 +685,16 @@ async def chat_stream(
 ) -> StreamingResponse:
     """Endpoint phát phản hồi hội thoại theo dòng (SSE) qua chuỗi định tuyến lai."""
     ma_yc = lay_ma_yeu_cau()
+
+    ghi_nhat_ky_chang(
+        chang="http_vao",
+        thong_diep=f"Tiếp nhận yêu cầu HTTP chat stream (độ dài: {len(yeu_cau.noi_dung)})",
+        ma_yeu_cau=ma_yc,
+        nguoi_id=nguoi.id,
+        phong_ban=nguoi.phong_ban,
+        hoi_thoai_id=yeu_cau.hoi_thoai_id,
+    )
+
     if nguoi.vai_tro == "chi_doc":
         raise LoiUngDung(
             ma="KHONG_CO_QUYEN",
@@ -689,6 +705,14 @@ async def chat_stream(
 
     # Kiểm tra tuần tự 4 lớp hạn mức (chi phí thấp -> cao) và chiếm khe lớp d
     await kiem_tra_toan_bo_han_muc_chat(request, nguoi, ma_yc)
+    ghi_nhat_ky_chang(
+        chang="kiem_tra_han_muc",
+        thong_diep="Kiểm tra hạn mức stream thành công",
+        ma_yeu_cau=ma_yc,
+        nguoi_id=nguoi.id,
+        phong_ban=nguoi.phong_ban,
+        hoi_thoai_id=yeu_cau.hoi_thoai_id,
+    )
 
     async def _giai_phong_khe() -> None:
         await giai_phong_khe_yeu_cau(nguoi.id)
@@ -768,6 +792,15 @@ async def chat_dong_bo(
     """Endpoint xử lý hội thoại không phát theo dòng cho tích hợp máy với máy."""
     ma_yc = lay_ma_yeu_cau()
 
+    ghi_nhat_ky_chang(
+        chang="http_vao",
+        thong_diep=f"Tiếp nhận yêu cầu HTTP chat (độ dài: {len(yeu_cau.noi_dung)})",
+        ma_yeu_cau=ma_yc,
+        nguoi_id=nguoi.id,
+        phong_ban=nguoi.phong_ban,
+        hoi_thoai_id=yeu_cau.hoi_thoai_id,
+    )
+
     if nguoi.vai_tro == "chi_doc":
         raise LoiUngDung(
             ma="KHONG_CO_QUYEN",
@@ -778,6 +811,14 @@ async def chat_dong_bo(
 
     # Kiểm tra tuần tự 4 lớp hạn mức (chi phí thấp -> cao) và chiếm khe lớp d
     await kiem_tra_toan_bo_han_muc_chat(request, nguoi, ma_yc)
+    ghi_nhat_ky_chang(
+        chang="kiem_tra_han_muc",
+        thong_diep="Kiểm tra hạn mức thành công",
+        ma_yeu_cau=ma_yc,
+        nguoi_id=nguoi.id,
+        phong_ban=nguoi.phong_ban,
+        hoi_thoai_id=yeu_cau.hoi_thoai_id,
+    )
 
     try:
         # 1. Móc kiểm duyệt đầu vào (gọi trước khi dựng ngữ cảnh)
@@ -800,8 +841,28 @@ async def chat_dong_bo(
         nhan = nhan_cua_hoi_thoai(lich_su=lich_su, tin_nhan_moi=noi_dung_nguoi_dung)
         che_do = getattr(nguoi, "che_do_dinh_tuyen", None) or cau_hinh.che_do_dinh_tuyen
         kq_chuoi = xac_dinh_chuoi(nguoi, nhan, che_do=che_do, cau_hinh_he_thong=cau_hinh)
+        ghi_nhat_ky_chang(
+            chang="xac_dinh_chuoi",
+            thong_diep=f"Xác định chuỗi định tuyến (nhãn: {nhan.value})",
+            ma_yeu_cau=ma_yc,
+            nguoi_id=nguoi.id,
+            phong_ban=nguoi.phong_ban,
+            hoi_thoai_id=ht_id,
+            nhan_du_lieu=nhan.value,
+        )
+
         kq_ngu_canh = dung_ngu_canh(
             lich_su, noi_dung_nguoi_dung, kq_chuoi.chuoi, ma_yeu_cau=ma_yc
+        )
+        ghi_nhat_ky_chang(
+            chang="dung_ngu_canh",
+            thong_diep="Dựng ngữ cảnh hội thoại",
+            ma_yeu_cau=ma_yc,
+            nguoi_id=nguoi.id,
+            phong_ban=nguoi.phong_ban,
+            hoi_thoai_id=ht_id,
+            da_cat_ngu_canh=kq_ngu_canh.da_cat,
+            nhan_du_lieu=nhan.value,
         )
 
         # 4. Thực thi gọi mô hình qua router duy nhất
@@ -812,6 +873,28 @@ async def chat_dong_bo(
             nhan_du_lieu=nhan,
             da_cat_ngu_canh=kq_ngu_canh.da_cat,
             so_luot_bi_cat=kq_ngu_canh.so_luot_bi_cat,
+        )
+        ghi_nhat_ky_chang(
+            chang="goi_mo_hinh",
+            thong_diep=f"Gọi mô hình hoàn thành: {kq_goi.ten_model}",
+            ma_yeu_cau=ma_yc,
+            nguoi_id=nguoi.id,
+            phong_ban=nguoi.phong_ban,
+            hoi_thoai_id=ht_id,
+            nguon=str(kq_goi.nguon),
+            tang=kq_goi.tang,
+            bac_local=kq_goi.bac_local,
+            model=kq_goi.ten_model,
+            token_vao=kq_goi.token_vao,
+            token_ra=kq_goi.token_ra,
+            chi_phi_usd=kq_goi.chi_phi_usd,
+            toc_do_tok_s=kq_goi.toc_do_tok_s,
+            thoi_gian_nap_ms=kq_goi.thoi_gian_nap_ms,
+            do_dai_hang_doi=getattr(kq_goi, "do_dai_hang_doi", 0),
+            do_tre_ms=kq_goi.do_tre_ms,
+            da_cat_ngu_canh=kq_goi.da_cat_ngu_canh,
+            nhan_du_lieu=nhan.value,
+            danh_sach_tang_da_hong=kq_goi.danh_sach_tang_da_hong,
         )
 
         # 5. Móc kiểm duyệt đầu ra (gọi trên toàn văn trước khi lưu CSDL)
@@ -842,6 +925,28 @@ async def chat_dong_bo(
                 nhan_du_lieu=nhan.value,
                 phien_ban_prompt=doc_phien_ban_loi_nhac(),
             )
+        ghi_nhat_ky_chang(
+            chang="luu_hoi_thoai",
+            thong_diep="Lưu cặp lượt hội thoại vào cơ sở dữ liệu thành công",
+            ma_yeu_cau=ma_yc,
+            nguoi_id=nguoi.id,
+            phong_ban=nguoi.phong_ban,
+            hoi_thoai_id=ht_id,
+            nguon=str(kq_goi.nguon),
+            tang=kq_goi.tang,
+            bac_local=kq_goi.bac_local,
+            model=kq_goi.ten_model,
+            token_vao=kq_goi.token_vao,
+            token_ra=kq_goi.token_ra,
+            chi_phi_usd=kq_goi.chi_phi_usd,
+            toc_do_tok_s=kq_goi.toc_do_tok_s,
+            thoi_gian_nap_ms=kq_goi.thoi_gian_nap_ms,
+            do_dai_hang_doi=getattr(kq_goi, "do_dai_hang_doi", 0),
+            do_tre_ms=kq_goi.do_tre_ms,
+            da_cat_ngu_canh=kq_goi.da_cat_ngu_canh,
+            nhan_du_lieu=nhan.value,
+            danh_sach_tang_da_hong=kq_goi.danh_sach_tang_da_hong,
+        )
 
         # 7. Tự động sinh tiêu đề chạy nền sau lượt đầu tiên
         if la_luot_dau:
@@ -853,6 +958,29 @@ async def chat_dong_bo(
                     nguoi=nguoi,
                 )
             )
+
+        ghi_nhat_ky_chang(
+            chang="http_ra",
+            thong_diep="Hoàn tất và phản hồi yêu cầu HTTP",
+            ma_yeu_cau=ma_yc,
+            nguoi_id=nguoi.id,
+            phong_ban=nguoi.phong_ban,
+            hoi_thoai_id=ht_id,
+            nguon=str(kq_goi.nguon),
+            tang=kq_goi.tang,
+            bac_local=kq_goi.bac_local,
+            model=kq_goi.ten_model,
+            token_vao=kq_goi.token_vao,
+            token_ra=kq_goi.token_ra,
+            chi_phi_usd=kq_goi.chi_phi_usd,
+            toc_do_tok_s=kq_goi.toc_do_tok_s,
+            thoi_gian_nap_ms=kq_goi.thoi_gian_nap_ms,
+            do_dai_hang_doi=getattr(kq_goi, "do_dai_hang_doi", 0),
+            do_tre_ms=kq_goi.do_tre_ms,
+            da_cat_ngu_canh=kq_goi.da_cat_ngu_canh,
+            nhan_du_lieu=nhan.value,
+            danh_sach_tang_da_hong=kq_goi.danh_sach_tang_da_hong,
+        )
 
         return PhanHoiChat(
             hoi_thoai_id=ht_id,
@@ -1023,6 +1151,26 @@ async def lay_bao_cao_chi_phi(
     async with maker() as phien:
         bao_cao.update(await dem_cau_hoi_hom_nay(phien))
     return bao_cao
+
+
+@app.get("/api/v1/chi-so")
+async def lay_chi_so_van_hanh(
+    nguoi: Annotated[NguoiDung, Depends(lay_nguoi_dung_hien_tai)],
+    gio: Annotated[int, Query(ge=1, le=720)] = 24,
+) -> dict[str, Any]:
+    """Tổng hợp 6 nhóm chỉ số vận hành (tốc độ, nạp model, hàng đợi, rơi tầng) cho vai trò quan_tri."""
+    ma_yc = lay_ma_yeu_cau()
+    if nguoi.vai_tro != "quan_tri":
+        raise LoiUngDung(
+            ma="KHONG_CO_QUYEN",
+            thong_diep="Chỉ quản trị viên mới có quyền xem chỉ số vận hành.",
+            http=403,
+            ma_yeu_cau=ma_yc,
+        )
+
+    maker = lay_sessionmaker_async()
+    async with maker() as phien:
+        return await tong_hop_chi_so_van_hanh(phien, so_gio=gio)
 
 
 @app.get("/api/v1/models", response_model=ThongTinModels)
