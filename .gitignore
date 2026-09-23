@@ -13,3 +13,6 @@ secret/
 specs/
 ~*
 
+# Chỉ dẫn cục bộ của Claude Code, không commit
+CLAUDE.local.md
+

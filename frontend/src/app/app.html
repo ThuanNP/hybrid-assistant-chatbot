@@ -1,0 +1,123 @@
+<div class="app-layout">
+  <!-- Top Header: chieu cao 64px theo DESIGN.md muc 6.2 -->
+  <header class="app-header">
+    <div class="header-left">
+      <button
+        type="button"
+        class="toggle-btn"
+        (click)="chuyenDoiSidebar()"
+        aria-label="Thu gọn hoặc mở rộng thanh điều hướng"
+      >
+        <svg
+          class="icon-menu"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+
+      <div class="brand-group">
+        <div class="brand-icon">
+          <svg viewBox="0 0 32 32" fill="none" class="logo-energy">
+            <circle cx="16" cy="16" r="14" fill="#016BF8" />
+            <path
+              d="M17 6L10 17H16L15 26L22 15H16L17 6Z"
+              fill="#FFC010"
+              stroke="#FFF275"
+              stroke-width="0.5"
+            />
+          </svg>
+        </div>
+        <h1 class="header-title">{{ tieuDe() }}</h1>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="user-profile">
+        <div class="user-avatar" aria-hidden="true">
+          <span>ĐL</span>
+        </div>
+        <div class="user-info">
+          <span class="user-name">{{ tenNguoiDung() }}</span>
+          <span class="user-dept">{{ phongBan() }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- App Body: Sidebar + Main Workspace -->
+  <div class="app-body">
+    <!-- Backdrop tren mobile khi mo drawer -->
+    @if (drawerMo()) {
+      <div
+        class="drawer-backdrop"
+        (click)="dongDrawer()"
+        aria-hidden="true"
+      ></div>
+    }
+
+    <!-- Sidebar: 240px, thu gon 72px, an thanh drawer duoi 768px -->
+    <aside
+      class="app-sidebar"
+      [class.sidebar-collapsed]="sidebarThuGon()"
+      [class.drawer-open]="drawerMo()"
+    >
+      <nav class="sidebar-content">
+        <div class="category-header">
+          <span class="category-title overline">DANH MỤC</span>
+        </div>
+
+        <ul class="nav-list">
+          <li class="nav-item-wrapper">
+            <a
+              href="javascript:void(0)"
+              class="nav-link active"
+              title="Trò chuyện"
+            >
+              <svg
+                class="nav-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                ></path>
+              </svg>
+              <span class="nav-label">Trò chuyện</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="app-main">
+      <router-outlet></router-outlet>
+      <div class="welcome-container">
+        <div class="welcome-card">
+          <h2 class="welcome-title heading-3">Hệ thống Trợ lý AI Nội bộ</h2>
+          <p class="welcome-desc body-2">
+            Hỗ trợ tra cứu quy trình nghiệp vụ kinh doanh điện năng, giải đáp quy định
+            và soạn thảo văn bản chuyên ngành cho cán bộ công nhân viên.
+          </p>
+          <div class="quick-chips">
+            <div class="chip body-1">Tra cứu quy định kinh doanh điện</div>
+            <div class="chip body-1">Lịch ngừng giảm cấp điện</div>
+            <div class="chip body-1">Thủ tục cấp điện mới</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

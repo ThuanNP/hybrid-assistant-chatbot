@@ -1,0 +1,11 @@
+/* Phong chu cuc bo qua @fontsource (khong dung CDN hay Google Fonts) */
+@use '@fontsource/lexend/400.css' as *;
+@use '@fontsource/lexend/500.css' as *;
+@use '@fontsource/lexend/600.css' as *;
+@use '@fontsource/lexend/700.css' as *;
+@use '@fontsource/source-code-pro/400.css' as *;
+
+/* He thong design tokens, typography va base styles tu DESIGN.md */
+@use './styles/tokens' as *;
+@use './styles/typography' as *;
+@use './styles/base' as *;
