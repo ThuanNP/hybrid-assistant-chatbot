@@ -4,6 +4,9 @@ import asyncio
 import sys
 from collections.abc import AsyncIterator
 
+from typing import Any
+
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +18,16 @@ if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from app.core.csdl import NguoiDungModel, lay_sessionmaker_async
-from app.core.xac_thuc import NguoiDung
+from app.core.xac_thuc import NguoiDung, lay_nguoi_dung_hien_tai
+from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def override_xac_thuc_mac_dinh() -> Any:
+    """Tự động override lay_nguoi_dung_hien_tai cho các bài test kế thừa từ Giai đoạn 1-4."""
+    app.dependency_overrides[lay_nguoi_dung_hien_tai] = lambda: NguoiDung()
+    yield
+    app.dependency_overrides.pop(lay_nguoi_dung_hien_tai, None)
 
 
 @pytest_asyncio.fixture
@@ -33,11 +45,11 @@ async def nguoi_dung_test(phien_csdl: AsyncSession) -> NguoiDung:
     if nd_model is None:
         nd_model = NguoiDungModel(
             id=1,
-            ten_dang_nhap="can_bo",
+            email="can_bo@vidu.com",
             mat_khau_bam=None,
             ho_ten="Cán bộ kiểm thử",
             vai_tro="nguoi_dung",
-            bac="chinh",
+            bac="free",
             phong_ban="CNTT",
             dang_hoat_dong=True,
         )
@@ -46,9 +58,9 @@ async def nguoi_dung_test(phien_csdl: AsyncSession) -> NguoiDung:
 
     return NguoiDung(
         id=1,
-        ten_dang_nhap="can_bo",
+        email="can_bo@vidu.com",
         ho_ten="Cán bộ kiểm thử",
         vai_tro="nguoi_dung",
-        bac="chinh",
+        bac="free",
         phong_ban="CNTT",
     )

@@ -4,6 +4,7 @@ import { Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { App } from './app';
 import { ApiService } from './core/api.service';
+import { AuthService } from './core/auth/auth.service';
 import { BoCucTrang } from './core/bo-cuc-trang';
 
 describe('App (khung ứng dụng)', () => {
@@ -49,6 +50,23 @@ describe('App (khung ứng dụng)', () => {
       }),
   };
 
+  const mockAuthService = {
+    accessToken: () => 'mock-token',
+    nguoiDung: () => ({
+      id: 1,
+      email: 'nv01@vidu.com',
+      vai_tro: 'nguoi_dung',
+      phong_ban: 'Phòng Kinh doanh',
+      che_do_dinh_tuyen: 'tu_dong',
+      ho_ten: 'Nguyễn Văn A',
+      kich_hoat: true,
+    }),
+    daDangNhap: () => true,
+    laQuanTri: () => false,
+    laChiDoc: () => false,
+    dangXuat: () => of({ thanh_cong: true, thong_diep: 'OK' }),
+  };
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
@@ -56,6 +74,7 @@ describe('App (khung ứng dụng)', () => {
         provideZonelessChangeDetection(),
         provideRouter([{ path: '**', children: [] }]),
         { provide: ApiService, useValue: mockApiService },
+        { provide: AuthService, useValue: mockAuthService },
       ],
     }).compileComponents();
   });

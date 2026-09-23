@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   NavigationEnd,
@@ -8,6 +8,7 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import { filter } from 'rxjs';
+import { AuthService } from './core/auth/auth.service';
 import { BoCucTrang } from './core/bo-cuc-trang';
 import { CAU_HINH_APP } from './core/cau-hinh';
 import { KhoHoiThoai } from './core/kho-hoi-thoai';
@@ -32,6 +33,7 @@ export class App implements OnInit {
   protected readonly kho = inject(KhoHoiThoai);
   protected readonly boCuc = inject(BoCucTrang);
   protected readonly thongBao = inject(DichVuThongBao);
+  protected readonly authService = inject(AuthService);
 
   public readonly tieuDe = signal<string>(CAU_HINH_APP.TIEU_DE_HE_THONG);
   public readonly tacGia = CAU_HINH_APP.TAC_GIA;
@@ -44,7 +46,15 @@ export class App implements OnInit {
   );
   public readonly drawerMo = signal(false);
   public readonly dangOTroChuyen = signal(false);
+  public readonly dangODangNhap = signal(false);
   private readonly laDiDong = signal(this.laManHinhDiDong());
+
+  /** Tu dong dong bo kho hoi thoai khi nguoi dung da dang nhap */
+  private readonly dongBoKhoKhiDangNhap = effect(() => {
+    if (this.authService.daDangNhap()) {
+      this.kho.taiLai();
+    }
+  });
 
   /** Sidebar dang hien: tren di dong la ngan keo, tren may tinh la trang thai khong thu gon. */
   public readonly sidebarDangMo = computed(() =>
@@ -60,7 +70,6 @@ export class App implements OnInit {
   }
 
   public ngOnInit(): void {
-    this.kho.taiLai();
     this.router.events
       .pipe(
         filter((suKien): suKien is NavigationEnd => suKien instanceof NavigationEnd),
@@ -68,6 +77,7 @@ export class App implements OnInit {
       )
       .subscribe((suKien) => {
         this.dangOTroChuyen.set(suKien.urlAfterRedirects.startsWith('/tro-chuyen'));
+        this.dangODangNhap.set(suKien.urlAfterRedirects.startsWith('/dang-nhap'));
         this.drawerMo.set(false);
       });
   }

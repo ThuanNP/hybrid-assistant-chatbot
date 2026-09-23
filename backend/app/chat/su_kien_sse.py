@@ -247,10 +247,10 @@ async def _tien_trinh_san_xuat(
                     phien_doc.add(
                         NguoiDungModel(
                             id=nguoi.id,
-                            ten_dang_nhap=f"can_bo_{nguoi.id}",
+                            email=f"can_bo_{nguoi.id}@vidu.com",
                             ho_ten="Cán bộ kiểm thử",
                             vai_tro="nguoi_dung",
-                            bac="chinh",
+                            bac="free",
                             phong_ban="CNTT",
                             dang_hoat_dong=True,
                         )

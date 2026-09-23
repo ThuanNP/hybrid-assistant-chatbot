@@ -904,9 +904,9 @@ if __name__ == "__main__":
     async def _chay_thu() -> None:
         nguoi_gia = NguoiDung(
             id=1,
-            ten_dang_nhap="can_bo_cntt",
+            email="can_bo_cntt@vidu.com",
             vai_tro="chuyen_vien",
-            bac="chinh",
+            bac="free",
             phong_ban="CNTT",
             che_do_dinh_tuyen=args.che_do,
         )

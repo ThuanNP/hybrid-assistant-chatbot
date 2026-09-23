@@ -217,3 +217,45 @@ export interface TrangThaiSucKhoe {
   trang_thai: string;
   phien_ban: string;
 }
+
+// ---------------------------------------------------------------------------
+// 5. Cac kieu du lieu xac thuc nguoi dung (Giai doan 5)
+// ---------------------------------------------------------------------------
+
+export type VaiTroNguoiDung = 'quan_tri' | 'nguoi_dung' | 'chi_doc';
+
+export interface NguoiDung {
+  id: number;
+  email: string;
+  vai_tro: VaiTroNguoiDung;
+  phong_ban?: string | null;
+  che_do_dinh_tuyen: 'tu_dong' | 'chi_local';
+  ho_ten?: string | null;
+  kich_hoat: boolean;
+  tao_luc?: string | null;
+  dang_nhap_cuoi_luc?: string | null;
+}
+
+export interface YeuCauDangNhap {
+  email: string;
+  mat_khau: string;
+}
+
+export interface PhanHoiDangNhap {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  nguoi_dung: NguoiDung;
+}
+
+export interface PhanHoiLamMoiToken {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
+export interface PhanHoiDangXuat {
+  thanh_cong: boolean;
+  thong_diep: string;
+}
+

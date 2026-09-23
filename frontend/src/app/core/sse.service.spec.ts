@@ -6,9 +6,11 @@
  * - type_safety.md: Strict mode, khong su dung kieu any.
  */
 
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AuthService } from './auth/auth.service';
 import { SuKien } from './mo-hinh';
 import { SseService } from './sse.service';
 
@@ -29,10 +31,22 @@ function taoReadableStreamGia(cacKhoi: string[]): ReadableStream<Uint8Array> {
 
 describe('SseService', () => {
   let service: SseService;
+  const mockAuthService = {
+    accessToken: signal<string | null>('fake-access-token'),
+    lamMoiToken: vi.fn().mockReturnValue(of(null)),
+  };
 
   beforeEach(() => {
+    mockAuthService.accessToken.set('fake-access-token');
+    mockAuthService.lamMoiToken.mockReset();
+    mockAuthService.lamMoiToken.mockReturnValue(of(null));
+
     TestBed.configureTestingModule({
-      providers: [provideZonelessChangeDetection(), SseService],
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: AuthService, useValue: mockAuthService },
+        SseService,
+      ],
     });
     service = TestBed.inject(SseService);
   });

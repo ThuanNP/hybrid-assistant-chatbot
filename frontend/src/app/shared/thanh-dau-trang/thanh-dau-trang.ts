@@ -14,6 +14,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../core/auth/auth.service';
 import { BoCucTrang, MucDuongDan, TRANG_CHU } from '../../core/bo-cuc-trang';
 import { CAU_HINH_APP } from '../../core/cau-hinh';
 import { nhanBacLocal, nhanCheDoDinhTuyen, nhanHoSoGpu } from '../../core/nhan-hien-thi';
@@ -39,6 +40,7 @@ type BangThaXuong = 'he-thong' | 'thong-bao' | 'nguoi-dung';
 export class ThanhDauTrangComponent implements OnInit {
   protected readonly boCuc = inject(BoCucTrang);
   protected readonly thongBao = inject(DichVuThongBao);
+  protected readonly authService = inject(AuthService);
 
   public readonly trangChu = TRANG_CHU;
   public readonly nhanCheDo = nhanCheDoDinhTuyen;
@@ -49,11 +51,28 @@ export class ThanhDauTrangComponent implements OnInit {
   public readonly sidebarMo = input(true);
   public readonly chuyenDoiSidebar = output<void>();
 
-  public readonly tenNguoiDung = signal('Nguyễn Văn A');
-  public readonly chucDanh = signal('Chuyên viên');
-  public readonly phongBan = signal('Phòng Kinh doanh');
+  public readonly tenNguoiDung = computed(() => {
+    const nd = this.authService.nguoiDung();
+    return nd?.ho_ten || nd?.email || 'Cán bộ nhân viên';
+  });
+
+  public readonly chucDanh = computed(() => {
+    if (this.authService.laQuanTri()) return 'Quản trị viên';
+    if (this.authService.laChiDoc()) return 'Chỉ đọc';
+    return 'Chuyên viên';
+  });
+
+  public readonly phongBan = computed(() => {
+    return this.authService.nguoiDung()?.phong_ban || 'Nội bộ';
+  });
+
   public readonly donVi = CAU_HINH_APP.DON_VI;
   public readonly bangMo = signal<BangThaXuong | null>(null);
+
+  public dangXuat(): void {
+    this.dongBang();
+    this.authService.dangXuat().subscribe();
+  }
 
   private readonly khungDuongDan = viewChild.required<ElementRef<HTMLElement>>('khungDuongDan');
   private readonly doDuongDan = viewChild.required<ElementRef<HTMLElement>>('doDuongDan');

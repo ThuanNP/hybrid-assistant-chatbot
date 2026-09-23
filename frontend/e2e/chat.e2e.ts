@@ -1,5 +1,17 @@
 import { test, expect, type Page } from '@playwright/test';
 
+/** Thực hiện đăng nhập vào hệ thống trước khi thực hiện các kịch bản kiểm thử. */
+async function dangNhap(page: Page, email = 'nv01@vidu.com', matKhau = 'MatKhau123@'): Promise<void> {
+  await page.goto('/dang-nhap');
+  await page.waitForLoadState('domcontentloaded');
+  if (page.url().includes('/dang-nhap')) {
+    await page.locator('input[type="email"]').fill(email);
+    await page.locator('input[type="password"]').fill(matKhau);
+    await page.locator('button[type="submit"]').click();
+    await page.waitForURL((url) => !url.pathname.includes('/dang-nhap'), { timeout: 15_000 });
+  }
+}
+
 /** Gửi lần lượt các câu hỏi trong một hội thoại mới, chờ từng câu trả lời xong; trả về mã hội thoại. */
 async function taoHoiThoai(page: Page, cauHoi: string[]): Promise<number> {
   await page.goto('/tro-chuyen/moi');
@@ -21,6 +33,9 @@ async function taoHoiThoai(page: Page, cauHoi: string[]): Promise<number> {
 }
 
 test.describe('Kiểm thử đầu cuối hệ thống Trợ lý AI (E2E Playwright)', () => {
+  test.beforeEach(async ({ page }) => {
+    await dangNhap(page);
+  });
   test('1. Gửi câu hỏi, thấy chữ hiện dần (ít nhất 2 lần cập nhật), có huy hiệu và nhãn AI', async ({
     page,
   }) => {

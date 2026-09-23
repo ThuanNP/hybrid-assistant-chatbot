@@ -27,14 +27,16 @@ from app.core.csdl import (
     lay_sessionmaker_async,
 )
 from app.core.thoi_gian import MUI_GIO_VN
-from app.core.xac_thuc import NguoiDung
+from app.core.xac_thuc import NguoiDung, lay_nguoi_dung_hien_tai
 from app.llm.router import KetQuaGoi
 from app.main import app
 
 
 @pytest.fixture
-def client_api() -> TestClient:
-    return TestClient(app)
+def client_api() -> Any:
+    app.dependency_overrides[lay_nguoi_dung_hien_tai] = lambda: NguoiDung()
+    yield TestClient(app)
+    app.dependency_overrides.pop(lay_nguoi_dung_hien_tai, None)
 
 
 def _su_kien(van_ban: str) -> list[tuple[str, dict[str, Any]]]:
@@ -89,10 +91,10 @@ async def _hoi_thoai_nguoi_khac(phien: AsyncSession) -> int:
         phien.add(
             NguoiDungModel(
                 id=9999,
-                ten_dang_nhap="can_bo_9999",
+                email="can_bo_9999@vidu.com",
                 ho_ten="Cán bộ phòng ban khác",
                 vai_tro="nguoi_dung",
-                bac="chinh",
+                bac="free",
                 phong_ban="KY_THUAT_AN_TOAN",
                 dang_hoat_dong=True,
             )

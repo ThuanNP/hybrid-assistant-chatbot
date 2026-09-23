@@ -16,8 +16,9 @@
  * 4. Xu ly toan dien ma loi HTTP (401, 429 kem Retry-After, 503) voi noi dung JSON may chu.
  */
 
-import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { inject, Injectable } from '@angular/core';
+import { firstValueFrom, Observable } from 'rxjs';
+import { AuthService } from './auth/auth.service';
 import { ENDPOINTS } from './cau-hinh';
 import { SuKien, SuKienBatDau, SuKienHangDoi, SuKienLoi, SuKienManh, SuKienXong } from './mo-hinh';
 
@@ -25,6 +26,50 @@ import { SuKien, SuKienBatDau, SuKienHangDoi, SuKienLoi, SuKienManh, SuKienXong 
   providedIn: 'root',
 })
 export class SseService {
+  private readonly authService = inject(AuthService);
+
+  /**
+   * Tao headers gui len SSE stream kem tieu de xac thuc va ma yeu cau.
+   */
+  private taoHeaders(token?: string | null): Record<string, string> {
+    const maYeuCau =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `yc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      'X-Ma-Yeu-Cau': maYeuCau,
+    };
+    const tok = token ?? this.authService.accessToken();
+    if (tok) {
+      headers['Authorization'] = `Bearer ${tok}`;
+    }
+    return headers;
+  }
+
+  /**
+   * Gui yeu cau POST fetch den may chu.
+   */
+  private async guiYeuCauFetch(
+    noiDung: string,
+    hoiThoaiId: number | null | undefined,
+    signal: AbortSignal,
+    token?: string | null,
+  ): Promise<Response> {
+    return fetch(ENDPOINTS.CHAT_STREAM, {
+      method: 'POST',
+      headers: this.taoHeaders(token),
+      credentials: 'include',
+      body: JSON.stringify({
+        noi_dung: noiDung,
+        hoi_thoai_id: hoiThoaiId ?? null,
+      }),
+      signal,
+    });
+  }
+
   /**
    * Gui tin nhan chat theo dong SSE va tra ve luong cac SuKien phan biet bang truong `loai`.
    *
@@ -63,18 +108,15 @@ export class SseService {
         controller.signal.addEventListener('abort', onAbortHuy, { once: true });
 
         try {
-          const phanHoi = await fetch(ENDPOINTS.CHAT_STREAM, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'text/event-stream',
-            },
-            body: JSON.stringify({
-              noi_dung: noiDung,
-              hoi_thoai_id: hoiThoaiId ?? null,
-            }),
-            signal: controller.signal,
-          });
+          let phanHoi = await this.guiYeuCauFetch(noiDung, hoiThoaiId, controller.signal);
+
+          // Thu lam moi token mot lan neu bi loi 401
+          if (phanHoi.status === 401) {
+            const tokenMoi = await firstValueFrom(this.authService.lamMoiToken());
+            if (tokenMoi) {
+              phanHoi = await this.guiYeuCauFetch(noiDung, hoiThoaiId, controller.signal, tokenMoi);
+            }
+          }
 
           if (!phanHoi.ok) {
             const suKienLoi = await this.xuLyPhanHoiLoi(phanHoi);

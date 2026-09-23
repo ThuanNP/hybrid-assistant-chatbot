@@ -4,7 +4,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -13,7 +13,7 @@ from fastapi import Depends, FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from app.chat.hoi_thoai import (
     SapXepHoiThoai,
@@ -43,6 +43,8 @@ from app.config import CauHinhBacLocal, cau_hinh
 from app.core.bao_mat import kiem_duyet_dau_ra, kiem_duyet_dau_vao
 from app.core.csdl import (
     NguoiDungModel,
+    NhatKyKiemToanModel,
+    PhienDangNhapModel,
     lay_sessionmaker_async,
 )
 from app.core.loi import (
@@ -56,14 +58,26 @@ from app.core.nhat_ky import (
 )
 from app.core.xac_thuc import (
     NguoiDung,
+    bam_refresh_token,
+    chuan_hoa_email,
     khoi_tao_nguoi_dung_gia_dev,
     kiem_tra_an_toan_xac_thuc,
+    kiem_tra_dinh_dang_email,
     lay_nguoi_dung_hien_tai,
+    tao_access_token,
+    tao_refresh_token,
+    xac_minh_mat_khau,
 )
 from app.hang_doi.dieu_phoi import TrangThaiHangDoi, dieu_phoi_mac_dinh
 from app.llm.bo_chay_local import kiem_tra_khi_khoi_dong, lay_bo_chay
 from app.llm.chi_phi import bao_cao_chi_phi
-from app.llm.chinh_sach import NhanDuLieu, nhan_cua_hoi_thoai, xac_dinh_chuoi
+from app.llm.chinh_sach import (
+    CheDoDinhTuyen,
+    NhanDuLieu,
+    nap_cau_hinh_chinh_sach,
+    nhan_cua_hoi_thoai,
+    xac_dinh_chuoi,
+)
 from app.llm.router import KetQuaGoi, goi_mo_hinh
 
 logger = logging.getLogger(__name__)
@@ -167,8 +181,51 @@ async def middleware_ma_yeu_cau(request: Request, call_next: Any) -> Response:
 
 
 # ---------------------------------------------------------------------------
-# Lược đồ Pydantic cho các API nghiệp vụ
+# Lược đồ Pydantic cho các API nghiệp vụ và xác thực
 # ---------------------------------------------------------------------------
+
+
+class YeuCauDangNhap(BaseModel):
+    """Dữ liệu yêu cầu đăng nhập bằng email và mật khẩu."""
+
+    email: str = Field(min_length=3, description="Địa chỉ email người dùng")
+    mat_khau: str = Field(min_length=1, description="Mật khẩu tài khoản")
+
+
+class ThongTinNguoiDungPhanHoi(BaseModel):
+    """Thông tin hồ sơ người dùng trả về trong phiên xác thực."""
+
+    id: int
+    email: str
+    ho_ten: str
+    vai_tro: str
+    bac: str
+    phong_ban: str
+    che_do_dinh_tuyen: str | None = None
+
+
+class PhanHoiDangNhap(BaseModel):
+    """Kết quả đăng nhập thành công chứa access token và hồ sơ người dùng."""
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int = 900
+    nguoi_dung: ThongTinNguoiDungPhanHoi
+
+
+class PhanHoiLamMoiToken(BaseModel):
+    """Kết quả làm mới access token."""
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int = 900
+
+
+class PhanHoiDangXuat(BaseModel):
+    """Kết quả đăng xuất và thu hồi phiên làm việc."""
+
+    thanh_cong: bool
+    thong_diep: str
 
 
 class YeuCauChat(BaseModel):
@@ -353,6 +410,236 @@ async def kiem_tra_san_sang() -> Response:
 
 
 # ---------------------------------------------------------------------------
+# Endpoint xác thực và quản lý phiên (/api/v1/)
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/v1/dang-nhap", response_model=PhanHoiDangNhap)
+async def dang_nhap(
+    yeu_cau: YeuCauDangNhap,
+    response: Response,
+) -> PhanHoiDangNhap:
+    """Đăng nhập bằng địa chỉ email và mật khẩu, phát JWT 15 phút và refresh token 8 giờ."""
+    ma_yc = lay_ma_yeu_cau()
+    email_chuan = chuan_hoa_email(yeu_cau.email)
+
+    if not kiem_tra_dinh_dang_email(email_chuan):
+        raise LoiUngDung(
+            ma="CHUA_XAC_THUC",
+            thong_diep="Email hoặc mật khẩu không chính xác.",
+            http=401,
+            ma_yeu_cau=ma_yc,
+        )
+
+    maker = lay_sessionmaker_async()
+    async with maker() as phien, phien.begin():
+        cau_lenh = select(NguoiDungModel).where(NguoiDungModel.email == email_chuan)
+        nd = (await phien.scalars(cau_lenh)).first()
+
+        if (
+            nd is None
+            or not nd.dang_hoat_dong
+            or not xac_minh_mat_khau(yeu_cau.mat_khau, nd.mat_khau_bam)
+        ):
+            raise LoiUngDung(
+                ma="CHUA_XAC_THUC",
+                thong_diep="Email hoặc mật khẩu không chính xác.",
+                http=401,
+                ma_yeu_cau=ma_yc,
+            )
+
+        cs_dl = nap_cau_hinh_chinh_sach()
+        che_do = (
+            CheDoDinhTuyen.CHI_LOCAL
+            if nd.phong_ban in cs_dl.phong_ban_chi_local
+            else None
+        )
+        che_do_str = che_do.value if che_do else None
+
+        nguoi_obj = NguoiDung(
+            id=nd.id,
+            email=nd.email,
+            ho_ten=nd.ho_ten,
+            vai_tro=nd.vai_tro,
+            bac=nd.bac or "free",
+            phong_ban=nd.phong_ban,
+            che_do_dinh_tuyen=che_do,
+        )
+        access_token = tao_access_token(nguoi_obj)
+        token_tho, token_bam, het_han_luc = tao_refresh_token()
+
+        # Lưu refresh token băm vào bảng phien_dang_nhap
+        phien_moi = PhienDangNhapModel(
+            nguoi_id=nd.id,
+            refresh_token_bam=token_bam,
+            het_han_luc=het_han_luc,
+            thu_hoi=False,
+        )
+        phien.add(phien_moi)
+
+        # Ghi nhật ký kiểm toán
+        kiem_toan = NhatKyKiemToanModel(
+            nguoi_id=nd.id,
+            hanh_dong="dang_nhap",
+            chi_tiet={"email": nd.email},
+            ma_yeu_cau=ma_yc,
+        )
+        phien.add(kiem_toan)
+
+    # Đặt cookie HttpOnly cho refresh token 8 giờ
+    is_prod = cau_hinh.moi_truong == "prod"
+    response.set_cookie(
+        key="refresh_token",
+        value=token_tho,
+        httponly=True,
+        max_age=8 * 3600,
+        expires=8 * 3600,
+        path="/api/v1",
+        samesite="lax",
+        secure=is_prod,
+    )
+
+    return PhanHoiDangNhap(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=900,
+        nguoi_dung=ThongTinNguoiDungPhanHoi(
+            id=nd.id,
+            email=nd.email,
+            ho_ten=nd.ho_ten,
+            vai_tro=nd.vai_tro,
+            bac=nd.bac or "free",
+            phong_ban=nd.phong_ban,
+            che_do_dinh_tuyen=che_do_str,
+        ),
+    )
+
+
+@app.post("/api/v1/lam-moi-token", response_model=PhanHoiLamMoiToken)
+async def lam_moi_token(request: Request) -> PhanHoiLamMoiToken:
+    """Làm mới access token 15 phút từ refresh token trong cookie HttpOnly."""
+    ma_yc = lay_ma_yeu_cau()
+    token_tho = request.cookies.get("refresh_token")
+    if not token_tho:
+        raise LoiUngDung(
+            ma="CHUA_XAC_THUC",
+            thong_diep="Thiếu refresh token trong yêu cầu.",
+            http=401,
+            ma_yeu_cau=ma_yc,
+        )
+
+    token_bam = bam_refresh_token(token_tho)
+    bay_gio = datetime.now(timezone.utc)
+
+    maker = lay_sessionmaker_async()
+    async with maker() as phien:
+        cau_lenh = select(PhienDangNhapModel).where(
+            PhienDangNhapModel.refresh_token_bam == token_bam,
+            PhienDangNhapModel.thu_hoi.is_(False),
+            PhienDangNhapModel.het_han_luc > bay_gio,
+        )
+        phien_dn = (await phien.scalars(cau_lenh)).first()
+
+        if phien_dn is None:
+            raise LoiUngDung(
+                ma="CHUA_XAC_THUC",
+                thong_diep="Phiên đăng nhập không hợp lệ hoặc đã hết hạn.",
+                http=401,
+                ma_yeu_cau=ma_yc,
+            )
+
+        cau_lenh_nd = select(NguoiDungModel).where(NguoiDungModel.id == phien_dn.nguoi_id)
+        nd = (await phien.scalars(cau_lenh_nd)).first()
+
+        if nd is None or not nd.dang_hoat_dong:
+            raise LoiUngDung(
+                ma="CHUA_XAC_THUC",
+                thong_diep="Tài khoản không tồn tại hoặc đã bị khóa.",
+                http=401,
+                ma_yeu_cau=ma_yc,
+            )
+
+        cs_dl = nap_cau_hinh_chinh_sach()
+        che_do = (
+            CheDoDinhTuyen.CHI_LOCAL
+            if nd.phong_ban in cs_dl.phong_ban_chi_local
+            else None
+        )
+
+        nguoi_obj = NguoiDung(
+            id=nd.id,
+            email=nd.email,
+            ho_ten=nd.ho_ten,
+            vai_tro=nd.vai_tro,
+            bac=nd.bac or "free",
+            phong_ban=nd.phong_ban,
+            che_do_dinh_tuyen=che_do,
+        )
+        access_token_moi = tao_access_token(nguoi_obj)
+
+    return PhanHoiLamMoiToken(
+        access_token=access_token_moi,
+        token_type="bearer",
+        expires_in=900,
+    )
+
+
+@app.post("/api/v1/dang-xuat", response_model=PhanHoiDangXuat)
+async def dang_xuat(
+    request: Request,
+    response: Response,
+) -> PhanHoiDangXuat:
+    """Đăng xuất, thu hồi phiên làm việc trong CSDL và xóa cookie refresh token."""
+    ma_yc = lay_ma_yeu_cau()
+    token_tho = request.cookies.get("refresh_token")
+
+    if token_tho:
+        token_bam = bam_refresh_token(token_tho)
+        maker = lay_sessionmaker_async()
+        async with maker() as phien, phien.begin():
+            cau_lenh = select(PhienDangNhapModel).where(
+                PhienDangNhapModel.refresh_token_bam == token_bam,
+                PhienDangNhapModel.thu_hoi.is_(False),
+            )
+            phien_dn = (await phien.scalars(cau_lenh)).first()
+            if phien_dn is not None:
+                phien_dn.thu_hoi = True
+                kiem_toan = NhatKyKiemToanModel(
+                    nguoi_id=phien_dn.nguoi_id,
+                    hanh_dong="dang_xuat",
+                    chi_tiet={},
+                    ma_yeu_cau=ma_yc,
+                )
+                phien.add(kiem_toan)
+
+    response.delete_cookie(key="refresh_token", path="/api/v1")
+    return PhanHoiDangXuat(thanh_cong=True, thong_diep="Đã đăng xuất thành công.")
+
+
+@app.get("/api/v1/toi", response_model=ThongTinNguoiDungPhanHoi)
+async def lay_thong_tin_toi(
+    nguoi: Annotated[NguoiDung, Depends(lay_nguoi_dung_hien_tai)],
+) -> ThongTinNguoiDungPhanHoi:
+    """Lấy thông tin hồ sơ của người dùng hiện tại."""
+    che_do_str = (
+        nguoi.che_do_dinh_tuyen.value
+        if isinstance(nguoi.che_do_dinh_tuyen, CheDoDinhTuyen)
+        else str(nguoi.che_do_dinh_tuyen)
+        if nguoi.che_do_dinh_tuyen
+        else None
+    )
+    return ThongTinNguoiDungPhanHoi(
+        id=nguoi.id,
+        email=nguoi.email,
+        ho_ten=nguoi.ho_ten,
+        vai_tro=nguoi.vai_tro,
+        bac=nguoi.bac,
+        phong_ban=nguoi.phong_ban,
+        che_do_dinh_tuyen=che_do_str,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Endpoint nghiệp vụ trò chuyện (/api/v1/chat)
 # ---------------------------------------------------------------------------
 
@@ -364,6 +651,13 @@ async def chat_stream(
     nguoi: Annotated[NguoiDung, Depends(lay_nguoi_dung_hien_tai)],
 ) -> StreamingResponse:
     """Endpoint phát phản hồi hội thoại theo dòng (SSE) qua chuỗi định tuyến lai."""
+    if nguoi.vai_tro == "chi_doc":
+        raise LoiUngDung(
+            ma="KHONG_CO_QUYEN",
+            thong_diep="Tài khoản chỉ đọc không có quyền gửi tin nhắn mới.",
+            http=403,
+            ma_yeu_cau=lay_ma_yeu_cau(),
+        )
     return StreamingResponse(
         tao_luong_su_kien(yeu_cau, request, nguoi),
         media_type="text/event-stream",
@@ -385,10 +679,10 @@ async def _chuan_bi_hoi_thoai_dong_bo(
                 phien_doc.add(
                     NguoiDungModel(
                         id=nguoi.id,
-                        ten_dang_nhap=f"can_bo_{nguoi.id}",
+                        email=f"can_bo_{nguoi.id}@vidu.com",
                         ho_ten="Cán bộ kiểm thử",
                         vai_tro="nguoi_dung",
-                        bac="chinh",
+                        bac="free",
                         phong_ban="CNTT",
                         dang_hoat_dong=True,
                     )
@@ -432,6 +726,14 @@ async def chat_dong_bo(
 ) -> PhanHoiChat:
     """Endpoint xử lý hội thoại không phát theo dòng cho tích hợp máy với máy."""
     ma_yc = lay_ma_yeu_cau()
+
+    if nguoi.vai_tro == "chi_doc":
+        raise LoiUngDung(
+            ma="KHONG_CO_QUYEN",
+            thong_diep="Tài khoản chỉ đọc không có quyền gửi tin nhắn mới.",
+            http=403,
+            ma_yeu_cau=ma_yc,
+        )
 
     # 1. Móc kiểm duyệt đầu vào (gọi trước khi dựng ngữ cảnh)
     kd_vao = await kiem_duyet_dau_vao(yeu_cau.noi_dung, nguoi)

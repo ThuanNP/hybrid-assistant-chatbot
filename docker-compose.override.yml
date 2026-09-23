@@ -1,0 +1,14 @@
+# ==============================================================================
+# docker-compose.override.yml - CHỈ DÙNG CHO DEV, KHÔNG DÙNG KHI VẬN HÀNH
+# Gắn dữ liệu và kịch bản vào /srv dưới container backend.
+# Không gắn mã nguồn app/ (image backend chứa mã nguồn /srv/backend).
+# ==============================================================================
+
+services:
+  backend:
+    volumes:
+      - ./scripts:/srv/scripts:ro
+      - ./data:/srv/data:ro
+      - ./eval:/srv/eval:ro
+      - ./ket_qua_eval:/srv/ket_qua_eval
+      - ./docs:/srv/docs

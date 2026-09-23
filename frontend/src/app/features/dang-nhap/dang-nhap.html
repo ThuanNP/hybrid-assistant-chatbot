@@ -1,0 +1,312 @@
+<div class="trang-dang-nhap">
+  <!-- CỘT TRÁI: Form đăng nhập (50%) -->
+  <div class="cot-form">
+    <div class="hop-form">
+      <!-- 1. Brand block (36px tall, horizontal) -->
+      <div class="khoi-thuong-hieu">
+        <svg height="28" viewBox="0 0 28 28" width="28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="g-login" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0" stop-color="#031863"></stop>
+              <stop offset="1" stop-color="#0630C9"></stop>
+            </linearGradient>
+          </defs>
+          <rect fill="url(#g-login)" height="28" rx="8" width="28"></rect>
+          <path d="M10 7H18A4 4 0 0 1 22 11V14.5A4 4 0 0 1 18 18.5H13L9 22L10 18.5A4 4 0 0 1 6 14.5V11A4 4 0 0 1 10 7Z" fill="#FFFFFF"></path>
+          <path d="M15.2 8.8L11 13.4H13.8L12.8 16.8L17 12.1H14.2Z" fill="#016BF8"></path>
+        </svg>
+        <span class="ten-thuong-hieu">{{ tieuDe }}</span>
+      </div>
+
+      <!-- 2. Positioning line -->
+      <div class="dong-dinh-vi">
+        Trợ lý AI cho cán bộ, công nhân viên
+      </div>
+
+      <!-- 3. Title Đăng nhập (margin-top 24px) -->
+      <h1 class="tieu-de-dang-nhap">
+        Đăng nhập
+      </h1>
+
+      @if (thongBaoLoi()) {
+        <div class="hop-bao-loi" role="alert">
+          <svg class="bieu-tuong-canh-bao" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+          </svg>
+          <div class="noi-dung-loi">
+            <span>{{ thongBaoLoi() }}</span>
+            @if (maYeuCau()) {
+              <span class="ma-yc">Mã yêu cầu: {{ maYeuCau() }}</span>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Form container -->
+      <form class="bieu-mau" (ngSubmit)="xuLyDangNhap()">
+        <!-- 4. Field Tên đăng nhập -->
+        <div class="nhom-o-nhap">
+          <label for="email" class="nhan-o-nhap">Email</label>
+          <div class="hop-chua-input">
+            <input
+              id="email"
+              name="email"
+              autocomplete="username"
+              class="o-nhap"
+              placeholder="Nhập email"
+              type="email"
+              [ngModel]="email()"
+              (ngModelChange)="email.set($event)"
+              required
+            />
+            <div class="icon-phu" aria-hidden="true">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Field Mật khẩu -->
+        <div class="nhom-o-nhap">
+          <label for="matKhau" class="nhan-o-nhap">Mật khẩu</label>
+          <div class="hop-chua-input">
+            <input
+              id="matKhau"
+              name="matKhau"
+              autocomplete="current-password"
+              class="o-nhap o-nhap-mat-khau"
+              placeholder="Nhập mật khẩu"
+              [type]="hienMatKhau() ? 'text' : 'password'"
+              [ngModel]="matKhau()"
+              (ngModelChange)="matKhau.set($event)"
+              required
+            />
+            <button
+              aria-label="Hiện mật khẩu"
+              class="nut-hien-mat-khau"
+              type="button"
+              (click)="chuyenDoiHienMatKhau()"
+            >
+              @if (hienMatKhau()) {
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                  <path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              } @else {
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                  <path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+              }
+            </button>
+          </div>
+        </div>
+
+        <!-- 6. Link Quên mật khẩu? (left aligned) -->
+        <div class="dong-quen-mat-khau">
+          <a class="lien-ket-quen-mat-khau" href="javascript:void(0)" title="Chức năng đang được chuẩn bị trong giai đoạn tiếp theo">Quên mật khẩu?</a>
+        </div>
+
+        <!-- 7. Primary button Đăng nhập -->
+        <button class="nut-dang-nhap" type="submit" [disabled]="dangXuLy()">
+          @if (dangXuLy()) {
+            <span class="vong-quay-tai"></span>
+            <span>Đang đăng nhập...</span>
+          } @else {
+            <span>Đăng nhập</span>
+          }
+        </button>
+      </form>
+
+      <!-- 9. Version line -->
+      <p class="dong-phien-ban">
+        Phiên bản 1.0.0
+      </p>
+    </div>
+  </div>
+
+  <!-- CỘT PHẢI: Panel preview mockup (margin 20px, radius 32px, gradient xanh thẫm) -->
+  <div class="cot-preview">
+    <div class="the-mockup">
+      <!-- Subtle dot pattern -->
+      <div class="nen-cham-bi" aria-hidden="true"></div>
+
+      <!-- Top Text Box -->
+      <div class="hop-chu-tren">
+        <h2 class="tieu-de-quang-ba">
+          Trợ lý AI nội bộ cho cán bộ, công nhân viên
+        </h2>
+        <p class="mo-ta-quang-ba">
+          Hỏi đáp quy trình, soạn văn bản, diễn giải biểu giá — ưu tiên xử lý trên mô hình nội bộ.
+        </p>
+      </div>
+
+      <!-- Product Preview Mockup Canvas -->
+      <div class="khung-canvas-mockup">
+        <!-- Main App Mockup Card -->
+        <div class="the-ung-dung-gia">
+          <!-- Mini Sidebar (214px) -->
+          <div class="mini-sidebar">
+            <div>
+              <!-- Logo block -->
+              <div class="mini-logo-block">
+                <svg height="22" viewBox="0 0 28 28" width="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="gm-preview" x1="0" x2="1" y1="0" y2="1">
+                      <stop offset="0" stop-color="#031863"></stop>
+                      <stop offset="1" stop-color="#0630C9"></stop>
+                    </linearGradient>
+                  </defs>
+                  <rect fill="url(#gm-preview)" height="28" rx="8" width="28"></rect>
+                  <path d="M10 7H18A4 4 0 0 1 22 11V14.5A4 4 0 0 1 18 18.5H13L9 22L10 18.5A4 4 0 0 1 6 14.5V11A4 4 0 0 1 10 7Z" fill="#FFFFFF"></path>
+                  <path d="M15.2 8.8L11 13.4H13.8L12.8 16.8L17 12.1H14.2Z" fill="#016BF8"></path>
+                </svg>
+                <span class="mini-app-title">Trợ lý nội bộ</span>
+              </div>
+              <!-- Blue button -->
+              <div class="mini-new-chat-btn">
+                <span>+</span> Cuộc trò chuyện mới
+              </div>
+              <!-- Nav items -->
+              <div class="mini-nav-list">
+                <div class="mini-nav-item active">
+                  <svg class="mini-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                  Trang chủ
+                </div>
+                <div class="mini-nav-item">
+                  <svg class="mini-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                  Lịch sử hội thoại
+                </div>
+              </div>
+              <!-- GẦN ĐÂY list -->
+              <div class="mini-recent-box">
+                <div class="mini-recent-header">GẦN ĐÂY</div>
+                <div class="mini-recent-list">
+                  <div class="mini-recent-item">Tra cứu phụ tải sản xuất...</div>
+                  <div class="mini-recent-item">Soạn công văn kiến nghị...</div>
+                  <div class="mini-recent-item">Biểu giá bán điện 6 bậc...</div>
+                </div>
+              </div>
+            </div>
+            <!-- Mini footer info -->
+            <div class="mini-footer-ver">
+              Phiên bản 1.0.0
+            </div>
+          </div>
+
+          <!-- Mini Body -->
+          <div class="mini-main-body">
+            <!-- Header row -->
+            <div class="mini-header-row">
+              <div class="mini-header-left">
+                <span class="mini-body-title">Trang chủ</span>
+                <span class="mini-status-badge">
+                  <span class="mini-status-dot"></span> Đang hoạt động
+                </span>
+              </div>
+              <div class="mini-header-right">
+                <div class="mini-avatar">NA</div>
+                <span class="mini-user-name">Nguyễn Văn A</span>
+              </div>
+            </div>
+
+            <!-- 4 Equal KPI Cards Grid -->
+            <div class="mini-kpi-grid">
+              <!-- KPI 1 -->
+              <div class="mini-kpi-card">
+                <div class="mini-kpi-head">
+                  <span>Lượt hỏi hôm nay</span>
+                  <svg class="w-3.5 h-3.5 text-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                </div>
+                <div class="mini-kpi-value">128<span class="mini-kpi-unit">/60</span></div>
+                <div class="mini-kpi-sub">
+                  <span class="text-blue">● Nội bộ 70</span>
+                  <span class="text-purple">● Đám mây 61</span>
+                </div>
+              </div>
+              <!-- KPI 2 -->
+              <div class="mini-kpi-card">
+                <div class="mini-kpi-head">
+                  <span>Phục vụ nội bộ</span>
+                  <div class="mini-ring-box">
+                    <svg class="w-4 h-4 ring-turn" viewBox="0 0 36 36">
+                      <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="4"></path>
+                      <path class="ring-fg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="53, 100" stroke-linecap="round" stroke-width="4"></path>
+                    </svg>
+                  </div>
+                </div>
+                <div class="mini-kpi-value">53,1%</div>
+                <div class="mini-kpi-sub">Tỷ lệ xử lý trực tiếp</div>
+              </div>
+              <!-- KPI 3 -->
+              <div class="mini-kpi-card">
+                <div class="mini-kpi-head">
+                  <span>Chi phí đám mây</span>
+                </div>
+                <div class="mini-kpi-value">12.500 đ</div>
+                <div class="mini-kpi-bar-bg">
+                  <div class="mini-kpi-bar-fill" style="width: 25%"></div>
+                </div>
+              </div>
+              <!-- KPI 4 -->
+              <div class="mini-kpi-card">
+                <div class="mini-kpi-head">
+                  <span>Hàng đợi nội bộ</span>
+                  <span class="mini-queue-status">ổn định</span>
+                </div>
+                <div class="mini-kpi-value">2<span class="mini-kpi-unit">/20</span></div>
+                <div class="mini-kpi-sub">1 đang chạy · 0,4s</div>
+              </div>
+            </div>
+
+            <!-- Mini ask prompt preview -->
+            <div class="mini-prompt-preview">
+              <span class="mini-prompt-text">Nhập câu hỏi nghiệp vụ...</span>
+              <div class="mini-prompt-btn">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 10l7-7m0 0l7 7m-7-7v18" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating Card 1: KPI "Phục vụ nội bộ 53,1%" overlapping preview edge -->
+        <div class="the-noi-kpi">
+          <div class="the-noi-ring">
+            <svg class="w-10 h-10 ring-turn" viewBox="0 0 36 36">
+              <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5"></path>
+              <path class="ring-fg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="53.1, 100" stroke-linecap="round" stroke-width="3.5"></path>
+            </svg>
+            <span class="the-noi-percent">53%</span>
+          </div>
+          <div>
+            <div class="the-noi-sub">Phục vụ nội bộ</div>
+            <div class="the-noi-val">53,1%</div>
+            <div class="the-noi-tag">
+              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+              Mô hình an toàn cục bộ
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating Card 2: Tile "Tra cứu quy trình" overlapping preview edge -->
+        <div class="the-noi-tac-vu">
+          <div class="the-noi-icon">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="the-noi-tac-vu-title">Tra cứu quy trình</div>
+            <div class="the-noi-tac-vu-sub">Cấp điện mới hộ gia đình</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subtle bottom pill -->
+      <div class="vien-duoi-quang-ba">
+        <span class="cham-xanh-sang"></span>
+        Hệ thống hỗ trợ nghiệp vụ &amp; văn bản nội bộ
+      </div>
+    </div>
+  </div>
+</div>

@@ -456,6 +456,23 @@
   }
 }
 
+button.muc-menu-tha {
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+
+  &.nut-dang-xuat {
+    color: var(--red-dark-1);
+
+    &:hover {
+      background-color: var(--red-light-3);
+    }
+  }
+}
+
 .ghi-chu-bang {
   padding: var(--space-8);
   margin-top: var(--space-4);

@@ -38,9 +38,11 @@ from app.main import _kiem_tra_cors_prod, app
 
 
 @pytest.fixture
-def client_api() -> TestClient:
-    """Fixture cung cấp TestClient chuẩn cho ứng dụng FastAPI."""
-    return TestClient(app)
+def client_api() -> Any:
+    """Fixture cung cấp TestClient chuẩn cho ứng dụng FastAPI kèm override xác thực."""
+    app.dependency_overrides[main_mod.lay_nguoi_dung_hien_tai] = lambda: NguoiDung()
+    yield TestClient(app)
+    app.dependency_overrides.pop(main_mod.lay_nguoi_dung_hien_tai, None)
 
 
 def test_health_nhanh_khi_csdl_hong(
@@ -165,10 +167,10 @@ async def test_get_hoi_thoai_nguoi_khac_tra_404(
     if nd_9999 is None:
         nd_9999 = NguoiDungModel(
             id=9999,
-            ten_dang_nhap="can_bo_9999",
+            email="can_bo_9999@vidu.com",
             ho_ten="Cán bộ phòng ban khác",
             vai_tro="nguoi_dung",
-            bac="chinh",
+            bac="free",
             phong_ban="KinhDoanh",
             dang_hoat_dong=True,
         )

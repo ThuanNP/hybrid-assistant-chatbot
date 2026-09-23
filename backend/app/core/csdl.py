@@ -70,11 +70,13 @@ class NguoiDungModel(Base):
     __tablename__ = "nguoi_dung"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    ten_dang_nhap: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     mat_khau_bam: Mapped[str | None] = mapped_column(String(255), nullable=True)
     ho_ten: Mapped[str] = mapped_column(String(255), nullable=False)
     vai_tro: Mapped[str] = mapped_column(String(50), nullable=False)
-    bac: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    bac: Mapped[str | None] = mapped_column(
+        String(50), default="free", server_default=text("'free'"), nullable=True
+    )
     phong_ban: Mapped[str] = mapped_column(String(100), nullable=False)
     dang_hoat_dong: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true"), nullable=False
@@ -87,6 +89,9 @@ class NguoiDungModel(Base):
     )
 
     hoi_thoai_list: Mapped[list["HoiThoaiModel"]] = relationship(
+        back_populates="nguoi_dung", cascade="all, delete-orphan"
+    )
+    phien_dang_nhap_list: Mapped[list["PhienDangNhapModel"]] = relationship(
         back_populates="nguoi_dung", cascade="all, delete-orphan"
     )
 
@@ -244,6 +249,58 @@ class LuotGoiModel(Base):
         Index("ix_luot_goi_thoi_diem", "thoi_diem"),
         Index("ix_luot_goi_nguoi_id_thoi_diem", "nguoi_id", "thoi_diem"),
     )
+
+
+class PhienDangNhapModel(Base):
+    """Bảng lưu trữ thông tin phiên đăng nhập và refresh token băm."""
+
+    __tablename__ = "phien_dang_nhap"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    nguoi_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("nguoi_dung.id", ondelete="CASCADE"), nullable=False
+    )
+    refresh_token_bam: Mapped[str] = mapped_column(String(255), nullable=False)
+    het_han_luc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    thu_hoi: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+    tao_luc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    nguoi_dung: Mapped["NguoiDungModel"] = relationship(back_populates="phien_dang_nhap_list")
+
+    __table_args__ = (
+        Index("ix_phien_dang_nhap_nguoi_id", "nguoi_id"),
+        Index("ix_phien_dang_nhap_refresh_token_bam", "refresh_token_bam"),
+    )
+
+
+class NhatKyKiemToanModel(Base):
+    """Bảng ghi nhận nhật ký kiểm toán các hành động bảo mật của hệ thống."""
+
+    __tablename__ = "nhat_ky_kiem_toan"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    thoi_diem: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+    nguoi_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    hanh_dong: Mapped[str] = mapped_column(String(100), nullable=False)
+    chi_tiet: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
+    ma_yeu_cau: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    __table_args__ = (
+        Index("ix_nhat_ky_kiem_toan_thoi_diem", "thoi_diem"),
+    )
+
 
 
 # Quản lý vòng đời Async Engine và Sessionmaker

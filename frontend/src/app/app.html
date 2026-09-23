@@ -1,124 +1,128 @@
-<div class="bo-cuc" [class.sidebar-thu-gon]="sidebarThuGon()">
-  @if (drawerMo()) {
-    <div class="nen-mo-ngan-keo" (click)="dongDrawer()" aria-hidden="true"></div>
-  }
+@if (dangODangNhap()) {
+  <router-outlet />
+} @else {
+  <div class="bo-cuc" [class.sidebar-thu-gon]="sidebarThuGon()">
+    @if (drawerMo()) {
+      <div class="nen-mo-ngan-keo" (click)="dongDrawer()" aria-hidden="true"></div>
+    }
 
-  <!-- Sidebar dung chung (DESIGN.md muc 6.1) -->
-  <aside class="sidebar" [class.ngan-keo-mo]="drawerMo()" aria-label="Thanh điều hướng chính">
-    <div class="dau-sidebar">
-      <a routerLink="/" class="khoi-nhan-dien" [attr.aria-label]="tieuDe() + ', về Trang chủ'">
-        <img src="logo.svg" alt="" width="28" height="28" />
-        <span class="chu-nhan-dien an-khi-thu-gon">{{ tieuDe() }}</span>
-      </a>
-    </div>
+    <!-- Sidebar dung chung (DESIGN.md muc 6.1) -->
+    <aside class="sidebar" [class.ngan-keo-mo]="drawerMo()" aria-label="Thanh điều hướng chính">
+      <div class="dau-sidebar">
+        <a routerLink="/" class="khoi-nhan-dien" [attr.aria-label]="tieuDe() + ', về Trang chủ'">
+          <img src="logo.svg" alt="" width="28" height="28" />
+          <span class="chu-nhan-dien an-khi-thu-gon">{{ tieuDe() }}</span>
+        </a>
+      </div>
 
-    <button type="button" class="nut-tro-chuyen-moi" (click)="moHoiThoaiMoi()" title="Cuộc trò chuyện mới">
-      <app-bieu-tuong ten="them" />
-      <span class="an-khi-thu-gon">Cuộc trò chuyện mới</span>
-    </button>
+      <button type="button" class="nut-tro-chuyen-moi" (click)="moHoiThoaiMoi()" title="Cuộc trò chuyện mới">
+        <app-bieu-tuong ten="them" />
+        <span class="an-khi-thu-gon">Cuộc trò chuyện mới</span>
+      </button>
 
-    <nav class="nhom-menu" aria-label="Chức năng">
-      <a
-        routerLink="/"
-        routerLinkActive="dang-chon"
-        [routerLinkActiveOptions]="{ exact: true }"
-        ariaCurrentWhenActive="page"
-        class="muc-menu"
-        title="Trang chủ"
-      >
-        <app-bieu-tuong ten="trang-chu" />
-        <span class="an-khi-thu-gon">Trang chủ</span>
-      </a>
-      <a
-        routerLink="/lich-su"
-        routerLinkActive="dang-chon"
-        ariaCurrentWhenActive="page"
-        class="muc-menu"
-        title="Lịch sử hội thoại"
-      >
-        <app-bieu-tuong ten="lich-su" />
-        <span class="an-khi-thu-gon">Lịch sử hội thoại</span>
-      </a>
-    </nav>
+      <nav class="nhom-menu" aria-label="Chức năng">
+        <a
+          routerLink="/"
+          routerLinkActive="dang-chon"
+          [routerLinkActiveOptions]="{ exact: true }"
+          ariaCurrentWhenActive="page"
+          class="muc-menu"
+          title="Trang chủ"
+        >
+          <app-bieu-tuong ten="trang-chu" />
+          <span class="an-khi-thu-gon">Trang chủ</span>
+        </a>
+        <a
+          routerLink="/lich-su"
+          routerLinkActive="dang-chon"
+          ariaCurrentWhenActive="page"
+          class="muc-menu"
+          title="Lịch sử hội thoại"
+        >
+          <app-bieu-tuong ten="lich-su" />
+          <span class="an-khi-thu-gon">Lịch sử hội thoại</span>
+        </a>
+      </nav>
 
-    <section class="nhom-gan-day an-khi-thu-gon" aria-labelledby="tieu-de-gan-day">
-      <h2 id="tieu-de-gan-day" class="tieu-de-nhom">GẦN ĐÂY</h2>
-      @if (kho.ganDay().length === 0) {
-        <p class="dong-trong">Chưa có cuộc trò chuyện nào.</p>
-      } @else {
-        <ul class="danh-sach-gan-day">
-          @for (ht of kho.ganDay(); track ht.id) {
-            <li>
-              <a
-                [routerLink]="['/tro-chuyen', ht.id]"
-                routerLinkActive="dang-chon"
-                ariaCurrentWhenActive="page"
-                class="muc-gan-day"
-                [title]="ht.tieu_de"
-              >
-                {{ ht.tieu_de }}
-              </a>
-            </li>
+      <section class="nhom-gan-day an-khi-thu-gon" aria-labelledby="tieu-de-gan-day">
+        <h2 id="tieu-de-gan-day" class="tieu-de-nhom">GẦN ĐÂY</h2>
+        @if (kho.ganDay().length === 0) {
+          <p class="dong-trong">Chưa có cuộc trò chuyện nào.</p>
+        } @else {
+          <ul class="danh-sach-gan-day">
+            @for (ht of kho.ganDay(); track ht.id) {
+              <li>
+                <a
+                  [routerLink]="['/tro-chuyen', ht.id]"
+                  routerLinkActive="dang-chon"
+                  ariaCurrentWhenActive="page"
+                  class="muc-gan-day"
+                  [title]="ht.tieu_de"
+                >
+                  {{ ht.tieu_de }}
+                </a>
+              </li>
+            }
+          </ul>
+          @if (kho.tongSo() > kho.ganDay().length) {
+            <a routerLink="/lich-su" class="lien-ket-xem-tat-ca">Xem tất cả</a>
           }
-        </ul>
-        @if (kho.tongSo() > kho.ganDay().length) {
-          <a routerLink="/lich-su" class="lien-ket-xem-tat-ca">Xem tất cả</a>
         }
-      }
-    </section>
+      </section>
 
-  </aside>
+    </aside>
 
-  <!-- Than trang: the trang bo 16px gom thanh dau trang va dung mot man hinh -->
-  <main class="than-trang">
-    <app-thanh-dau-trang [sidebarMo]="sidebarDangMo()" (chuyenDoiSidebar)="chuyenDoiSidebar()" />
+    <!-- Than trang: the trang bo 16px gom thanh dau trang va dung mot man hinh -->
+    <main class="than-trang">
+      <app-thanh-dau-trang [sidebarMo]="sidebarDangMo()" (chuyenDoiSidebar)="chuyenDoiSidebar()" />
 
-    <!-- Hang tieu de trang: tach rieng khoi breadcrumb tren thanh dau trang -->
-    <div class="hang-tieu-de-trang">
-      <div class="dong-tieu-de">
-        <h1 class="tieu-de-trang" [title]="boCuc.tieuDe()">{{ boCuc.tieuDe() }}</h1>
-        @if (boCuc.nhanPhu(); as nhan) {
-          <span class="huy-hieu huy-hieu-xanh">{{ nhan }}</span>
+      <!-- Hang tieu de trang: tach rieng khoi breadcrumb tren thanh dau trang -->
+      <div class="hang-tieu-de-trang">
+        <div class="dong-tieu-de">
+          <h1 class="tieu-de-trang" [title]="boCuc.tieuDe()">{{ boCuc.tieuDe() }}</h1>
+          @if (boCuc.nhanPhu(); as nhan) {
+            <span class="huy-hieu huy-hieu-xanh">{{ nhan }}</span>
+          }
+        </div>
+        @if (boCuc.moTa(); as moTa) {
+          <p class="mo-ta-trang">{{ moTa }}</p>
         }
       </div>
-      @if (boCuc.moTa(); as moTa) {
-        <p class="mo-ta-trang">{{ moTa }}</p>
-      }
-    </div>
 
-    <div class="vung-noi-dung" [class.che-do-tro-chuyen]="dangOTroChuyen()">
-      <router-outlet />
-    </div>
+      <div class="vung-noi-dung" [class.che-do-tro-chuyen]="dangOTroChuyen()">
+        <router-outlet />
+      </div>
 
-    <!-- Footer co dinh o chan than trang, khong cuon theo noi dung -->
-    <footer class="chan-trang">
-      <span class="ban-quyen">
-        © {{ namHienTai }} {{ tacGia }}. Bảo lưu mọi quyền.
-        <span class="phien-ban">
-          {{ tieuDe() }}
-          @if (thongBao.phienBan(); as phienBan) {
-            · Phiên bản {{ phienBan }}
-          }
+      <!-- Footer co dinh o chan than trang, khong cuon theo noi dung -->
+      <footer class="chan-trang">
+        <span class="ban-quyen">
+          © {{ namHienTai }} {{ tacGia }}. Bảo lưu mọi quyền.
+          <span class="phien-ban">
+            {{ tieuDe() }}
+            @if (thongBao.phienBan(); as phienBan) {
+              · Phiên bản {{ phienBan }}
+            }
+          </span>
         </span>
-      </span>
-      <span class="loi-nhac">Trợ lý có thể sai. Hãy kiểm tra lại số liệu quan trọng.</span>
-    </footer>
-  </main>
+        <span class="loi-nhac">Trợ lý có thể sai. Hãy kiểm tra lại số liệu quan trọng.</span>
+      </footer>
+    </main>
 
-  <!-- Thanh dieu huong day tren di dong (DESIGN.md muc 10); an trong man Tro chuyen -->
-  @if (!dangOTroChuyen()) {
-    <nav class="thanh-day" aria-label="Điều hướng nhanh">
-      <a routerLink="/" routerLinkActive="dang-chon" [routerLinkActiveOptions]="{ exact: true }" class="muc-day">
-        <app-bieu-tuong ten="trang-chu" />
-        <span>Trang chủ</span>
-      </a>
-      <button type="button" class="nut-noi" (click)="moHoiThoaiMoi()" aria-label="Hỏi mới">
-        <app-bieu-tuong ten="tro-chuyen" />
-      </button>
-      <a routerLink="/lich-su" routerLinkActive="dang-chon" class="muc-day">
-        <app-bieu-tuong ten="lich-su" />
-        <span>Lịch sử</span>
-      </a>
-    </nav>
-  }
-</div>
+    <!-- Thanh dieu huong day tren di dong (DESIGN.md muc 10); an trong man Tro chuyen -->
+    @if (!dangOTroChuyen()) {
+      <nav class="thanh-day" aria-label="Điều hướng nhanh">
+        <a routerLink="/" routerLinkActive="dang-chon" [routerLinkActiveOptions]="{ exact: true }" class="muc-day">
+          <app-bieu-tuong ten="trang-chu" />
+          <span>Trang chủ</span>
+        </a>
+        <button type="button" class="nut-noi" (click)="moHoiThoaiMoi()" aria-label="Hỏi mới">
+          <app-bieu-tuong ten="tro-chuyen" />
+        </button>
+        <a routerLink="/lich-su" routerLinkActive="dang-chon" class="muc-day">
+          <app-bieu-tuong ten="lich-su" />
+          <span>Lịch sử</span>
+        </a>
+      </nav>
+    }
+  </div>
+}

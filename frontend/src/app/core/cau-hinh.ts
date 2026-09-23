@@ -14,6 +14,10 @@ export const ENDPOINTS = {
   CHI_PHI: `${API_GOC}/chi-phi`,
   MODELS: `${API_GOC}/models`,
   HANG_DOI_TINH_TRANG: `${API_GOC}/hang-doi/tinh-trang`,
+  DANG_NHAP: `${API_GOC}/dang-nhap`,
+  LAM_MOI_TOKEN: `${API_GOC}/lam-moi-token`,
+  DANG_XUAT: `${API_GOC}/dang-xuat`,
+  TOI: `${API_GOC}/toi`,
 } as const;
 
 export const CAU_HINH_APP = {
