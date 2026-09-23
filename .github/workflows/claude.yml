@@ -102,6 +102,8 @@ jobs:
       - name: Kiem tra quyen nguoi kich hoat Claude
         id: kiem_tra_quyen
         env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ github.token }}
         run: python scripts/kiem_tra_quyen_khoi_dong_claude.py
 
