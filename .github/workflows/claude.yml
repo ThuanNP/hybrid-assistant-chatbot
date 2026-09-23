@@ -94,7 +94,18 @@ jobs:
               raise SystemExit(1)
           PY
 
+      - name: Kiem tra quyen nguoi kich hoat Claude
+        id: kiem_tra_quyen
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/kiem_tra_quyen_khoi_dong_claude.py
+
+      - name: Bo qua Claude Code khi nguoi kich hoat khong co quyen ghi
+        if: steps.kiem_tra_quyen.outputs.duoc_phep != 'true'
+        run: echo "::notice::${{ steps.kiem_tra_quyen.outputs.ly_do }}"
+
       - name: Run Claude Code
+        if: steps.kiem_tra_quyen.outputs.duoc_phep == 'true'
         id: claude
         uses: anthropics/claude-code-action@cfc3eb22bfed5c26ef66e3223c982af27e4524de # v1.0.231
         with:
