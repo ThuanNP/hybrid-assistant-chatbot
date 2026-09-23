@@ -26,8 +26,10 @@ from app.chat.hoi_thoai import (
 )
 from app.chat.ngu_canh import dung_ngu_canh
 from app.config import cau_hinh
+from app.core.bao_mat import kiem_duyet_dau_ra, kiem_duyet_dau_vao
 from app.core.csdl import HoiThoaiModel, NguoiDungModel, lay_sessionmaker_async
-from app.core.loi import LoiDauVao
+from app.core.loi import LoiUngDung, chuyen_doi_loi_sang_loi_ung_dung
+from app.core.nhat_ky import lay_ma_yeu_cau
 from app.core.xac_thuc import NguoiDung
 from app.llm.chinh_sach import nhan_cua_hoi_thoai, xac_dinh_chuoi
 from app.llm.router import KetQuaGoi, ManhPhatRa, goi_mo_hinh_theo_dong
@@ -170,22 +172,23 @@ def _tao_su_kien_tu_manh(
         "loi",
         SuKienLoi(
             ma="LOI_DONG",
-            thong_diep="Quá trình sinh phản hồi bị gián đoạn",
+            thong_diep="Phản hồi bị gián đoạn, vui lòng gửi lại.",
             ma_yeu_cau=ma_yeu_cau,
             phan_da_nhan=noi_dung_loi,
         ),
     )
 
 
-def _tao_su_kien_loi_ngoai_le(muc: Exception, ma_yeu_cau: str, phan_da_nhan: str) -> str:
-    """Tạo sự kiện lỗi SSE từ ngoại lệ hệ thống hoặc lỗi nghiệp vụ."""
-    ma_loi = getattr(muc, "ma_loi", muc.__class__.__name__)
-    thong_diep = getattr(muc, "thong_diep", str(muc))
+def _tao_su_kien_loi_ngoai_le(
+    muc: Exception, ma_yeu_cau: str, phan_da_nhan: str
+) -> str:
+    """Tạo sự kiện lỗi SSE từ ngoại lệ hệ thống hoặc lỗi nghiệp vụ đã chuẩn hóa."""
+    loi_ud = chuyen_doi_loi_sang_loi_ung_dung(muc, ma_yeu_cau)
     return dong_goi_su_kien(
         "loi",
         SuKienLoi(
-            ma=ma_loi,
-            thong_diep=thong_diep,
+            ma=loi_ud.ma,
+            thong_diep=loi_ud.thong_diep,
             ma_yeu_cau=ma_yeu_cau,
             phan_da_nhan=phan_da_nhan,
         ),
@@ -202,6 +205,7 @@ async def _tien_trinh_san_xuat(
     """Tác vụ nền thực hiện chuỗi xác định chính sách, ngữ cảnh và gọi mô hình theo dòng."""
     hoi_thoai_id: int | None = None
     noi_dung_tro_ly = ""
+    noi_dung_nguoi_dung = yeu_cau.noi_dung
     maker = lay_sessionmaker_async()
     nhan_du_lieu_str: str | None = None
     kq_hoan_thanh: KetQuaGoi | None = None
@@ -250,9 +254,10 @@ async def _tien_trinh_san_xuat(
                         la_luot_dau = True
                         lich_su_tin_nhan = []
                     else:
-                        raise LoiDauVao(
-                            f"Cuộc hội thoại {yeu_cau.hoi_thoai_id} không tồn tại hoặc đã bị xoá",
-                            ma_trang_thai=404,
+                        raise LoiUngDung(
+                            ma="KHONG_TIM_THAY",
+                            thong_diep="Không tìm thấy cuộc hội thoại.",
+                            http=404,
                             ma_yeu_cau=ma_yeu_cau,
                         )
                 else:
@@ -272,9 +277,22 @@ async def _tien_trinh_san_xuat(
                             {"role": vai_tro_role, "content": luot.noi_dung}
                         )
 
+        # 1b. Móc kiểm duyệt đầu vào (gọi trước khi dựng ngữ cảnh)
+        kd_dau_vao = await kiem_duyet_dau_vao(yeu_cau.noi_dung, nguoi)
+        if not kd_dau_vao.cho_qua:
+            raise LoiUngDung(
+                ma="NOI_DUNG_BI_CHAN",
+                thong_diep=kd_dau_vao.ly_do
+                or "Nội dung vi phạm chính sách kiểm duyệt.",
+                http=422,
+                ma_yeu_cau=ma_yeu_cau,
+            )
+        if kd_dau_vao.noi_dung_thay_the is not None:
+            noi_dung_nguoi_dung = kd_dau_vao.noi_dung_thay_the
+
         # 2. Xác định nhãn dữ liệu, chuỗi định tuyến và dựng ngữ cảnh
         nhan = nhan_cua_hoi_thoai(
-            lich_su=lich_su_tin_nhan, tin_nhan_moi=yeu_cau.noi_dung
+            lich_su=lich_su_tin_nhan, tin_nhan_moi=noi_dung_nguoi_dung
         )
         nhan_du_lieu_str = nhan.value
         che_do = getattr(nguoi, "che_do_dinh_tuyen", None) or cau_hinh.che_do_dinh_tuyen
@@ -283,7 +301,7 @@ async def _tien_trinh_san_xuat(
         )
         kq_ngu_canh = dung_ngu_canh(
             lich_su_tin_nhan,
-            yeu_cau.noi_dung,
+            noi_dung_nguoi_dung,
             kq_chuoi.chuoi,
             ma_yeu_cau=ma_yeu_cau,
         )
@@ -304,16 +322,29 @@ async def _tien_trinh_san_xuat(
                 kq_hoan_thanh = manh.ket_qua
             await hang_doi.put(manh)
 
+        # 3b. Móc kiểm duyệt đầu ra trên toàn văn trước khi lưu CSDL
+        kd_dau_ra = await kiem_duyet_dau_ra(noi_dung_tro_ly, nguoi)
+        if not kd_dau_ra.cho_qua:
+            raise LoiUngDung(
+                ma="NOI_DUNG_BI_CHAN",
+                thong_diep=kd_dau_ra.ly_do or "Nội dung vi phạm chính sách kiểm duyệt.",
+                http=422,
+                ma_yeu_cau=ma_yeu_cau,
+            )
+        if kd_dau_ra.noi_dung_thay_the is not None:
+            noi_dung_tro_ly = kd_dau_ra.noi_dung_thay_the
+
         # 4. Lưu cả lượt người dùng và lượt trả lời trong MỘT giao dịch duy nhất
         phien_ban_prompt = doc_phien_ban_loi_nhac()
         da_luu_db = False
         if hoi_thoai_id is not None:
+
             async def _luu_db() -> None:
                 async with maker() as phien_luu, phien_luu.begin():
                     await luu_cap_luot_hoi_thoai(
                         phien_luu,
                         hoi_thoai_id=hoi_thoai_id,
-                        noi_dung_nguoi=yeu_cau.noi_dung,
+                        noi_dung_nguoi=noi_dung_nguoi_dung,
                         noi_dung_tro_ly=noi_dung_tro_ly,
                         kq_goi=kq_hoan_thanh,
                         ma_yeu_cau=ma_yeu_cau,
@@ -329,7 +360,7 @@ async def _tien_trinh_san_xuat(
             asyncio.create_task(
                 tu_dat_tieu_de(
                     hoi_thoai_id=hoi_thoai_id,
-                    noi_dung_nguoi=yeu_cau.noi_dung,
+                    noi_dung_nguoi=noi_dung_nguoi_dung,
                     noi_dung_tro_ly=noi_dung_tro_ly,
                     nguoi=nguoi,
                 )
@@ -349,7 +380,7 @@ async def _tien_trinh_san_xuat(
                         await luu_cap_luot_hoi_thoai(
                             phien_huy,
                             hoi_thoai_id=hoi_thoai_id,
-                            noi_dung_nguoi=yeu_cau.noi_dung,
+                            noi_dung_nguoi=noi_dung_nguoi_dung,
                             noi_dung_tro_ly=noi_dung_tro_ly,
                             kq_goi=kq_hoan_thanh,
                             ma_yeu_cau=ma_yeu_cau,
@@ -378,7 +409,7 @@ async def _tien_trinh_san_xuat(
                     await luu_cap_luot_hoi_thoai(
                         phien_loi,
                         hoi_thoai_id=hoi_thoai_id,
-                        noi_dung_nguoi=yeu_cau.noi_dung,
+                        noi_dung_nguoi=noi_dung_nguoi_dung,
                         noi_dung_tro_ly=noi_dung_tro_ly,
                         kq_goi=None,
                         ma_yeu_cau=ma_yeu_cau,
@@ -400,15 +431,13 @@ async def tao_luong_su_kien(
     nguoi: NguoiDung,
 ) -> AsyncIterator[str]:
     """Khởi tạo và kiểm soát luồng sự kiện SSE trả về cho người dùng."""
-    ma_yeu_cau = sinh_ma_yeu_cau()
+    ma_yeu_cau = lay_ma_yeu_cau()
     phan_da_nhan = ""
     dang_trong_hang_doi = False
     hoi_thoai_id_hop: list[int | None] = [yeu_cau.hoi_thoai_id]
     hang_doi: asyncio.Queue[ManhPhatRa | Exception | None] = asyncio.Queue()
     tac_vu = asyncio.create_task(
-        _tien_trinh_san_xuat(
-            hang_doi, yeu_cau, nguoi, ma_yeu_cau, hoi_thoai_id_hop
-        )
+        _tien_trinh_san_xuat(hang_doi, yeu_cau, nguoi, ma_yeu_cau, hoi_thoai_id_hop)
     )
 
     try:

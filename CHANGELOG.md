@@ -6,6 +6,59 @@ và tuân thủ [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Chưa phát hành]
 
+## [0.3.0] - 2026-09-23
+
+### Thêm
+
+- Hệ thống định tuyến API FastAPI hoàn thiện tại `backend/app/main.py`:
+  - `POST /api/v1/chat/stream`: phát phản hồi hội thoại theo dòng (SSE) qua chuỗi định tuyến lai.
+  - `POST /api/v1/chat`: hội thoại không phát dòng cho tích hợp máy - máy, trả đầy đủ siêu dữ
+    liệu kỹ thuật (nguồn, tầng, model, token, chi phí, độ trễ, tốc độ) và `nhan_ai`.
+  - `GET /api/v1/hoi-thoai`: danh sách hội thoại của người dùng hiện tại có phân trang, sắp
+    theo thời gian cập nhật giảm dần.
+  - `GET /api/v1/hoi-thoai/{id}`: xem chi tiết toàn bộ các lượt tin nhắn trong cuộc hội thoại.
+  - `DELETE /api/v1/hoi-thoai/{id}`: xoá mềm cuộc hội thoại của người dùng hiện tại.
+  - `GET /api/v1/chi-phi`: báo cáo tổng hợp chi phí và tỷ lệ định tuyến sử dụng mô hình.
+  - `GET /api/v1/models`: thông tin chế độ định tuyến, hồ sơ GPU, 2 bậc local và 4 tầng đám mây
+    không để lộ khoá API.
+  - `GET /api/v1/hang-doi/tinh-trang`: hiện trạng bộ điều phối hàng đợi local tức thời.
+  - `GET /api/v1/ngu-canh/tinh-trang`: hiện trạng cửa sổ ngữ cảnh cấu hình, thực tế và ngân sách.
+  - `GET /health`: kiểm tra tiến trình sống cực nhanh, không truy cập CSDL hay mô hình.
+  - `GET /ready`: kiểm tra sẵn sàng dịch vụ (CSDL và bộ chạy local hoặc ít nhất một tầng đám mây).
+- Chuẩn hóa mã lỗi và bộ bắt lỗi toàn cục trong `backend/app/core/loi.py`: lớp `LoiUngDung` kế thừa
+  `LoiHeThong`, ánh xạ toàn bộ mã lỗi chuẩn hóa sang cấu trúc JSON `{"loi": {"ma", "thong_diep",
+  "ma_yeu_cau"}}`, thông điệp tiếng Việt dễ hiểu và tuyệt đối không làm lộ `Traceback` ra ngoài.
+- Quản lý mã yêu cầu `ma_yeu_cau` 12 ký tự xuyên suốt trong `backend/app/core/nhat_ky.py` và
+  middleware HTTP tại `main.py`, đồng bộ qua header `X-Ma-Yeu-Cau`, `contextvars`, nhật ký và
+  bảng CSDL `luot`.
+- Móc kiểm duyệt nội dung trong `backend/app/core/bao_mat.py`: `KetQuaKiemDuyet`,
+  `kiem_duyet_dau_vao` (trước khi dựng ngữ cảnh) và `kiem_duyet_dau_ra` (trước khi lưu CSDL và trả
+  về).
+- Quản lý hội thoại và cơ sở dữ liệu: migration Alembic 4 bảng (`nguoi_dung`, `hoi_thoai`, `luot`,
+  `luot_goi`), `app/chat/hoi_thoai.py` hỗ trợ tạo mới, lưu cặp lượt trong một giao dịch, xoá mềm,
+  đọc danh sách phân trang, đọc phiên bản prompt và tự đặt tiêu đề chạy nền bậc nhỏ local.
+- Bộ kiểm thử tự động toàn diện `backend/tests/test_api.py`, `backend/tests/test_hoi_thoai.py`,
+  `backend/tests/test_stream.py`.
+- Mục 6 "Giao diện lập trình ứng dụng (API)" trong `README.md` mô tả toàn bộ endpoints và bảng mã
+  lỗi.
+
+### Thay đổi
+
+- Nâng phiên bản `backend/pyproject.toml` lên `0.3.0` đồng bộ toàn hệ thống.
+- Endpoint `POST /api/v1/chat/stream` đọc `ma_yeu_cau` từ `contextvars` thay vì tự sinh mã mới để
+  đảm bảo tính nhất quán trên toàn chu trình xử lý.
+- Gắn hai móc kiểm duyệt vào luồng phát dòng SSE và luồng chat đồng bộ.
+- Cấu hình CORS đọc `CORS_ORIGINS` và cấm ký tự `*` khi môi trường là `prod`.
+
+### Sửa lỗi
+
+- Khắc phục nguy cơ rò rỉ vết ngăn xếp (`Traceback`) ra ngoài bằng bộ bắt lỗi tập trung
+  `dang_ky_bo_bat_loi`.
+- Đảm bảo kiểm tra sẵn sàng `/ready` không bao giờ gọi hàm sinh văn bản của mô hình và bọc
+  `asyncio.wait_for` 2 giây ngăn chặn treo tiến trình kiểm tra.
+- Khắc phục lỗi kiểm tra quyền sở hữu cuộc hội thoại (trả 404 khi truy cập hoặc thao tác trên
+  hội thoại của người khác).
+
 ## [0.2.0] - 2026-09-23
 
 ### Thêm

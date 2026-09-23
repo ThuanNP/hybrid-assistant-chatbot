@@ -93,3 +93,61 @@ python scripts/kiem_tra_bo_chay.py
 # Kiểm tra kết nối tới các nhà cung cấp đám mây qua LiteLLM
 python scripts/kiem_tra_nha_cung_cap.py
 ```
+
+## 6. Giao diện lập trình ứng dụng (API)
+
+Toàn bộ các endpoint nghiệp vụ được đặt dưới tiền tố `/api/v1/` và yêu cầu xác thực người dùng.
+Hai endpoint giám sát sức khoẻ hệ thống (`/health` và `/ready`) được đặt trực tiếp tại gốc.
+
+### 6.1. Danh sách các endpoint
+
+| Phương thức | Đường dẫn | Mô tả chức năng | Xác thực |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/health` | Tiến trình còn chạy, trả `healthy` và số phiên bản | Không |
+| `GET` | `/ready` | Sẵn sàng phục vụ: trả `ready` (200) hoặc `not_ready` (503) | Không |
+| `POST` | `/api/v1/chat/stream` | Trò chuyện hội thoại phát theo dòng (Server-Sent Events) | Bắt buộc |
+| `POST` | `/api/v1/chat` | Trò chuyện không phát theo dòng cho tích hợp máy với máy | Bắt buộc |
+| `GET` | `/api/v1/hoi-thoai` | Danh sách hội thoại của người dùng hiện tại (phân trang) | Bắt buộc |
+| `GET` | `/api/v1/hoi-thoai/{id}` | Chi tiết toàn bộ các lượt tin nhắn trong cuộc hội thoại | Bắt buộc |
+| `DELETE` | `/api/v1/hoi-thoai/{id}` | Xoá mềm cuộc hội thoại của người dùng hiện tại | Bắt buộc |
+| `GET` | `/api/v1/chi-phi` | Báo cáo chi phí tiêu thụ token và tỷ lệ định tuyến | Bắt buộc |
+| `GET` | `/api/v1/models` | Cấu hình mô hình, hồ sơ GPU, bậc local và tầng đám mây | Bắt buộc |
+| `GET` | `/api/v1/hang-doi/tinh-trang` | Trạng thái tức thời của bộ điều phối hàng đợi local | Bắt buộc |
+| `GET` | `/api/v1/ngu-canh/tinh-trang` | Hiện trạng ngữ cảnh cấu hình, thực tế và ngân sách token | Bắt buộc |
+
+### 6.2. Cấu trúc phản hồi lỗi chuẩn
+
+Mọi phản hồi lỗi dùng chung một cấu trúc JSON với thông điệp chuẩn; chi tiết kỹ thuật
+(vết ngăn xếp, lỗi thô của bộ chạy, tên thành phần) chỉ ghi vào nhật ký:
+
+```json
+{
+  "loi": {
+    "ma": "KHONG_TIM_THAY",
+    "thong_diep": "Không tìm thấy cuộc hội thoại.",
+    "ma_yeu_cau": "a1b2c3d4e5f6"
+  }
+}
+```
+
+Mã định danh `ma_yeu_cau` (12 ký tự) được đồng bộ giữa header phản hồi `X-Ma-Yeu-Cau`,
+nội dung lỗi JSON, nhật ký vận hành và bản ghi cơ sở dữ liệu.
+
+### 6.3. Bảng mã lỗi hệ thống
+
+| Mã lỗi | HTTP | Ý nghĩa và mô tả |
+| :--- | :--- | :--- |
+| `HANG_DOI_DAY` | 503 | Hàng đợi local đã đầy |
+| `QUA_HAN` | 504 | Quá thời gian chờ |
+| `NGU_CANH_QUA_DAI` | 422 | Tin nhắn vượt ngân sách ngữ cảnh |
+| `BO_CHAY_KHONG_PHAN_HOI` | 503 | Bộ chạy local không phản hồi |
+| `DICH_VU_TAM_NGUNG` | 503 | Dịch vụ tạm gián đoạn |
+| `HET_CHUOI_DU_PHONG` | 503 | Mọi tầng trong chuỗi dự phòng đều lỗi |
+| `VUOT_NGAN_SACH` | 503 | Vượt ngân sách đám mây trong ngày |
+| `VUOT_HAN_MUC` | 429 | Gửi yêu cầu quá tần suất cho phép |
+| `KHONG_CO_QUYEN` | 403 | Không có quyền truy cập |
+| `CHUA_XAC_THUC` | 401 | Chưa đăng nhập hoặc phiên hết hạn |
+| `DAU_VAO_KHONG_HOP_LE` | 422 | Dữ liệu đầu vào không hợp lệ |
+| `NOI_DUNG_BI_CHAN` | 422 | Nội dung vi phạm chính sách kiểm duyệt |
+| `KHONG_TIM_THAY` | 404 | Không tìm thấy dữ liệu |
+| `LOI_HE_THONG` | 500 | Lỗi hệ thống không xác định |

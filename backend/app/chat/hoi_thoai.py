@@ -12,7 +12,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.csdl import HoiThoaiModel, LuotModel, lay_sessionmaker_async
@@ -178,6 +178,52 @@ async def xoa_hoi_thoai(
     await phien.delete(hoi_thoai)
     await phien.flush()
     return True
+
+
+async def xoa_mem_hoi_thoai(
+    phien: AsyncSession,
+    hoi_thoai_id: int,
+    nguoi_id: int | None = None,
+) -> bool:
+    """Xóa mềm cuộc hội thoại (đặt cờ da_xoa = True)."""
+    hoi_thoai = await lay_hoi_thoai(phien, hoi_thoai_id, nguoi_id=nguoi_id)
+    if hoi_thoai is None:
+        return False
+
+    hoi_thoai.da_xoa = True
+    await phien.flush()
+    return True
+
+
+async def lay_danh_sach_hoi_thoai(
+    phien: AsyncSession,
+    nguoi_id: int,
+    *,
+    trang: int = 1,
+    kich_thuoc: int = 20,
+) -> tuple[list[HoiThoaiModel], int]:
+    """Lấy danh sách hội thoại của người dùng, phân trang và sắp theo cap_nhat_luc giảm dần."""
+    so_trang = max(1, trang)
+    gioi_han = max(1, min(100, kich_thuoc))
+    vi_tri = (so_trang - 1) * gioi_han
+
+    dieu_kien = [
+        HoiThoaiModel.nguoi_id == nguoi_id,
+        HoiThoaiModel.da_xoa.is_(False),
+    ]
+
+    cau_lenh_dem = select(func.count(HoiThoaiModel.id)).where(*dieu_kien)
+    tong_so = int((await phien.scalars(cau_lenh_dem)).first() or 0)
+
+    cau_lenh = (
+        select(HoiThoaiModel)
+        .where(*dieu_kien)
+        .order_by(HoiThoaiModel.cap_nhat_luc.desc())
+        .offset(vi_tri)
+        .limit(gioi_han)
+    )
+    ket_qua = await phien.scalars(cau_lenh)
+    return list(ket_qua.all()), tong_so
 
 
 def _chuan_hoa_tieu_de(van_ban: str) -> str:
