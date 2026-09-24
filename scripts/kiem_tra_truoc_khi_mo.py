@@ -263,6 +263,27 @@ def dong_19() -> tuple[bool, str]:
     return _pytest("tests", "-k", "nhan_ai or hai_moc_kiem_duyet or xong_co_ma_yeu_cau")
 
 
+def dong_17() -> tuple[bool, str]:
+    """Tài liệu thiếu siêu dữ liệu hiệu lực bị từ chối nạp: dùng lại test_luoc_do_rag và test_cat_doan."""
+    return _pytest("tests/test_luoc_do_rag.py", "tests/test_cat_doan.py")
+
+
+def dong_18() -> tuple[bool, str]:
+    """Ngưỡng từ chối đã hiệu chuẩn, biên an toàn dương: đọc docs/hieu-chuan-nguong.json."""
+    tep = THU_MUC_GOC / "docs" / "hieu-chuan-nguong.json"
+    if not tep.exists():
+        return False, "Thiếu docs/hieu-chuan-nguong.json"
+    try:
+        du_lieu = json.loads(tep.read_text(encoding="utf-8"))
+        bien = float(du_lieu.get("bien_an_toan", 0.0))
+        nguong = float(du_lieu.get("nguong_de_xuat", 0.0))
+        if bien <= 0:
+            return False, f"Biên an toàn không dương: {bien:.4f}"
+        return True, f"Ngưỡng đề xuất {nguong:.4f}, biên an toàn {bien:.4f} > 0"
+    except Exception as err:  # noqa: BLE001
+        return False, f"Lỗi đọc docs/hieu-chuan-nguong.json: {err}"
+
+
 def dong_25() -> tuple[bool, str]:
     """Chỉ chủ hội thoại được xem, gửi tiếp và xoá; hội thoại người khác trả KHONG_TIM_THAY."""
     return _pytest(
@@ -290,13 +311,13 @@ DONG_MAY: list[tuple[int, str, Callable[[], tuple[bool, str]]]] = [
     (14, "Dữ liệu cá nhân bị che trước khi vào CSDL và nhật ký", dong_14),
     (15, "Các kiểm tra khi MOI_TRUONG=prod", dong_15),
     (16, "Bộ câu hỏi vàng đạt ngưỡng trên tầng 0 và mọi tầng đám mây đang bật", dong_16),
+    (17, "Tài liệu thiếu siêu dữ liệu hiệu lực bị từ chối nạp", dong_17),
+    (18, "Ngưỡng từ chối đã hiệu chuẩn, biên an toàn dương", dong_18),
     (19, "Mọi câu trả lời có nhãn \"Nội dung do AI tạo\"", dong_19),
     (25, "Chỉ chủ hội thoại xem, gửi tiếp, xoá; người khác nhận KHONG_TIM_THAY", dong_25),
 ]
 
 DONG_CHUA_AP_DUNG = [
-    (17, "Tài liệu thiếu siêu dữ liệu hiệu lực bị từ chối nạp", "Giai đoạn 6 bổ sung"),
-    (18, "Ngưỡng từ chối đã hiệu chuẩn, biên an toàn dương", "Giai đoạn 6 bổ sung"),
     (20, "Không phản hồi nào có trường hop_le hoặc duoc_duyet", "Giai đoạn 7 bổ sung"),
 ]
 

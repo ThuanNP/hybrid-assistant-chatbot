@@ -12,6 +12,7 @@ import json
 import sys
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 # Đảm bảo UTF-8 trên Windows console
 if isinstance(sys.stdout, io.TextIOWrapper):
