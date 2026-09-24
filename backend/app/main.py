@@ -102,6 +102,7 @@ from app.llm.chinh_sach import (
     xac_dinh_chuoi,
 )
 from app.llm.router import KetQuaGoi, goi_mo_hinh
+from app.rag.schemas import NguonThamChieu
 
 # Khởi tạo định dạng nhật ký JSON một dòng cho toàn ứng dụng
 thiet_lap_nhat_ky()
@@ -337,6 +338,7 @@ class ItemLuot(BaseModel):
     # Chỉ có ở lượt trợ lý: nhãn AI dựng lại từ model và thời điểm, cờ hạ cấp đọc từ luot_goi
     nhan_ai: str | None = None
     ha_cap: bool = False
+    nguon_tham_chieu: list[NguonThamChieu] | None = None
     tao_luc: datetime
 
 
@@ -1155,6 +1157,7 @@ async def xem_chi_tiet_hoi_thoai(
                 ),
                 ha_cap=l.vai_tro == "tro_ly"
                 and (l.bac_local == "nho" or l.ma_yeu_cau in roi_tang),
+                nguon_tham_chieu=l.nguon_tham_chieu,
                 tao_luc=l.tao_luc,
             )
             for l in cac_luot

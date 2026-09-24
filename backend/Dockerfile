@@ -9,10 +9,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 COPY backend/requirements.txt /srv/backend/requirements.txt
+COPY backend/requirements-rag.txt /srv/backend/requirements-rag.txt
 
 RUN python -m venv /srv/.venv && \
     /srv/.venv/bin/pip install --no-cache-dir --upgrade pip && \
-    /srv/.venv/bin/pip install --no-cache-dir -r /srv/backend/requirements.txt
+    /srv/.venv/bin/pip install --no-cache-dir -r /srv/backend/requirements.txt && \
+    /srv/.venv/bin/pip install --no-cache-dir -r /srv/backend/requirements-rag.txt
 
 # ==============================================================================
 # Tầng 2: Môi trường chạy thực thi (runtime)
@@ -23,11 +25,21 @@ WORKDIR /srv/backend
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/srv/.venv/bin:$PATH"
+    PATH="/srv/.venv/bin:$PATH" \
+    HF_HOME=/home/ungdung/.cache/huggingface
 
-# Tạo người dùng không phải root tên ungdung với UID 10001
+# Cài đặt thư viện hệ thống cần thiết cho Docling (OpenCV / PyTorch runtime)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Tạo người dùng không phải root tên ungdung với UID 10001 và thư mục cache Hugging Face
 RUN groupadd -g 10001 ungdung && \
-    useradd -u 10001 -g ungdung -m -s /bin/sh ungdung
+    useradd -u 10001 -g ungdung -m -s /bin/sh ungdung && \
+    mkdir -p /home/ungdung/.cache/huggingface && \
+    chown -R ungdung:ungdung /home/ungdung/.cache
 
 # Chép môi trường ảo từ tầng builder
 COPY --from=builder --chown=ungdung:ungdung /srv/.venv /srv/.venv

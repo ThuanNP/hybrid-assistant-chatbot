@@ -8,11 +8,13 @@ nguoi_dung, hoi_thoai, luot, luot_goi.
 import os
 import sys
 from collections.abc import AsyncIterator
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -24,7 +26,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, DOUBLE_PRECISION, JSONB, TSVECTOR
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -32,8 +34,39 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.types import UserDefinedType
 
 from app.config import cau_hinh
+
+
+class PGVector(UserDefinedType):
+    """Kiểu dữ liệu vector tùy biến cho pgvector trong PostgreSQL."""
+
+    def __init__(self, kich_thuoc: int = 1024) -> None:
+        self.kich_thuoc = kich_thuoc
+
+    def get_col_spec(self, **kw: Any) -> str:
+        return f"vector({self.kich_thuoc})"
+
+    def bind_processor(self, dialect: Any) -> Any:
+        def process(value: Any) -> Any:
+            if value is None:
+                return None
+            if isinstance(value, (list, tuple)):
+                return f"[{','.join(str(float(x)) for x in value)}]"
+            return str(value)
+
+        return process
+
+    def result_processor(self, dialect: Any, coltype: Any) -> Any:
+        def process(value: Any) -> Any:
+            if value is None:
+                return None
+            if isinstance(value, str):
+                return [float(x) for x in value.strip("[]").split(",") if x.strip()]
+            return value
+
+        return process
 
 # Đặt WindowsSelectorEventLoopPolicy trên Windows vì psycopg async không chạy với Proactor
 if sys.platform == "win32":
@@ -327,6 +360,95 @@ class HanMucDemModel(Base):
 
     __table_args__ = (
         Index("ix_han_muc_dem_khoa_thoi_diem", "khoa", "thoi_diem"),
+    )
+
+
+class TaiLieuModel(Base):
+    """Bảng lưu trữ thông tin văn bản, tài liệu trong kho tri thức nội bộ."""
+
+    __tablename__ = "tai_lieu"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ma_tai_lieu: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    tieu_de: Mapped[str] = mapped_column(Text, nullable=False)
+    nguon: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    loai_van_ban: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tinh_trang: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # con_hieu_luc | het_hieu_luc | du_thao
+    pham_vi_doc: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    van_ban_thay_the: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ngay_ban_hanh: Mapped[date] = mapped_column(Date, nullable=False)
+    ngay_het_hieu_luc: Mapped[date | None] = mapped_column(Date, nullable=True)
+    don_vi_quan_ly: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    model_nhung: Mapped[str] = mapped_column(String(100), nullable=False)
+    bam_noi_dung: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    nguoi_nap: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tao_luc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+    cap_nhat_luc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    doan_list: Mapped[list["DoanModel"]] = relationship(
+        back_populates="tai_lieu",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "tinh_trang IN ('con_hieu_luc', 'het_hieu_luc', 'du_thao')",
+            name="ck_tai_lieu_tinh_trang",
+        ),
+        CheckConstraint(
+            "(tinh_trang != 'het_hieu_luc') OR (van_ban_thay_the IS NOT NULL AND van_ban_thay_the != '')",
+            name="ck_tai_lieu_van_ban_thay_the",
+        ),
+        Index("ix_tai_lieu_ma_tai_lieu", "ma_tai_lieu"),
+    )
+
+
+class DoanModel(Base):
+    """Bảng lưu trữ từng đoạn nội dung (chunk), vector nhúng và tsvector tìm kiếm."""
+
+    __tablename__ = "doan"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tai_lieu_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("tai_lieu.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    thu_tu: Mapped[int] = mapped_column(Integer, nullable=False)
+    tieu_de_muc: Mapped[str] = mapped_column(Text, nullable=False)
+    duong_dan_muc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    noi_dung: Mapped[str] = mapped_column(Text, nullable=False)
+    so_token: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0"), nullable=False
+    )
+    vector: Mapped[Any | None] = mapped_column(PGVector(1024), nullable=True)
+    tsv: Mapped[Any | None] = mapped_column(TSVECTOR, nullable=True)
+
+    tai_lieu: Mapped["TaiLieuModel"] = relationship(back_populates="doan_list")
+
+    __table_args__ = (
+        Index("ix_doan_tai_lieu_id_thu_tu", "tai_lieu_id", "thu_tu"),
+        Index(
+            "ix_doan_vector_hnsw",
+            "vector",
+            postgresql_using="hnsw",
+            postgresql_ops={"vector": "vector_cosine_ops"},
+        ),
+        Index("ix_doan_tsv_gin", "tsv", postgresql_using="gin"),
     )
 
 

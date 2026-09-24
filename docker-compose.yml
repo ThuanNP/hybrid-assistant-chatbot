@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:17
+    image: pgvector/pgvector:pg17
     restart: unless-stopped
     networks:
       - mang_tro_ly
@@ -34,6 +34,8 @@ services:
         limits:
           cpus: "2.0"
           memory: 4096M
+    volumes:
+      - docling_cache:/home/ungdung/.cache/huggingface
     ports:
       # Mọi truy cập của người dùng đi qua frontend nginx cổng 8080; cổng 8000 chỉ mở ở
       # loopback cho kiểm tra sức khỏe, kịch bản chẩn đoán và tài liệu nội bộ trên chính máy
@@ -76,3 +78,4 @@ networks:
 
 volumes:
   du_lieu_postgres:
+  docling_cache:

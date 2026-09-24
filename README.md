@@ -323,3 +323,32 @@ Kịch bản in bảng theo đúng số dòng của Phụ lục 4:
 - Dòng Người 21-24 in `CHỜ XÁC NHẬN`, không tính vào mã thoát.
 
 Mã thoát 0 khi mọi dòng Máy đang áp dụng đều đạt, 1 khi còn dòng chưa đạt.
+
+## 9. Nạp tài liệu vào kho tri thức RAG
+
+Hệ thống hỗ trợ nạp tài liệu PDF, DOCX, HTML và Markdown vào cơ sở dữ liệu kho tri thức RAG.
+Quá trình bóc tách cấu trúc tài liệu PDF/DOCX/HTML được thực hiện bởi thư viện Docling chạy
+bên trong container `backend`.
+
+### 9.1. Bộ đệm mô hình Docling (docling_cache)
+
+- Ở lần chạy đầu tiên, Docling cần kết nối Internet để tải các mô hình nhận diện bố cục và
+  bảng biểu từ Hugging Face.
+- Biến môi trường `HF_HOME=/home/ungdung/.cache/huggingface` được định cấu hình sẵn trong container.
+- Ổ đĩa gắn ngoài `docling_cache` được liên kết vào thư mục này để lưu giữ mô hình vĩnh viễn,
+  tránh việc phải tải lại khi khởi động lại container.
+- Thư mục bộ đệm này được phân quyền ghi cho người dùng không phải root `ungdung` (UID 10001).
+
+### 9.2. Lệnh nạp tài liệu
+
+Nạp toàn bộ tài liệu trong thư mục dữ liệu mẫu:
+
+```bash
+docker compose exec backend python /srv/scripts/nap_tai_lieu.py /srv/data/mau/
+```
+
+Đánh dấu một tài liệu hết hiệu lực và liên kết văn bản thay thế:
+
+```bash
+docker compose exec backend python /srv/scripts/nap_tai_lieu.py --het-hieu-luc <ma_tai_lieu> --thay-the <ma_thay_the>
+```

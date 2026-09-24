@@ -1,0 +1,17 @@
+# Cấu hình RAG (Retrieval-Augmented Generation) và kho tri thức
+# Căn cứ: Quy tắc kỹ thuật số 5 trong AGENTS.md
+
+model_nhung: "bge-m3"
+so_chieu: 1024
+k_truy_hoi: 20
+k_rrf: 60
+k_dua_vao_ngu_canh: 5
+
+# Đặt tạm 0.16; PHẢI hiệu chuẩn ở PROMPT 29 với tập đánh giá thực tế
+nguong_tu_choi: 0.16
+cong_phu_tu_khoa: 0.30
+
+# Ngưỡng kiểm tra chất lượng tài liệu khi nạp
+ky_tu_toi_thieu_moi_trang: 200
+ty_le_tu_co_dau_toi_thieu: 0.5
+token_doan_toi_da: 500

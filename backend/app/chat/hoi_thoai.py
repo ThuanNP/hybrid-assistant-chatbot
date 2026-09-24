@@ -12,6 +12,7 @@ import logging
 from datetime import date, datetime, timezone
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -112,6 +113,7 @@ async def luu_cap_luot_hoi_thoai(
     ma_yeu_cau: str,
     nhan_du_lieu: str | None = None,
     phien_ban_prompt: str | None = None,
+    nguon_tham_chieu: list[dict[str, Any]] | None = None,
 ) -> tuple[LuotModel, LuotModel]:
     """Lưu cả lượt người dùng và lượt phản hồi của trợ lý trong MỘT giao dịch duy nhất."""
     pb_prompt = phien_ban_prompt or doc_phien_ban_loi_nhac()
@@ -148,7 +150,7 @@ async def luu_cap_luot_hoi_thoai(
         so_luot_bi_cat=kq_goi.so_luot_bi_cat if kq_goi else 0,
         do_dai_hang_doi=getattr(kq_goi, "do_dai_hang_doi", 0) if kq_goi else 0,
         nhan_du_lieu=nhan_du_lieu,
-        nguon_tham_chieu=None,
+        nguon_tham_chieu=nguon_tham_chieu,
         phien_ban_loi_nhac=pb_prompt,
         ma_yeu_cau=ma_yeu_cau,
         tao_luc=moc_tao,
