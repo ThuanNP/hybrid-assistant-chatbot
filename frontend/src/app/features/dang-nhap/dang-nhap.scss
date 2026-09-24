@@ -699,7 +699,7 @@
 
 .the-noi-tac-vu {
   position: absolute;
-  top: -20px;
+  top: -56px;
   right: -20px;
   background-color: #ffffff;
   border-radius: 12px;
@@ -737,6 +737,25 @@
 
 .ring-turn {
   transform: rotate(-90deg);
+}
+
+// Kích thước biểu tượng SVG dùng trong mẫu (dự án không nạp Tailwind; thiếu các lớp này,
+// SVG hiển thị theo kích thước mặc định 150px và đè lên thẻ)
+.w-2\.5 { width: 10px; }
+.h-2\.5 { height: 10px; }
+.w-3 { width: 12px; }
+.h-3 { height: 12px; }
+.w-3\.5 { width: 14px; }
+.h-3\.5 { height: 14px; }
+.w-4 { width: 16px; }
+.h-4 { height: 16px; }
+.w-5 { width: 20px; }
+.h-5 { height: 20px; }
+.w-10 { width: 40px; }
+.h-10 { height: 40px; }
+
+svg[class*='w-'] {
+  flex-shrink: 0;
 }
 
 .ring-bg {
