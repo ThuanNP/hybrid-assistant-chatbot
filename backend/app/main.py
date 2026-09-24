@@ -236,7 +236,9 @@ class ThongTinNguoiDungPhanHoi(BaseModel):
     vai_tro: str
     bac: str
     phong_ban: str
+    pham_vi_doc: list[str] = Field(default_factory=list)
     che_do_dinh_tuyen: str | None = None
+
     da_dung_trong_gio: int = 0
     token_da_sinh_hom_nay: int = 0
     chi_phi_hom_nay_usd: float = 0.0
@@ -582,7 +584,10 @@ async def dang_nhap(
             vai_tro=nd.vai_tro,
             bac=nd.bac or "free",
             phong_ban=nd.phong_ban,
+            pham_vi_doc=[nd.phong_ban],
             che_do_dinh_tuyen=che_do_str,
+
+
         ),
     )
 
@@ -713,7 +718,9 @@ async def lay_thong_tin_toi(
         vai_tro=nguoi.vai_tro,
         bac=nguoi.bac,
         phong_ban=nguoi.phong_ban,
+        pham_vi_doc=nguoi.pham_vi_doc,
         che_do_dinh_tuyen=che_do_str,
+
         da_dung_trong_gio=da_dung_gio,
         token_da_sinh_hom_nay=token_hom_nay,
         chi_phi_hom_nay_usd=chi_phi_usd,

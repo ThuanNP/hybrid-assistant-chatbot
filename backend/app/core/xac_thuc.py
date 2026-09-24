@@ -50,6 +50,12 @@ class NguoiDung:
     pham_vi_doc: list[str] = field(default_factory=list)
     che_do_dinh_tuyen: CheDoDinhTuyen | str | None = None
 
+    def __post_init__(self) -> None:
+        """Mặc định điền pham_vi_doc = [phong_ban] khi khởi tạo chưa truyền."""
+        if not self.pham_vi_doc and self.phong_ban:
+            self.pham_vi_doc = [self.phong_ban]
+
+
 
 def chuan_hoa_email(email_tho: str) -> str:
     """Loại bỏ khoảng trắng thừa hai đầu và chuyển địa chỉ email về chữ thường."""
@@ -180,7 +186,12 @@ async def lay_nguoi_dung_hien_tai(request: Request) -> NguoiDung:
     """
     if cau_hinh.xac_thuc_gia:
         che_do_dev = _xac_dinh_che_do_theo_phong_ban("CNTT")
-        return NguoiDung(che_do_dinh_tuyen=che_do_dev)
+        return NguoiDung(
+            che_do_dinh_tuyen=che_do_dev,
+            phong_ban="CNTT",
+            pham_vi_doc=["CNTT"],
+        )
+
 
     ma_yc = lay_ma_yeu_cau()
 
@@ -246,8 +257,10 @@ async def lay_nguoi_dung_hien_tai(request: Request) -> NguoiDung:
             vai_tro=nd.vai_tro,
             bac=nd.bac or "free",
             phong_ban=nd.phong_ban,
+            pham_vi_doc=[nd.phong_ban],
             che_do_dinh_tuyen=che_do,
         )
+
 
 
 def can_vai_tro(

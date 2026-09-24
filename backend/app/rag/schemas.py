@@ -48,3 +48,35 @@ class NguonThamChieu(BaseModel):
     tieu_de_muc: str
     doan_id: int
     diem: float
+
+
+class UngVien(BaseModel):
+    """Ứng viên đoạn văn bản trích xuất từ truy hồi RAG phục vụ tái xếp hạng."""
+
+    doan_id: int
+    ma_tai_lieu: str
+    tieu_de_muc: str
+    duong_dan_muc: str | None = None
+    noi_dung: str
+    so_token: int = 0
+    diem_rrf: float = 0.0
+    hang_vector: int | None = None
+    hang_tu_khoa: int | None = None
+    diem_tai_xep_hang: float | None = None
+    van_ban_thay_the: str | None = None
+
+
+class DanhSachUngVien(list[UngVien]):
+    """Danh sách ứng viên kế thừa list[UngVien] kèm thông tin văn bản thay thế."""
+
+    van_ban_thay_the: str | None
+
+    def __init__(
+        self,
+        ung_vien_list: list[UngVien] | None = None,
+        *,
+        van_ban_thay_the: str | None = None,
+    ) -> None:
+        super().__init__(ung_vien_list or [])
+        self.van_ban_thay_the = van_ban_thay_the
+

@@ -29,3 +29,16 @@ cong_phu_tu_khoa: 0.30
 ky_tu_toi_thieu_moi_trang: 200
 ty_le_tu_co_dau_toi_thieu: 0.5
 token_doan_toi_da: 500
+
+# Trọng số tái xếp hạng theo năm dấu hiệu (tổng điểm chuẩn 100)
+trong_so_tai_xep_hang:
+  bigram: 38
+  tieu_de_muc: 26
+  chuoi_so: 20
+  than_doan: 16
+
+# Hệ số nhân phạt đoạn dài (từ 0.85 đến 1.00)
+he_so_phat_doan_dai_min: 0.85
+he_so_phat_doan_dai_max: 1.00
+nguong_doan_dai_bat_dau_phat: 200
+
