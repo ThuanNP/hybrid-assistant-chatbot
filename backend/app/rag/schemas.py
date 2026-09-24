@@ -80,3 +80,19 @@ class DanhSachUngVien(list[UngVien]):
         super().__init__(ung_vien_list or [])
         self.van_ban_thay_the = van_ban_thay_the
 
+
+class KetQuaTuChoi(BaseModel):
+    """Kết quả phản hồi từ chối có kiểm soát khi điểm RAG dưới ngưỡng.
+
+    LƯU Ý KỸ THUẬT:
+    Mã trạng thái ma_trang_thai_http là 200 (không phải mã lỗi 4xx/5xx).
+    Trả mã lỗi cho tình huống từ chối khiến biểu đồ giám sát phát cảnh báo giả.
+    """
+
+    tu_choi: bool = True
+    cau_tra_loi: str
+    diem_cao_nhat: float
+    nguong_tu_choi: float
+    phien_ban_prompt: str
+    ma_trang_thai_http: int = 200
+

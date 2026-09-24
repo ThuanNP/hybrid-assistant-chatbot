@@ -114,6 +114,8 @@ async def luu_cap_luot_hoi_thoai(
     nhan_du_lieu: str | None = None,
     phien_ban_prompt: str | None = None,
     nguon_tham_chieu: list[dict[str, Any]] | None = None,
+    tu_choi: bool = False,
+    diem_cao_nhat: float | None = None,
 ) -> tuple[LuotModel, LuotModel]:
     """Lưu cả lượt người dùng và lượt phản hồi của trợ lý trong MỘT giao dịch duy nhất."""
     pb_prompt = phien_ban_prompt or doc_phien_ban_loi_nhac()
@@ -151,6 +153,8 @@ async def luu_cap_luot_hoi_thoai(
         do_dai_hang_doi=getattr(kq_goi, "do_dai_hang_doi", 0) if kq_goi else 0,
         nhan_du_lieu=nhan_du_lieu,
         nguon_tham_chieu=nguon_tham_chieu,
+        tu_choi=tu_choi,
+        diem_cao_nhat=diem_cao_nhat,
         phien_ban_loi_nhac=pb_prompt,
         ma_yeu_cau=ma_yeu_cau,
         tao_luc=moc_tao,

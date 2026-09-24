@@ -218,6 +218,10 @@ class LuotModel(Base):
     )
     nhan_du_lieu: Mapped[str | None] = mapped_column(String(50), nullable=True)
     nguon_tham_chieu: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
+    tu_choi: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+    diem_cao_nhat: Mapped[float | None] = mapped_column(Float, nullable=True)
     phien_ban_loi_nhac: Mapped[str | None] = mapped_column(String(50), nullable=True)
     ma_yeu_cau: Mapped[str | None] = mapped_column(String(50), nullable=True)
     tao_luc: Mapped[datetime] = mapped_column(
