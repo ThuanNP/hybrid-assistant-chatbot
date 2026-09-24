@@ -8,7 +8,7 @@
  */
 
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -33,6 +33,11 @@ export class DangNhapComponent {
   public readonly dangXuLy = this.authService.dangXuLy;
   public readonly thongBaoLoi = signal<string | null>(null);
   public readonly maYeuCau = signal<string | null>(null);
+  /** Canh bao khoang trang dau/cuoi mat khau (thuong do dan); khong tu cat de giu dung mat khau. */
+  public readonly matKhauCoKhoangTrangBien = computed(() => {
+    const mk = this.matKhau();
+    return mk.length > 0 && mk !== mk.trim();
+  });
 
   public readonly tieuDe = CAU_HINH_APP.TIEU_DE_HE_THONG;
 
@@ -67,7 +72,7 @@ export class DangNhapComponent {
   }
 
   private xuLyLoiDangNhap(err: unknown): void {
-    let thongDiep = 'Đăng nhập không thành công. Vui lòng kiểm tra lại.';
+    let thongDiep = 'Đăng nhập không thành công.';
     let maYc: string | null = null;
 
     if (typeof err === 'object' && err !== null) {

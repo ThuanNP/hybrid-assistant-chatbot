@@ -80,6 +80,7 @@
               [type]="hienMatKhau() ? 'text' : 'password'"
               [ngModel]="matKhau()"
               (ngModelChange)="matKhau.set($event)"
+              [attr.aria-describedby]="matKhauCoKhoangTrangBien() ? 'canh-bao-khoang-trang' : null"
               required
             />
             <button
@@ -100,6 +101,11 @@
               }
             </button>
           </div>
+          @if (matKhauCoKhoangTrangBien()) {
+            <p id="canh-bao-khoang-trang" class="canh-bao-o-nhap">
+              Mật khẩu có khoảng trắng ở đầu hoặc cuối.
+            </p>
+          }
         </div>
 
         <!-- 6. Link Quên mật khẩu? (left aligned) -->

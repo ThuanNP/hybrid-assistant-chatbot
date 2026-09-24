@@ -74,6 +74,19 @@ describe('DangNhapComponent', () => {
     expect(mockAuthService.dangNhap).not.toHaveBeenCalled();
   });
 
+  it('cảnh báo khoảng trắng đầu/cuối mật khẩu nhưng vẫn gửi nguyên văn', () => {
+    mockAuthService.dangNhap.mockReturnValue(of({ access_token: 'fake-jwt' }));
+    component.email.set('nv01@vidu.com');
+    component.matKhau.set('MatKhau123@');
+    expect(component.matKhauCoKhoangTrangBien()).toBe(false);
+
+    component.matKhau.set(' MatKhau123@');
+    expect(component.matKhauCoKhoangTrangBien()).toBe(true);
+
+    component.xuLyDangNhap();
+    expect(mockAuthService.dangNhap).toHaveBeenCalledWith('nv01@vidu.com', ' MatKhau123@');
+  });
+
   it('gọi AuthService.dangNhap và chuyển hướng về / khi thành công', () => {
     mockAuthService.dangNhap.mockReturnValue(of({ access_token: 'fake-jwt' }));
     component.email.set('nv01@vidu.com');
