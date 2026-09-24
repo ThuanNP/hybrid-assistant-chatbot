@@ -95,18 +95,25 @@ POST /api/v1/chat        -- Thay đổi phá vỡ cấu trúc input mà không t
 - Mỗi lần phát hành: nâng số phiên bản ở cả hai tệp `backend/pyproject.toml`
   và `frontend/package.json`.
 - Ghi nhật ký thay đổi trong `CHANGELOG.md` theo ba mục: **Thêm**, **Thay đổi**, **Sửa lỗi**.
-- Gắn thẻ git (git tag) có tiền tố `v` theo định dạng `vX.Y.Z`.
+- Commit phát hành có thông điệp `chore(release): phát hành phiên bản vX.Y.Z (Giai đoạn N)`.
+- Gắn một thẻ có chú giải (annotated tag) duy nhất `vX.Y.Z` trên commit phát hành, thông điệp
+  thẻ ghi `Giai đoạn N: <tên giai đoạn>`. Không gắn thẻ thứ hai theo giai đoạn.
+- Tra phiên bản ứng với giai đoạn bằng `git tag -l "v*" -n1`; so sánh với mốc giai đoạn trước
+  bằng thẻ phiên bản (ví dụ `git diff --stat v1.2.0`).
 
 ```bash
 # ĐÚNG:
 # 1. Cập nhật version trong backend/pyproject.toml và frontend/package.json
 # 2. Cập nhật CHANGELOG.md với mục Thêm, Thay đổi, Sửa lỗi
-# 3. Commit và gắn thẻ git:
-git tag v1.0.0
+# 3. Commit phát hành và gắn thẻ có chú giải:
+git tag -a v1.1.0 -m "Giai đoạn 6: RAG lai"
+git describe --exact-match HEAD   # kỳ vọng: v1.1.0
 
 # SAI (CẤM):
-git tag 1.0.0       # Cấm thiếu tiền tố 'v'
-git tag -f v1.0.0   # CẤM ghi đè hoặc sửa thẻ phiên bản đã phát hành
+git tag 1.0.0         # Cấm thiếu tiền tố 'v'
+git tag v1.1.0        # Cấm thẻ nhẹ (lightweight), thiếu người gắn, ngày và chú giải
+git tag giai-doan-6   # Cấm thẻ theo giai đoạn, trùng với thẻ phiên bản
+git tag -f v1.0.0     # CẤM ghi đè hoặc sửa thẻ phiên bản đã phát hành
 ```
 
 ## Điều CẤM
