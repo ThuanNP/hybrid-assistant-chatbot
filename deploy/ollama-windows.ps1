@@ -19,9 +19,10 @@ Write-Host "[x] Đã đặt OLLAMA_KEEP_ALIVE = 30m" -ForegroundColor Green
 setx OLLAMA_NUM_PARALLEL "1"
 Write-Host "[x] Đã đặt OLLAMA_NUM_PARALLEL = 1" -ForegroundColor Green
 
-# 3. OLLAMA_MAX_LOADED_MODELS: Số mô hình tối đa nạp vào VRAM cùng lúc (1 mô hình cho GPU 8 GB)
-setx OLLAMA_MAX_LOADED_MODELS "1"
-Write-Host "[x] Đã đặt OLLAMA_MAX_LOADED_MODELS = 1" -ForegroundColor Green
+# 3. OLLAMA_MAX_LOADED_MODELS: Số mô hình tối đa nạp vào VRAM/RAM cùng lúc.
+# Từ Giai đoạn 6, OLLAMA_MAX_LOADED_MODELS = so_model_nap_cung_luc + 1 (gpu8: 1 chat + 1 nhúng = 2)
+setx OLLAMA_MAX_LOADED_MODELS "2"
+Write-Host "[x] Đã đặt OLLAMA_MAX_LOADED_MODELS = 2" -ForegroundColor Green
 
 # 4. OLLAMA_FLASH_ATTENTION: Bật Flash Attention giảm tiêu thụ VRAM và tăng tốc sinh token
 setx OLLAMA_FLASH_ATTENTION "1"

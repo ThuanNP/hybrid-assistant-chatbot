@@ -53,6 +53,16 @@ class KetQuaDongLocal(BaseModel):
     token_ra: int = 0
 
 
+class KetQuaNhungLocal(BaseModel):
+    """Kết quả tạo vector nhúng từ bộ chạy cục bộ."""
+
+    vectors: list[list[float]]
+    model: str
+    so_chieu: int
+    do_tre_ms: float
+    token_vao: int
+
+
 class MauTho(BaseModel):
     """Dữ liệu đọc được từ một phản hồi hoặc một dòng phát, chung cho mọi bộ chạy."""
 
@@ -122,6 +132,22 @@ class BoChay(ABC):
     @abstractmethod
     def _url_chat(self) -> str:
         """Endpoint gọi hội thoại của bộ chạy."""
+
+    @abstractmethod
+    def _url_nhung(self) -> str:
+        """Endpoint tạo vector nhúng của bộ chạy."""
+
+    @abstractmethod
+    async def nhung(
+        self,
+        model: str,
+        van_ban: list[str],
+        *,
+        keep_alive: str = "30m",
+        timeout_giay: float | None = None,
+        ma_yeu_cau: str = "",
+    ) -> KetQuaNhungLocal:
+        """Tạo vector nhúng từ danh sách văn bản."""
 
     @abstractmethod
     def _tao_than_yeu_cau(
@@ -325,6 +351,58 @@ class BoChayOllama(BoChay):
     def _url_chat(self) -> str:
         return f"{_chuan_hoa_url_goc(self.dia_chi)}/api/chat"
 
+    def _url_nhung(self) -> str:
+        return f"{_chuan_hoa_url_goc(self.dia_chi)}/api/embed"
+
+    async def nhung(
+        self,
+        model: str,
+        van_ban: list[str],
+        *,
+        keep_alive: str = "30m",
+        timeout_giay: float | None = None,
+        ma_yeu_cau: str = "",
+    ) -> KetQuaNhungLocal:
+        """Tạo vector nhúng qua POST /api/embed của Ollama.
+
+        Không dùng /v1/embeddings vì giao diện tương thích OpenAI của Ollama bỏ qua keep_alive.
+        """
+        if not van_ban:
+            return KetQuaNhungLocal(
+                vectors=[],
+                model=model,
+                so_chieu=0,
+                do_tre_ms=0.0,
+                token_vao=0,
+            )
+        t0 = time.perf_counter()
+        than = {
+            "model": model,
+            "input": van_ban,
+            "keep_alive": keep_alive,
+        }
+        phan_hoi = await self._gui(
+            "POST", self._url_nhung(), json_body=than, headers=HEADER_BO_CHAY, timeout=timeout_giay
+        )
+        if 400 <= phan_hoi.status_code < 500:
+            raise _loi_dau_vao(phan_hoi.status_code, phan_hoi.text, ma_yeu_cau)
+        phan_hoi.raise_for_status()
+
+        do_tre_ms = round((time.perf_counter() - t0) * 1000, 2)
+        du_lieu = phan_hoi.json()
+        vectors: list[list[float]] = du_lieu.get("embeddings") or []
+        token_vao = du_lieu.get("prompt_eval_count")
+        if token_vao is None:
+            token_vao = sum(dem_token(t) for t in van_ban)
+        so_chieu = len(vectors[0]) if vectors else 0
+        return KetQuaNhungLocal(
+            vectors=vectors,
+            model=model,
+            so_chieu=so_chieu,
+            do_tre_ms=do_tre_ms,
+            token_vao=token_vao,
+        )
+
     def _tao_than_yeu_cau(
         self,
         model: str,
@@ -443,6 +521,60 @@ class BoChayLMStudio(BoChay):
 
     def _url_chat(self) -> str:
         return f"{self.dia_chi.rstrip('/')}/chat/completions"
+
+    def _url_nhung(self) -> str:
+        dia_chi = self.dia_chi.rstrip("/")
+        if not dia_chi.endswith("/v1"):
+            dia_chi = f"{dia_chi}/v1"
+        return f"{dia_chi}/embeddings"
+
+    async def nhung(
+        self,
+        model: str,
+        van_ban: list[str],
+        *,
+        keep_alive: str = "30m",
+        timeout_giay: float | None = None,
+        ma_yeu_cau: str = "",
+    ) -> KetQuaNhungLocal:
+        """Tạo vector nhúng qua POST /v1/embeddings của LM Studio."""
+        if not van_ban:
+            return KetQuaNhungLocal(
+                vectors=[],
+                model=model,
+                so_chieu=0,
+                do_tre_ms=0.0,
+                token_vao=0,
+            )
+        t0 = time.perf_counter()
+        than = {
+            "model": model,
+            "input": van_ban,
+        }
+        phan_hoi = await self._gui(
+            "POST", self._url_nhung(), json_body=than, headers=HEADER_BO_CHAY, timeout=timeout_giay
+        )
+        if 400 <= phan_hoi.status_code < 500:
+            raise _loi_dau_vao(phan_hoi.status_code, phan_hoi.text, ma_yeu_cau)
+        phan_hoi.raise_for_status()
+
+        do_tre_ms = round((time.perf_counter() - t0) * 1000, 2)
+        du_lieu = phan_hoi.json()
+        danh_sach_data = du_lieu.get("data") or []
+        danh_sach_data.sort(key=lambda x: x.get("index", 0))
+        vectors: list[list[float]] = [item["embedding"] for item in danh_sach_data if "embedding" in item]
+        usage = du_lieu.get("usage") or {}
+        token_vao = usage.get("prompt_tokens")
+        if token_vao is None:
+            token_vao = sum(dem_token(t) for t in van_ban)
+        so_chieu = len(vectors[0]) if vectors else 0
+        return KetQuaNhungLocal(
+            vectors=vectors,
+            model=model,
+            so_chieu=so_chieu,
+            do_tre_ms=do_tre_ms,
+            token_vao=token_vao,
+        )
 
     def _tao_than_yeu_cau(
         self,

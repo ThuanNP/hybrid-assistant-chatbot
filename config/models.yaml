@@ -67,6 +67,7 @@ ho_so_gpu:                        # chọn bằng biến HO_SO_GPU
     so_model_nap_cung_luc: 1
 
 # so_model_nap_cung_luc phải KHỚP OLLAMA_MAX_LOADED_MODELS. Bằng 1 nghĩa là bậc chinh và bậc nho không cùng nằm trong VRAM.
+# Từ Giai đoạn 6 (PROMPT 27), OLLAMA_MAX_LOADED_MODELS = so_model_nap_cung_luc + 1 (cho model nhúng chạy song song).
 
 local_chung:
   keep_alive: 30m

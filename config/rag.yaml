@@ -1,8 +1,22 @@
 # Cấu hình RAG (Retrieval-Augmented Generation) và kho tri thức
-# Căn cứ: Quy tắc kỹ thuật số 5 trong AGENTS.md
+# Căn cứ: Quy tắc kỹ thuật số 5, 6 trong AGENTS.md
 
+# Tên logic của mô hình nhúng (lưu vào tai_lieu.model_nhung)
 model_nhung: "bge-m3"
+
+# Thẻ mô hình thực tế dùng khi gọi bộ chạy theo từng hồ sơ GPU
+# gpu6, gpu8: dùng bge-m3-cpu để không chiếm VRAM của model chat
+# hồ sơ khác: dùng bge-m3 chạy trên GPU
+the_nhung_theo_ho_so:
+  gpu6: "bge-m3-cpu:567m-fp16"
+  gpu8: "bge-m3-cpu:567m-fp16"
+  gpu12: "bge-m3:567m-fp16"
+  gpu16: "bge-m3:567m-fp16"
+  gpu24: "bge-m3:567m-fp16"
+
 so_chieu: 1024
+kich_thuoc_lo: 32
+
 k_truy_hoi: 20
 k_rrf: 60
 k_dua_vao_ngu_canh: 5

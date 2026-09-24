@@ -27,6 +27,10 @@ from app.rag.nap_tai_lieu import (
     cap_nhat_het_hieu_luc,
     nap_mot_tai_lieu,
 )
+from app.rag.nhung import (
+    dat_lai_tat_ca_vector,
+    nhung_doan_chua_co_vector,
+)
 
 
 def in_bang_ket_qua(danh_sach_kq: list[KetQuaNap]) -> None:
@@ -131,6 +135,11 @@ async def main_async() -> None:
     parser.add_argument("duong_dan", nargs="?", help="Đường dẫn tới tệp hoặc thư mục tài liệu.")
     parser.add_argument("--het-hieu-luc", help="Mã tài liệu cần đánh dấu hết hiệu lực.")
     parser.add_argument("--thay-the", help="Mã tài liệu thay thế (bắt buộc khi dùng --het-hieu-luc).")
+    parser.add_argument(
+        "--nhung-lai",
+        action="store_true",
+        help="Đặt lại toàn bộ vector hiện có và nạp lại vector nhúng cho toàn bộ kho tài liệu.",
+    )
 
     args = parser.parse_args()
 
@@ -143,11 +152,24 @@ async def main_async() -> None:
         await xu_ly_het_hieu_luc(ma_hhl, ma_tt)
         return
 
-    if not args.duong_dan:
+    if not args.duong_dan and not args.nhung_lai:
         parser.print_help()
         sys.exit(1)
 
-    await xu_ly_nap_duong_dan(args.duong_dan)
+    if args.duong_dan:
+        await xu_ly_nap_duong_dan(args.duong_dan)
+
+    if args.nhung_lai:
+        print("\nĐặt lại toàn bộ vector nhúng hiện có trong cơ sở dữ liệu...")
+        so_dat_lai = await dat_lai_tat_ca_vector()
+        print(f"Đã đặt lại vector của {so_dat_lai} đoạn về NULL.")
+
+    print("\nBắt đầu tạo vector nhúng cho các đoạn tài liệu chưa có vector...")
+    so_doan_nhung = await nhung_doan_chua_co_vector(tien_do=True)
+    if so_doan_nhung > 0:
+        print(f"Hoàn thành: Đã tạo vector nhúng thành công cho {so_doan_nhung} đoạn.")
+    else:
+        print("Tất cả các đoạn tài liệu đều đã có vector nhúng, không cần xử lý thêm.")
 
 
 def main() -> None:

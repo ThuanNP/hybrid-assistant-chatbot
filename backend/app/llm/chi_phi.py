@@ -30,7 +30,7 @@ __all__ = [
 ]
 
 
-MucDichGoi = Literal["chat", "tieu_de", "danh_gia"]
+MucDichGoi = Literal["chat", "tieu_de", "danh_gia", "nhung"]
 
 
 def chuan_hoa_muc_dich(muc_dich: str | None) -> MucDichGoi:
@@ -39,6 +39,8 @@ def chuan_hoa_muc_dich(muc_dich: str | None) -> MucDichGoi:
         return "tieu_de"
     if muc_dich == "danh_gia":
         return "danh_gia"
+    if muc_dich == "nhung":
+        return "nhung"
     return "chat"
 
 
@@ -75,7 +77,7 @@ class LuotGoi(BaseModel):
         default="chat",
         description=(
             "chat: lượt hỏi của người dùng; tieu_de: lời gọi nền đặt tiêu đề; "
-            "danh_gia: lời gọi của bộ đánh giá, không tính vào chỉ số vận hành"
+            "danh_gia: lời gọi của bộ đánh giá; nhung: lời gọi nhúng vector"
         ),
     )
 

@@ -113,13 +113,20 @@ def kiem_tra_ollama(
     if cac_model_thieu:
         print("\nCác mô hình còn thiếu, cần chạy lệnh sau:")
         for the_thieu in cac_model_thieu:
-            print(f"ollama pull {the_thieu}")
+            if "bge-m3-cpu" in the_thieu:
+                print(f"ollama create {the_thieu} -f deploy/Modelfile.bge-m3-cpu")
+            else:
+                print(f"ollama pull {the_thieu}")
         return True, False, cac_model_thieu
 
     return True, True, []
 
 
-def kiem_tra_ollama_ps(goc_url: str, so_model_nap_cung_luc: int) -> None:
+def kiem_tra_ollama_ps(
+    goc_url: str,
+    so_model_nap_cung_luc: int,
+    the_nhung: str | None = None,
+) -> None:
     """Kiểm tra các mô hình đang nằm trong bộ nhớ Ollama qua GET /api/ps."""
     print("\n=== CÁC MÔ HÌNH ĐANG NẰM TRONG BỘ NHỚ (/api/ps) ===")
     url_ps = f"{goc_url}/api/ps"
@@ -148,10 +155,15 @@ def kiem_tra_ollama_ps(goc_url: str, so_model_nap_cung_luc: int) -> None:
         con_lai = dinh_dang_thoi_gian_con_lai(item.get("expires_at"))
         print(f"{ten:<24} | {dung_luong:<12} | {dung_luong_vram:<12} | {con_lai:<15}")
 
-    if so_model_nap_cung_luc == 1 and len(danh_sach) > 1:
+    # Chỉ cảnh báo nếu số model CHAT vượt quá so_model_nap_cung_luc; bỏ qua model nhúng CPU
+    danh_sach_chat = [
+        item for item in danh_sach
+        if not (the_nhung and (item.get("name") == the_nhung or item.get("model") == the_nhung))
+    ]
+    if so_model_nap_cung_luc == 1 and len(danh_sach_chat) > 1:
         print(
-            "\nCẢNH BÁO: OLLAMA_MAX_LOADED_MODELS chưa đặt bằng 1 "
-            f"(GPU 8 GB sẽ tràn VRAM sang RAM và chậm hẳn). Hiện có {len(danh_sach)} model đang nạp."
+            "\nCẢNH BÁO: OLLAMA_MAX_LOADED_MODELS chưa đặt bằng 1 cho mô hình chat "
+            f"(GPU 8 GB sẽ tràn VRAM sang RAM và chậm hẳn). Hiện có {len(danh_sach_chat)} model chat đang nạp."
         )
 
 
@@ -276,7 +288,12 @@ def chay_kiem_tra() -> int:
 
     kiem_tra_dia_chi_an_toan(dia_chi_bo_chay)
 
+    from app.llm.router import _doc_cau_hinh_rag, lay_the_nhung_theo_ho_so
+    rag_cfg = _doc_cau_hinh_rag()
+    the_nhung = lay_the_nhung_theo_ho_so(ho_so_gpu, rag_cfg)
+
     danh_sach_model = [(b.bac, b.model) for b in cau_hinh.bac_local]
+    danh_sach_model.append(("nhúng", the_nhung))
     model_chinh = cau_hinh.bac_local[0].model if cau_hinh.bac_local else ""
 
     bo_chay_song = False
@@ -291,7 +308,7 @@ def chay_kiem_tra() -> int:
             danh_sach_model,
         )
         if bo_chay_song:
-            kiem_tra_ollama_ps(goc_url, cau_hinh.so_model_nap_cung_luc)
+            kiem_tra_ollama_ps(goc_url, cau_hinh.so_model_nap_cung_luc, the_nhung=the_nhung)
     elif loai_bo_chay == "lmstudio":
         bo_chay_song, du_model, cac_model_thieu = kiem_tra_lmstudio(
             dia_chi_bo_chay,

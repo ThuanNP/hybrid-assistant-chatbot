@@ -3,8 +3,25 @@
 Mọi lời gọi model trong ứng dụng bắt buộc đi qua đúng một cửa tại mô-đun này:
 - goi_mo_hinh(): gọi hoàn thành hội thoại một lần (POST /chat, tích hợp M2M).
 - goi_mo_hinh_theo_dong(): phát câu trả lời theo dòng (SSE).
+- goi_nhung(): gọi tạo vector nhúng từ danh sách văn bản (Giai đoạn 6).
 
 Tuân thủ tuyệt đối Quy tắc 1, 2 và Quy tắc kỹ thuật 7 trong AGENTS.md.
+
+QUY TẮC MỘT MODEL NHÚNG CHO MỖI CHỈ MỤC:
+Tài liệu gốc từng đề xuất để lời gọi nhúng rơi từ Gemini sang OpenAI khi tầng 1 lỗi.
+KHÔNG làm như vậy: hai model nhúng khác nhau sinh hai không gian vector khác nhau
+(thường khác cả số chiều); câu hỏi nhúng bằng model B khi so với đoạn nhúng bằng
+model A cho điểm cosine vô nghĩa, truy hồi sai mà không có dấu hiệu nhận biết.
+Vì vậy:
+- goi_nhung KHÔNG có chuỗi rơi tầng sang nhà cung cấp khác.
+- Mỗi tai_lieu lưu model_nhung; truy hồi chỉ so với đoạn có cùng model_nhung với câu hỏi.
+- Đổi model nhúng = nạp lại TOÀN BỘ kho bằng scripts/nap_tai_lieu.py --nhung-lai, có thanh tiến độ.
+- Model nhúng lỗi -> đặt cờ che_do_truy_hoi = "chi_tu_khoa" và lùi về BM25
+  (suy giảm có kiểm soát mức 2 của Module 2).
+
+LỰA CHỌN MẶC ĐỊNH CHẠY LOCAL CHO NHÚNG:
+Nhúng mặc định chạy LOCAL (bge-m3 qua Ollama) bất kể CHE_DO_DINH_TUYEN,
+vì nội dung tài liệu nội bộ không được rời hạ tầng.
 """
 
 import argparse
@@ -16,6 +33,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any, Literal
 
+import yaml
 from pydantic import BaseModel, Field
 
 from app.config import CauHinhHeThong, CauHinhTangDamMay, cau_hinh
@@ -31,9 +49,12 @@ from app.core.loi import (
 from app.core.xac_thuc import NguoiDung
 from app.hang_doi.dieu_phoi import DieuPhoi, dieu_phoi_mac_dinh
 from app.llm.bo_chay_local import (
+    BoChay,
     KetQuaDongLocal,
     KetQuaGoiLocal,
+    KetQuaNhungLocal,
     goi_local,
+    lay_bo_chay,
 )
 from app.llm.chi_phi import (
     KhoLuotGoi,
@@ -57,7 +78,25 @@ from app.llm.nha_cung_cap_dam_may import (
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["KetQuaGoi", "ManhPhatRa", "goi_mo_hinh", "goi_mo_hinh_theo_dong"]
+__all__ = [
+    "KetQuaGoi",
+    "KetQuaNhung",
+    "ManhPhatRa",
+    "goi_mo_hinh",
+    "goi_mo_hinh_theo_dong",
+    "goi_nhung",
+    "lay_the_nhung_theo_ho_so",
+]
+
+
+class KetQuaNhung(BaseModel):
+    """Kết quả hoàn chỉnh của một lượt gọi tạo vector nhúng."""
+
+    vectors: list[list[float]]
+    model: str
+    so_chieu: int
+    do_tre_ms: float
+    token_vao: int
 
 
 class KetQuaGoi(BaseModel):
@@ -947,6 +986,186 @@ async def goi_mo_hinh_theo_dong(
         danh_sach_ly_do=ly_do_cac_tang,
         ma_yeu_cau=ma_yeu_cau,
     )
+
+
+def _doc_cau_hinh_rag() -> dict[str, Any]:
+    """Đọc cấu hình RAG từ tệp config/rag.yaml."""
+    duong_dan = Path(__file__).resolve().parents[3] / "config" / "rag.yaml"
+    if not duong_dan.exists():
+        duong_dan = Path("/srv/config/rag.yaml")
+    if not duong_dan.exists():
+        return {
+            "model_nhung": "bge-m3",
+            "the_nhung_theo_ho_so": {
+                "gpu6": "bge-m3-cpu:567m-fp16",
+                "gpu8": "bge-m3-cpu:567m-fp16",
+                "gpu12": "bge-m3:567m-fp16",
+                "gpu16": "bge-m3:567m-fp16",
+                "gpu24": "bge-m3:567m-fp16",
+            },
+            "so_chieu": 1024,
+            "kich_thuoc_lo": 32,
+        }
+    try:
+        noi_dung = duong_dan.read_text(encoding="utf-8")
+        du_lieu = yaml.safe_load(noi_dung)
+        return du_lieu if isinstance(du_lieu, dict) else {}
+    except Exception as err:
+        logger.warning("Không thể đọc tệp cấu hình RAG %s: %s", duong_dan, err)
+        return {}
+
+
+def lay_the_nhung_theo_ho_so(ho_so_gpu: str, rag_cfg: dict[str, Any] | None = None) -> str:
+    """Lấy thẻ model nhúng thực tế theo hồ sơ GPU từ config/rag.yaml."""
+    cfg_rag = rag_cfg if rag_cfg is not None else _doc_cau_hinh_rag()
+    the_theo_hs = cfg_rag.get("the_nhung_theo_ho_so", {})
+    if isinstance(the_theo_hs, dict) and ho_so_gpu in the_theo_hs:
+        return str(the_theo_hs[ho_so_gpu])
+    if ho_so_gpu in ("gpu6", "gpu8"):
+        return "bge-m3-cpu:567m-fp16"
+    return "bge-m3:567m-fp16"
+
+
+async def goi_nhung(
+    van_ban: list[str],
+    *,
+    ma_yeu_cau: str,
+    **tuy_chon: Any,
+) -> KetQuaNhung:
+    """Gọi mô hình tạo vector nhúng qua bộ chạy cục bộ.
+
+    Điểm nhập duy nhất trong ứng dụng cho các lời gọi nhúng mô hình.
+    Tuân thủ tuyệt đối Quy tắc 1 (không import httpx, gọi qua bo_chay.nhung)
+    và Quy tắc kỹ thuật 7 (ghi nhận LuotGoi với muc_dich='nhung').
+    """
+    cfg: CauHinhHeThong = tuy_chon.get("cau_hinh_he_thong") or cau_hinh
+    kho: KhoLuotGoi = tuy_chon.get("kho_luot_goi") or kho_luot_goi_mac_dinh
+    runner: BoChay = tuy_chon.get("bo_chay") or lay_bo_chay(cfg)
+    rag_cfg = tuy_chon.get("cau_hinh_rag") or _doc_cau_hinh_rag()
+
+    ho_so = getattr(cfg, "ho_so_gpu_dang_chon", "gpu8")
+    model_nhung = str(tuy_chon.get("model") or lay_the_nhung_theo_ho_so(ho_so, rag_cfg))
+    kich_thuoc_lo = int(tuy_chon.get("kich_thuoc_lo") or rag_cfg.get("kich_thuoc_lo", 32))
+    timeout_giay = float(tuy_chon.get("timeout_giay", cfg.timeout_giay))
+    so_lan_thu_lai = int(cfg.cai_dat_chung.so_lan_thu_lai_moi_tang)
+    giay_gian_cach = float(cfg.cai_dat_chung.giay_gian_cach_dau)
+    tong_so_luot = 1 + so_lan_thu_lai
+
+    if not van_ban:
+        return KetQuaNhung(
+            vectors=[],
+            model=model_nhung,
+            so_chieu=0,
+            do_tre_ms=0.0,
+            token_vao=0,
+        )
+
+    # Chia lô 32 đoạn theo cấu hình
+    cac_lo = [van_ban[i : i + kich_thuoc_lo] for i in range(0, len(van_ban), kich_thuoc_lo)]
+
+    all_vectors: list[list[float]] = []
+    tong_token_vao = 0
+    tong_do_tre_ms = 0.0
+    so_chieu = 0
+
+    t_bat_dau_tong = time.perf_counter()
+    loi_cuoi_cung: Exception | None = None
+
+    for lo in cac_lo:
+        thanh_cong_lo = False
+        for lan in range(tong_so_luot):
+            try:
+                kq_lo = await runner.nhung(
+                    model_nhung,
+                    lo,
+                    keep_alive=cfg.local_chung.keep_alive,
+                    timeout_giay=timeout_giay,
+                    ma_yeu_cau=ma_yeu_cau,
+                )
+                all_vectors.extend(kq_lo.vectors)
+                tong_token_vao += kq_lo.token_vao
+                tong_do_tre_ms += kq_lo.do_tre_ms
+                if kq_lo.so_chieu > 0:
+                    so_chieu = kq_lo.so_chieu
+                thanh_cong_lo = True
+                break
+            except Exception as err:
+                loi_cuoi_cung = err
+                logger.warning(
+                    "[%s] Lỗi khi gọi nhúng lô (%d đoạn), lần %d/%d: %s",
+                    ma_yeu_cau,
+                    len(lo),
+                    lan + 1,
+                    tong_so_luot,
+                    err,
+                )
+                if lan < tong_so_luot - 1:
+                    await asyncio.sleep(giay_gian_cach * (2 ** lan))
+
+        if not thanh_cong_lo:
+            do_tre_that_bai = round((time.perf_counter() - t_bat_dau_tong) * 1000, 2)
+            lg_that_bai = LuotGoi(
+                nguoi_id=str(tuy_chon.get("nguoi_id", "he_thong")),
+                nguon="local",
+                tang=0,
+                bac=None,
+                model=model_nhung,
+                token_vao=tong_token_vao,
+                token_ra=0,
+                chi_phi_usd=0.0,
+                do_tre_ms=do_tre_that_bai,
+                thoi_gian_nap_ms=0.0,
+                toc_do_tok_s=0.0,
+                thanh_cong=False,
+                ma_yeu_cau=ma_yeu_cau,
+                roi_tang=False,
+                ly_do_that_bai_tang_dau=_loai_loi(loi_cuoi_cung) if loi_cuoi_cung else "LoiNhung",
+                muc_dich=chuan_hoa_muc_dich("nhung"),
+            )
+            kho.ghi(lg_that_bai)
+            raise loi_cuoi_cung or RuntimeError(f"Nhúng văn bản thất bại sau {tong_so_luot} lượt thử")
+
+    do_tre_tong_ms = round((time.perf_counter() - t_bat_dau_tong) * 1000, 2)
+    kq_nhung = KetQuaNhung(
+        vectors=all_vectors,
+        model=model_nhung,
+        so_chieu=so_chieu,
+        do_tre_ms=do_tre_tong_ms,
+        token_vao=tong_token_vao,
+    )
+
+    lg_thanh_cong = LuotGoi(
+        nguoi_id=str(tuy_chon.get("nguoi_id", "he_thong")),
+        nguon="local",
+        tang=0,
+        bac=None,
+        model=model_nhung,
+        token_vao=tong_token_vao,
+        token_ra=0,
+        chi_phi_usd=0.0,
+        do_tre_ms=do_tre_tong_ms,
+        thoi_gian_nap_ms=0.0,
+        toc_do_tok_s=0.0,
+        thanh_cong=True,
+        ma_yeu_cau=ma_yeu_cau,
+        roi_tang=False,
+        ly_do_that_bai_tang_dau=None,
+        muc_dich=chuan_hoa_muc_dich("nhung"),
+    )
+    kho.ghi(lg_thanh_cong)
+
+    logger.info(
+        "[%s] Lượt gọi nhúng mô hình hoàn thành: nguồn=local, tầng=0, model=%s, "
+        "token_vào=%d, số_đoạn=%d, số_chiều=%d, độ_trễ_ms=%.2f",
+        ma_yeu_cau,
+        model_nhung,
+        tong_token_vao,
+        len(van_ban),
+        so_chieu,
+        do_tre_tong_ms,
+    )
+
+    return kq_nhung
 
 
 if __name__ == "__main__":

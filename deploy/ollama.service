@@ -21,9 +21,9 @@ Environment="OLLAMA_KEEP_ALIVE=30m"
 # Hồ sơ gpu8 đặt là 1 để tránh tràn VRAM; hồ sơ lớn hơn có thể tăng theo models.yaml.
 Environment="OLLAMA_NUM_PARALLEL=1"
 
-# OLLAMA_MAX_LOADED_MODELS: Số lượng mô hình tối đa được nạp đồng thời vào GPU.
-# Khớp với so_model_nap_cung_luc trong hồ sơ gpu8 (1 mô hình tại một thời điểm).
-Environment="OLLAMA_MAX_LOADED_MODELS=1"
+# OLLAMA_MAX_LOADED_MODELS: Số lượng mô hình tối đa được nạp đồng thời vào GPU/RAM.
+# Từ Giai đoạn 6: = so_model_nap_cung_luc + 1 (gpu8: 1 model chat + 1 model nhúng = 2).
+Environment="OLLAMA_MAX_LOADED_MODELS=2"
 
 # OLLAMA_FLASH_ATTENTION: Kích hoạt Flash Attention giúp giảm tiêu hao VRAM và tăng tốc độ.
 # Đặt 1 để bật tính năng này trên các dòng GPU NVIDIA hỗ trợ (Turing/Ampere/Ada Lovelace).
